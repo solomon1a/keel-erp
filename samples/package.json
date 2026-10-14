@@ -1,0 +1,13 @@
+{
+  "name": "sample-js-app",
+  "version": "1.0.0",
+  "description": "Sample JavaScript application for REA analysis testing",
+  "main": "sample-app.js",
+  "scripts": {
+    "start": "node sample-app.js",
+    "test": "echo \"No tests configured\" && exit 0"
+  },
+  "keywords": ["sample", "testing", "rea"],
+  "author": "REA Workspace",
+  "license": "MIT"
+}
