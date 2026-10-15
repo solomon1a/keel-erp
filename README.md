@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The API listens on port 43124. Vite proxies `/api` to it.
+Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The desk and API listen on every interface (ports 43123 and 43124) so a cloud preview can reach them. Vite proxies `/api` to the API.
 
 Pick Maya Chen or Jonah Ellis on the sign-in screen. That name is stored in the browser and sent as `x-user-id`. It is a desk sign-in, not a password.
 

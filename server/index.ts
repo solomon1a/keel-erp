@@ -4,7 +4,7 @@ import { createApp } from './app.ts'
 import { seedDatabase } from '../prisma/seed.ts'
 
 const port = Number(process.env.PORT ?? 43124)
-const hostname = '127.0.0.1'
+const hostname = '0.0.0.0'
 
 const companies = await prisma.company.count()
 if (companies === 0) {
