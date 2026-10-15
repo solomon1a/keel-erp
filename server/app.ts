@@ -41,10 +41,12 @@ import {
   writeSessionCookie,
 } from './auth.ts'
 import { prisma } from './db.ts'
+import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
+import { profitAndLoss, vatReport } from './services/accounting.ts'
 import {
   addLocation,
   cancelTransfer,
@@ -301,20 +303,39 @@ export function createApp() {
 
   app.get('/api/desk', async (c) => {
     const user = c.get('user')
-    const [contactCount, productCount, openOrders, recentOrders, products] = await Promise.all([
-      prisma.contact.count({ where: { companyId: user.companyId } }),
-      prisma.product.count({ where: { companyId: user.companyId, active: true } }),
-      prisma.salesOrder.count({ where: { companyId: user.companyId, state: { in: ['draft', 'sent', 'sale'] } } }),
+    const companyId = user.companyId
+    const [contactCount, productCount, openOrders, recentOrders, products, pipeline, receivable, payable, shopOrders, staff, leaveWaiting, pnl, vat] = await Promise.all([
+      prisma.contact.count({ where: { companyId } }),
+      prisma.product.count({ where: { companyId, active: true } }),
+      prisma.salesOrder.count({ where: { companyId, state: { in: ['draft', 'sent', 'sale'] } } }),
       prisma.salesOrder.findMany({
-        where: { companyId: user.companyId },
+        where: { companyId },
         orderBy: { updatedAt: 'desc' },
         take: 6,
         include: { customer: { select: { name: true } } },
       }),
       prisma.product.findMany({
-        where: { companyId: user.companyId, type: 'product', active: true },
+        where: { companyId, type: 'product', active: true },
         include: { quants: { where: { location: { type: 'internal' } } } },
       }),
+      prisma.lead.aggregate({
+        where: { companyId, stage: { in: ['new', 'qualified', 'proposition'] } },
+        _sum: { expectedRevenue: true },
+        _count: { _all: true },
+      }),
+      prisma.invoice.aggregate({
+        where: { companyId, moveType: 'out_invoice', state: 'posted' },
+        _sum: { residual: true },
+      }),
+      prisma.invoice.aggregate({
+        where: { companyId, moveType: 'in_invoice', state: 'posted' },
+        _sum: { residual: true },
+      }),
+      prisma.salesOrder.count({ where: { companyId, origin: 'shop' } }),
+      prisma.employee.count({ where: { companyId, active: true } }),
+      prisma.leaveRequest.count({ where: { state: 'draft', employee: { companyId } } }),
+      profitAndLoss(companyId),
+      vatReport(companyId),
     ])
     const lowStock = products
       .map((product) => ({
@@ -325,7 +346,22 @@ export function createApp() {
       }))
       .filter((product) => product.onHand < 5)
       .sort((a, b) => a.onHand - b.onHand)
-    return c.json({ contactCount, productCount, openOrders, recentOrders, lowStock })
+    return c.json({
+      contactCount,
+      productCount,
+      openOrders,
+      recentOrders,
+      lowStock,
+      pipelineValue: roundMoney(pipeline._sum.expectedRevenue ?? 0),
+      pipelineCount: pipeline._count._all,
+      receivable: roundMoney(receivable._sum.residual ?? 0),
+      payable: roundMoney(payable._sum.residual ?? 0),
+      shopOrders,
+      staff,
+      leaveWaiting,
+      profit: pnl.profit,
+      vatPayable: vat.payable,
+    })
   })
 
   app.get('/api/contacts', async (c) => {

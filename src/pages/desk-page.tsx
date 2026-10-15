@@ -14,6 +14,15 @@ type Desk = {
   openOrders: number
   recentOrders: Array<SalesOrder & { customer: { name: string } }>
   lowStock: Array<{ id: number; name: string; sku: string; onHand: number }>
+  pipelineValue: number
+  pipelineCount: number
+  receivable: number
+  payable: number
+  shopOrders: number
+  staff: number
+  leaveWaiting: number
+  profit: number
+  vatPayable: number
 }
 
 export function DeskPage() {
@@ -32,10 +41,20 @@ export function DeskPage() {
         <h1 className="font-serif text-4xl tracking-tight">{t('desk.title')}</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">{t('desk.lead')}</p>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label={t('desk.openOrders')} value={String(data.openOrders)} to="/orders" />
+        <Stat label={t('desk.pipeline')} value={money(data.pipelineValue)} hint={t('desk.pipelineCount', { count: data.pipelineCount })} to="/crm" />
+        <Stat label={t('desk.receivable')} value={money(data.receivable)} to="/accounting" />
+        <Stat label={t('desk.payable')} value={money(data.payable)} to="/accounting" />
+        <Stat label={t('desk.shopOrders')} value={String(data.shopOrders)} to="/shop" />
+        <Stat label={t('desk.profit')} value={money(data.profit)} to="/accounting/reports" />
+        <Stat label={t('desk.vat')} value={money(data.vatPayable)} to="/accounting/reports" />
+        <Stat label={t('desk.staff')} value={String(data.staff)} hint={t('desk.leaveCount', { count: data.leaveWaiting })} to="/hr" />
+      </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label={t('desk.contacts')} value={String(data.contactCount)} />
-        <Stat label={t('desk.products')} value={String(data.productCount)} />
-        <Stat label={t('desk.openOrders')} value={String(data.openOrders)} />
+        <Stat label={t('desk.contacts')} value={String(data.contactCount)} to="/contacts" />
+        <Stat label={t('desk.products')} value={String(data.productCount)} to="/products" />
+        <Stat label={t('desk.low')} value={String(data.lowStock.length)} to="/inventory" />
       </div>
       <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
         <section className="rounded-lg border border-border bg-card">
@@ -93,11 +112,19 @@ export function DeskPage() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3">
+function Stat({ label, value, hint, to }: { label: string; value: string; hint?: string; to?: string }) {
+  const body = (
+    <>
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="font-serif text-3xl">{value}</p>
-    </div>
+      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+    </>
+  )
+  const className = 'rounded-lg border border-border bg-card px-4 py-3 hover:bg-secondary/40'
+  if (!to) return <div className={className}>{body}</div>
+  return (
+    <Link className={className} to={to}>
+      {body}
+    </Link>
   )
 }

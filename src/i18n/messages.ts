@@ -1,5 +1,6 @@
 import { enAccount, zhAccount } from './account-messages.ts'
 import { enCrm, zhCrm } from './crm-messages.ts'
+import { enDesk, zhDesk } from './desk-messages.ts'
 import { enHr, zhHr } from './hr-messages.ts'
 import { enShop, zhShop } from './shop-messages.ts'
 
@@ -61,7 +62,7 @@ const enBase = {
   'common.notes': 'Notes',
   'desk.loading': 'Opening the desk…',
   'desk.title': 'Today on the floor',
-  'desk.lead': 'Open quotations, thin stock, and the people you sell to. Confirm an order only when the shelf can cover it.',
+  'desk.lead': 'Open quotations, the pipeline, what is still unpaid, and who is on the roster. Confirm an order only when the shelf can cover it.',
   'desk.contacts': 'Contacts',
   'desk.products': 'Active products',
   'desk.openOrders': 'Open orders',
@@ -681,7 +682,7 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'common.notes': '备注',
   'desk.loading': '正在打开工作台…',
   'desk.title': '今日台面',
-  'desk.lead': '未完成的报价、偏少的库存，以及你的客户。只有货架够数时才确认订单。',
+  'desk.lead': '未完成的报价、商机、未结的账款，以及在岗的人。只有货架够数时才确认订单。',
   'desk.contacts': '联系人',
   'desk.products': '在售产品',
   'desk.openOrders': '未结订单',
@@ -1243,8 +1244,8 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'country.MX': '墨西哥',
 }
 
-const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr }
-const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr }
+const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk }
 
 export const messages = { en, zh }
 
