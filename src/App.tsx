@@ -6,6 +6,7 @@ import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage 
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
+import { CrmPage, LeadPage } from './pages/crm.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
 import { BomDetailPage } from './pages/bom-detail-page.tsx'
 import { BomFormPage } from './pages/bom-form-page.tsx'
@@ -79,6 +80,8 @@ export default function App() {
             <Route path="/accounting/ledger" element={<LedgerPage />} />
             <Route path="/accounting/reports" element={<ReportsPage />} />
             <Route path="/accounting/:id" element={<InvoicePage />} />
+            <Route path="/crm" element={<CrmPage />} />
+            <Route path="/crm/:id" element={<LeadPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />

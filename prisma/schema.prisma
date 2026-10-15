@@ -35,6 +35,7 @@ model Company {
   journals      Journal[]
   invoices      Invoice[]
   entries       JournalEntry[]
+  leads         Lead[]
   /// Seller taxpayer ID printed on invoices. Not a Golden Tax registration.
   taxId         String?
   address       String?
@@ -63,6 +64,7 @@ model User {
   openedSessions       PosSession[]        @relation("PosOpenedBy")
   closedSessions       PosSession[]        @relation("PosClosedBy")
   posOrders            PosOrder[]          @relation("PosOrderCreatedBy")
+  leads                Lead[]
   createdAt            DateTime            @default(now())
 }
 
@@ -112,6 +114,7 @@ model Contact {
   posOrders      PosOrder[]
   shopCustomers  ShopCustomer[]
   invoices       Invoice[]
+  leads          Lead[]
   createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
   createdById Int?
@@ -700,4 +703,39 @@ model JournalItem {
   credit    Float        @default(0)
 
   @@index([accountId])
+}
+
+model Lead {
+  id               Int        @id @default(autoincrement())
+  name             String
+  contactName      String
+  email            String?
+  phone            String?
+  expectedRevenue  Float      @default(0)
+  /// new, qualified, proposition, won, lost
+  stage            String
+  companyId        Int
+  company          Company    @relation(fields: [companyId], references: [id])
+  userId           Int?
+  user             User?      @relation(fields: [userId], references: [id])
+  contactId        Int?
+  contact          Contact?   @relation(fields: [contactId], references: [id])
+  orderId          Int?
+  activities       Activity[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([companyId, stage])
+}
+
+model Activity {
+  id        Int       @id @default(autoincrement())
+  leadId    Int
+  lead      Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  /// call, meeting, todo
+  kind      String
+  summary   String
+  dueOn     DateTime?
+  done      Boolean   @default(false)
+  createdAt DateTime  @default(now())
 }

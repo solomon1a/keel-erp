@@ -1,4 +1,5 @@
 import { enAccount, zhAccount } from './account-messages.ts'
+import { enCrm, zhCrm } from './crm-messages.ts'
 import { enShop, zhShop } from './shop-messages.ts'
 
 const enBase = {
@@ -1241,8 +1242,8 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'country.MX': '墨西哥',
 }
 
-const en = { ...enBase, ...enShop, ...enAccount }
-const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount }
+const en = { ...enBase, ...enShop, ...enAccount, ...enCrm }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm }
 
 export const messages = { en, zh }
 

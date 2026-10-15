@@ -42,6 +42,7 @@ import {
 } from './auth.ts'
 import { prisma } from './db.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
+import { registerCrmRoutes } from './crm-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
 import {
   addLocation,
@@ -931,6 +932,7 @@ export function createApp() {
 
   registerShopRoutes(app)
   registerAccountingRoutes(app)
+  registerCrmRoutes(app)
 
   return app
 }

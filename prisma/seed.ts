@@ -695,6 +695,37 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       },
     },
   })
+  await client.lead.create({
+    data: {
+      name: '春季展会 — 帆布袋',
+      contactName: '陈薇',
+      email: 'chen@example.com',
+      phone: '13900002222',
+      expectedRevenue: 2400,
+      stage: 'qualified',
+      companyId: company.id,
+      userId: maya.id,
+      activities: {
+        create: [{
+          kind: 'call',
+          summary: '回访报价',
+          dueOn: new Date('2026-04-13T00:00:00.000Z'),
+        }],
+      },
+    },
+  })
+  await client.lead.create({
+    data: {
+      name: '门店补货咨询',
+      contactName: '赵磊',
+      phone: '13700003333',
+      expectedRevenue: 800,
+      stage: 'new',
+      companyId: company.id,
+      userId: maya.id,
+    },
+  })
+
   await client.journalEntry.create({
     data: {
       name: 'JE0001',

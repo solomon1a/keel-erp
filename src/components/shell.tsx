@@ -13,6 +13,7 @@ const links = [
   ['/contacts', 'nav.contacts'],
   ['/products', 'nav.products'],
   ['/orders', 'nav.orders'],
+  ['/crm', 'nav.crm'],
   ['/shop', 'nav.shop'],
   ['/accounting', 'nav.accounting'],
   ['/pos', 'nav.pos'],

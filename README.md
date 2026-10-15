@@ -46,12 +46,13 @@ npm test
 - Register: a shop session with opening cash, a touch product grid, barcode entry, and cash, card, WeChat Pay, and Alipay recorded on the sale (no gateway). Split payments. Stock leaves the shop shelf. Refunds, admin only while the session is open, put it back. Close records counted cash and the difference. An 80mm receipt, a sales list, and a daily report per shop.
 - Online shop: a public catalog, product page, cart, and guest or account checkout. The order lands in Sales and stock leaves the online warehouse. WeChat Pay, Alipay, and card are recorded only.
 - Invoices and bills from sales, purchases, and the register, with payments, credit notes, a small China-style chart of accounts, journals, a general ledger, profit and loss, a balance sheet, and a VAT report. The printable invoice has fapiao fields and says it is not filed with the Golden Tax platform.
+- Pipeline: leads and opportunities on a kanban, activities, and a button that turns a live lead into a draft quotation.
 - A printable quotation page, and a printable purchase page. Use the browser print dialog if you want a PDF.
 - Sign-in with a bcrypt password hash, an httpOnly session cookie, sign-out, a change-password page, and an admin screen to create users and reset passwords. Roles are `admin` or `user`.
 
 ## What this slice leaves out
 
-Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, multi-level manufacturing routes, more than one currency at once, and a live card or wallet gateway. Lot and serial numbers are recorded on the stock move; quantities are not split by lot. WeChat Pay and Alipay on the register are payment methods on the sale, not connections to those networks. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The app stores data in Postgres. Local setup is in [RUN_LOCAL.md](RUN_LOCAL.md), and the Vercel demo is in [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
+Email delivery, a generated PDF file, Golden Tax / e-fapiao submission, multi-level manufacturing routes, more than one currency at once, and a live card or wallet gateway. Lot and serial numbers are recorded on the stock move; quantities are not split by lot. WeChat Pay and Alipay on the register are payment methods on the sale, not connections to those networks. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The app stores data in Postgres. Local setup is in [RUN_LOCAL.md](RUN_LOCAL.md), and the Vercel demo is in [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
 
 ## REA
 
