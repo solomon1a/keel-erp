@@ -2,10 +2,12 @@ import { roundMoney } from '../../src/domain/money.ts'
 import type { BomInput, ManufacturingInput, ProduceInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { applyQuant, companyLocations, onHand, roundQty } from './stock.ts'
+import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
 
 const orderInclude = {
   product: { select: { id: true, name: true, sku: true, kind: true, costPrice: true } },
+  sourceWarehouse: { select: { id: true, name: true, code: true } },
+  destWarehouse: { select: { id: true, name: true, code: true } },
   bom: { select: { id: true, yieldQty: true, notes: true } },
   lines: {
     include: {
@@ -182,8 +184,15 @@ async function componentLines(tx: Tx, companyId: number, productId: number, quan
   }
 }
 
-async function attachOnHand<T extends { lines: Array<{ productId: number }> }>(companyId: number, order: T) {
-  const internal = await prisma.stockLocation.findFirst({ where: { companyId, type: 'internal' } })
+async function attachOnHand<T extends { sourceWarehouseId?: number | null; lines: Array<{ productId: number }> }>(companyId: number, order: T) {
+  const internal = order.sourceWarehouseId
+    ? await prisma.stockLocation.findFirst({
+        where: { companyId, warehouseId: order.sourceWarehouseId, type: 'internal' },
+        orderBy: [{ isDefault: 'desc' }, { id: 'asc' }],
+      })
+    : await prisma.stockLocation.findFirst({
+        where: { companyId, type: 'internal', isDefault: true, warehouse: { isDefault: true } },
+      })
   const quants = internal
     ? await prisma.stockQuant.findMany({
         where: { locationId: internal.id, productId: { in: order.lines.map((line) => line.productId) } },
@@ -209,6 +218,8 @@ export async function createManufacturing(companyId: number, userId: number, inp
   return prisma.$transaction(async (tx) => {
     await requireFinished(tx, companyId, input.productId)
     const built = await componentLines(tx, companyId, input.productId, input.quantity)
+    const sourceWarehouseId = await resolveWarehouseId(tx, companyId, input.sourceWarehouseId)
+    const destWarehouseId = await resolveWarehouseId(tx, companyId, input.destWarehouseId)
     const order = await tx.manufacturingOrder.create({
       data: {
         name: await nextManufacturingName(tx),
@@ -217,6 +228,8 @@ export async function createManufacturing(companyId: number, userId: number, inp
         bomId: built.bom.id,
         companyId,
         quantity: roundQty(input.quantity),
+        sourceWarehouseId,
+        destWarehouseId,
         createdById: userId,
         lines: { create: built.lines },
       },
@@ -233,6 +246,8 @@ export async function updateManufacturing(companyId: number, orderId: number, in
     if (order.state !== 'draft') throw new AppError(409, 'Only a draft manufacturing order can be edited.')
     await requireFinished(tx, companyId, input.productId)
     const built = await componentLines(tx, companyId, input.productId, input.quantity)
+    const sourceWarehouseId = await resolveWarehouseId(tx, companyId, input.sourceWarehouseId)
+    const destWarehouseId = await resolveWarehouseId(tx, companyId, input.destWarehouseId)
     await tx.manufacturingComponent.deleteMany({ where: { orderId } })
     const updated = await tx.manufacturingOrder.update({
       where: { id: orderId },
@@ -240,6 +255,8 @@ export async function updateManufacturing(companyId: number, orderId: number, in
         productId: input.productId,
         bomId: built.bom.id,
         quantity: roundQty(input.quantity),
+        sourceWarehouseId,
+        destWarehouseId,
         lines: { create: built.lines },
       },
       include: orderInclude,
@@ -252,13 +269,12 @@ type Shortage = { productId: number; name: string; onHand: number; needed: numbe
 
 async function shortagesFor(
   tx: Tx,
-  companyId: number,
+  locationId: number,
   needs: Array<{ productId: number; name: string; quantity: number }>,
 ): Promise<Shortage[]> {
-  const locations = await companyLocations(tx, companyId)
   const shortages: Shortage[] = []
   for (const need of needs) {
-    const available = await onHand(tx, need.productId, locations.internal.id)
+    const available = await onHand(tx, need.productId, locationId)
     if (available + 0.0001 < need.quantity) {
       shortages.push({ productId: need.productId, name: need.name, onHand: available, needed: need.quantity })
     }
@@ -281,9 +297,10 @@ export async function confirmManufacturing(companyId: number, orderId: number) {
     })
     if (!order) throw new AppError(404, 'Manufacturing order not found.')
     if (order.state !== 'draft') throw new AppError(409, 'Only a draft manufacturing order can be confirmed.')
+    const source = await warehouseStockLocation(tx, companyId, order.sourceWarehouseId)
     const shortages = await shortagesFor(
       tx,
-      companyId,
+      source.location.id,
       order.lines.map((line) => ({ productId: line.productId, name: line.product.name, quantity: line.quantity })),
     )
     if (shortages.length > 0) refuseShortages(shortages)
@@ -328,18 +345,20 @@ export async function produceManufacturing(companyId: number, orderId: number, i
       name: line.product.name,
       quantity: finishes ? roundQty(line.quantity - line.consumed) : roundQty((line.quantity * producing) / order.quantity),
     }))
-    const shortages = await shortagesFor(tx, companyId, takes.filter((take) => take.quantity > 0))
+    const source = await warehouseStockLocation(tx, companyId, order.sourceWarehouseId)
+    const destination = await warehouseStockLocation(tx, companyId, order.destWarehouseId)
+    const shortages = await shortagesFor(tx, source.location.id, takes.filter((take) => take.quantity > 0))
     if (shortages.length > 0) refuseShortages(shortages)
 
     const locations = await companyLocations(tx, companyId)
     for (const take of takes) {
       if (take.quantity <= 0) continue
-      await applyQuant(tx, take.productId, locations.internal.id, -take.quantity)
+      await applyQuant(tx, take.productId, source.location.id, -take.quantity)
       await applyQuant(tx, take.productId, locations.production.id, take.quantity)
       await tx.stockMove.create({
         data: {
           productId: take.productId,
-          locationFromId: locations.internal.id,
+          locationFromId: source.location.id,
           locationToId: locations.production.id,
           quantity: take.quantity,
           state: 'done',
@@ -354,12 +373,12 @@ export async function produceManufacturing(companyId: number, orderId: number, i
       })
     }
     await applyQuant(tx, order.productId, locations.production.id, -producing)
-    await applyQuant(tx, order.productId, locations.internal.id, producing)
+    await applyQuant(tx, order.productId, destination.location.id, producing)
     await tx.stockMove.create({
       data: {
         productId: order.productId,
         locationFromId: locations.production.id,
-        locationToId: locations.internal.id,
+        locationToId: destination.location.id,
         quantity: producing,
         state: 'done',
         reference: order.name,

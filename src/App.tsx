@@ -11,6 +11,14 @@ import { BomFormPage } from './pages/bom-form-page.tsx'
 import { BomPrintPage } from './pages/bom-print-page.tsx'
 import { BomsPage } from './pages/boms-page.tsx'
 import { InventoryPage } from './pages/inventory-page.tsx'
+import { MovesPage } from './pages/moves-page.tsx'
+import { ReplenishPage } from './pages/replenish-page.tsx'
+import { TransferDetailPage } from './pages/transfer-detail-page.tsx'
+import { TransferFormPage } from './pages/transfer-form-page.tsx'
+import { TransfersPage } from './pages/transfers-page.tsx'
+import { WarehouseDetailPage } from './pages/warehouse-detail-page.tsx'
+import { WarehouseFormPage } from './pages/warehouse-form-page.tsx'
+import { WarehousesPage } from './pages/warehouses-page.tsx'
 import { ManufacturingDetailPage } from './pages/manufacturing-detail-page.tsx'
 import { ManufacturingFormPage } from './pages/manufacturing-form-page.tsx'
 import { ManufacturingPage } from './pages/manufacturing-page.tsx'
@@ -69,6 +77,16 @@ export default function App() {
             <Route path="/boms/:id" element={<BomDetailPage />} />
             <Route path="/boms/:id/edit" element={<BomFormPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/inventory/moves" element={<MovesPage />} />
+            <Route path="/inventory/replenish" element={<ReplenishPage />} />
+            <Route path="/inventory/transfers" element={<TransfersPage />} />
+            <Route path="/inventory/transfers/new" element={<TransferFormPage />} />
+            <Route path="/inventory/transfers/:id/edit" element={<TransferFormPage />} />
+            <Route path="/inventory/transfers/:id" element={<TransferDetailPage />} />
+            <Route path="/inventory/warehouses" element={<WarehousesPage />} />
+            <Route path="/inventory/warehouses/new" element={<WarehouseFormPage />} />
+            <Route path="/inventory/warehouses/:id/edit" element={<WarehouseFormPage />} />
+            <Route path="/inventory/warehouses/:id" element={<WarehouseDetailPage />} />
             <Route path="/account/password" element={<PasswordPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />

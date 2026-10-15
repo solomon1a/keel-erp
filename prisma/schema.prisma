@@ -21,6 +21,9 @@ model Company {
   purchases     PurchaseOrder[]
   boms          BillOfMaterials[]
   manufacturing ManufacturingOrder[]
+  warehouses    Warehouse[]
+  transfers     StockTransfer[]
+  reorderRules  ReorderRule[]
   locations     StockLocation[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
@@ -40,6 +43,7 @@ model User {
   createdOrders    SalesOrder[]    @relation("OrderCreatedBy")
   createdPurchases     PurchaseOrder[]     @relation("PurchaseCreatedBy")
   createdManufacturing ManufacturingOrder[] @relation("ManufacturingCreatedBy")
+  createdTransfers     StockTransfer[]     @relation("TransferCreatedBy")
   createdAt            DateTime            @default(now())
 }
 
@@ -114,6 +118,8 @@ model Product {
   listPrice    Float
   costPrice    Float               @default(0)
   purchasable  Boolean             @default(false)
+  /// `none`, `lot`, or `serial`. The number is recorded on the stock move.
+  tracking     String              @default("none")
   description  String?
   active       Boolean             @default(true)
   companyId    Int
@@ -126,6 +132,8 @@ model Product {
   manufacturingComponents  ManufacturingComponent[]
   quants                   StockQuant[]
   moves                    StockMove[]
+  reorderRules             ReorderRule[]
+  transferLines            StockTransferLine[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
@@ -153,6 +161,8 @@ model SalesOrder {
   amountTotal   Float
   lines         SalesOrderLine[]
   moves         StockMove[]
+  warehouseId   Int?
+  warehouse     Warehouse?       @relation(fields: [warehouseId], references: [id])
   createdById   Int?
   createdBy     User?            @relation("OrderCreatedBy", fields: [createdById], references: [id])
   createdAt     DateTime         @default(now())
@@ -193,6 +203,8 @@ model PurchaseOrder {
   amountTotal   Float
   lines         PurchaseOrderLine[]
   moves         StockMove[]
+  warehouseId   Int?
+  warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
   createdById   Int?
   createdBy     User?               @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
   createdAt     DateTime            @default(now())
@@ -257,8 +269,12 @@ model ManufacturingOrder {
   quantity       Float
   quantityDone   Float                     @default(0)
   lines          ManufacturingComponent[]
-  moves          StockMove[]
-  createdById    Int?
+  moves             StockMove[]
+  sourceWarehouseId Int?
+  sourceWarehouse   Warehouse?                @relation("MoSource", fields: [sourceWarehouseId], references: [id])
+  destWarehouseId   Int?
+  destWarehouse     Warehouse?                @relation("MoDest", fields: [destWarehouseId], references: [id])
+  createdById       Int?
   createdBy      User?                     @relation("ManufacturingCreatedBy", fields: [createdById], references: [id])
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
@@ -278,17 +294,89 @@ model ManufacturingComponent {
   consumed  Float               @default(0)
 }
 
-model StockLocation {
-  id        Int          @id @default(autoincrement())
-  name      String
-  type      String
-  companyId Int
-  company   Company      @relation(fields: [companyId], references: [id])
-  quants    StockQuant[]
-  movesFrom StockMove[]  @relation("MoveFrom")
-  movesTo   StockMove[]  @relation("MoveTo")
+model Warehouse {
+  id            Int                  @id @default(autoincrement())
+  name          String
+  code          String
+  isDefault     Boolean              @default(false)
+  companyId     Int
+  company       Company              @relation(fields: [companyId], references: [id])
+  locations     StockLocation[]
+  salesOrders   SalesOrder[]
+  purchases     PurchaseOrder[]
+  moSources     ManufacturingOrder[] @relation("MoSource")
+  moDestinations ManufacturingOrder[] @relation("MoDest")
+  reorderRules  ReorderRule[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
-  @@unique([companyId, type])
+  @@unique([companyId, code])
+}
+
+model StockLocation {
+  id            Int                 @id @default(autoincrement())
+  name          String
+  /// internal, customer, supplier, inventory, production
+  type          String
+  isDefault     Boolean             @default(false)
+  companyId     Int
+  company       Company             @relation(fields: [companyId], references: [id])
+  warehouseId   Int?
+  warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
+  quants        StockQuant[]
+  movesFrom     StockMove[]         @relation("MoveFrom")
+  movesTo       StockMove[]         @relation("MoveTo")
+  transfersFrom StockTransfer[]     @relation("TransferFrom")
+  transfersTo   StockTransfer[]     @relation("TransferTo")
+
+  @@index([companyId, type])
+  @@index([warehouseId])
+}
+
+model ReorderRule {
+  id          Int       @id @default(autoincrement())
+  productId   Int
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouseId Int
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  companyId   Int
+  company     Company   @relation(fields: [companyId], references: [id])
+  minQty      Float
+  maxQty      Float
+
+  @@unique([productId, warehouseId])
+}
+
+model StockTransfer {
+  id             Int                 @id @default(autoincrement())
+  name           String
+  /// draft, ready, done, cancel
+  state          String
+  companyId      Int
+  company        Company             @relation(fields: [companyId], references: [id])
+  locationFromId Int
+  locationFrom   StockLocation       @relation("TransferFrom", fields: [locationFromId], references: [id])
+  locationToId   Int
+  locationTo     StockLocation       @relation("TransferTo", fields: [locationToId], references: [id])
+  lines          StockTransferLine[]
+  moves          StockMove[]
+  createdById    Int?
+  createdBy      User?               @relation("TransferCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model StockTransferLine {
+  id         Int           @id @default(autoincrement())
+  transferId Int
+  transfer   StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId  Int
+  product    Product       @relation(fields: [productId], references: [id])
+  quantity   Float
+  lotName    String?
 }
 
 model StockQuant {
@@ -313,11 +401,14 @@ model StockMove {
   quantity       Float
   state          String
   reference       String
+  lotName         String?
   orderId         Int?
   order           SalesOrder?    @relation(fields: [orderId], references: [id])
   purchaseOrderId      Int?
   purchaseOrder        PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id])
   manufacturingOrderId Int?
   manufacturingOrder   ManufacturingOrder? @relation(fields: [manufacturingOrderId], references: [id])
+  transferId           Int?
+  transfer             StockTransfer?      @relation(fields: [transferId], references: [id])
   date                 DateTime
 }

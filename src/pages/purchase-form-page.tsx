@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
+import { defaultWarehouseId, WarehouseField } from '../components/warehouse-field.tsx'
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -9,7 +10,7 @@ import { lineAmounts, sumLines } from '../domain/money.ts'
 import { singleTaxRate } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
-import type { Contact, Product, PurchaseOrder, Tax } from '../lib/types.ts'
+import type { Contact, Product, PurchaseOrder, Tax, Warehouse } from '../lib/types.ts'
 
 type DraftLine = {
   productId: string
@@ -29,6 +30,7 @@ export function PurchaseFormPage() {
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const [vendorId, setVendorId] = useState('')
+  const [warehouseId, setWarehouseId] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([blankLine()])
   const [error, setError] = useState('')
 
@@ -38,6 +40,7 @@ export function PurchaseFormPage() {
   })
   const products = useQuery({ queryKey: ['products'], queryFn: () => api<Product[]>('/api/products') })
   const taxes = useQuery({ queryKey: ['taxes'], queryFn: () => api<Tax[]>('/api/taxes') })
+  const warehouses = useQuery({ queryKey: ['warehouses'], queryFn: () => api<Warehouse[]>('/api/warehouses') })
   const order = useQuery({
     queryKey: ['purchase', id],
     queryFn: () => api<PurchaseOrder>(`/api/purchases/${id}`),
@@ -49,6 +52,7 @@ export function PurchaseFormPage() {
   useEffect(() => {
     if (!order.data) return
     setVendorId(String(order.data.vendorId))
+    setWarehouseId(order.data.warehouseId ? String(order.data.warehouseId) : '')
     setLines(
       (order.data.lines ?? []).map((line) => ({
         productId: String(line.productId),
@@ -75,6 +79,11 @@ export function PurchaseFormPage() {
     seededNeed.current = true
     setLines(next)
   }, [defaultTaxId, isNew, params, products.data])
+
+  useEffect(() => {
+    if (warehouseId || !warehouses.data) return
+    setWarehouseId(defaultWarehouseId(warehouses.data))
+  }, [warehouseId, warehouses.data])
 
   useEffect(() => {
     if (!defaultTaxId) return
@@ -107,6 +116,7 @@ export function PurchaseFormPage() {
         method: isNew ? 'POST' : 'PUT',
         body: JSON.stringify({
           vendorId: Number(vendorId),
+          warehouseId: Number(warehouseId),
           lines: lines.map((line) => ({
             productId: Number(line.productId),
             quantity: Number(line.quantity),
@@ -148,6 +158,7 @@ export function PurchaseFormPage() {
         <p className="mt-1 text-muted-foreground">{t('purchase.lead')}</p>
       </div>
       {error ? <Notice message={error} /> : null}
+      <div className="grid gap-4 md:grid-cols-2">
       <Field label={t('purchase.vendor')}>
         <select className="h-10 max-w-md rounded-md border border-border bg-card px-3" value={vendorId} onChange={(event) => setVendorId(event.target.value)} required>
           <option value="">{t('purchase.chooseVendor')}</option>
@@ -156,6 +167,14 @@ export function PurchaseFormPage() {
           ))}
         </select>
       </Field>
+      <WarehouseField
+        label={t('purchase.warehouse')}
+        value={warehouseId}
+        onChange={setWarehouseId}
+        warehouses={warehouses.data}
+        choose={t('stock.chooseWarehouse')}
+      />
+      </div>
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">

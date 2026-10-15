@@ -47,6 +47,21 @@ export type Contact = {
   _count?: { children: number; orders: number }
 }
 
+export type WarehouseLocation = {
+  id: number
+  name: string
+  type: string
+  isDefault: boolean
+}
+
+export type Warehouse = {
+  id: number
+  name: string
+  code: string
+  isDefault: boolean
+  locations: WarehouseLocation[]
+}
+
 export type Product = {
   id: number
   name: string
@@ -56,6 +71,7 @@ export type Product = {
   listPrice: number
   costPrice: number
   purchasable: boolean
+  tracking: string
   description: string | null
   active: boolean
   onHand?: number
@@ -80,6 +96,7 @@ export type StockMove = {
   quantity: number
   state: string
   reference: string
+  lotName?: string | null
   date: string
   product: { name: string; sku: string }
   locationFrom: { name: string; type: string }
@@ -104,6 +121,8 @@ export type PurchaseOrder = {
   name: string
   state: string
   vendorId: number
+  warehouseId?: number | null
+  warehouse?: { id: number; name: string; code: string } | null
   dateOrder: string
   amountUntaxed: number
   amountTax: number
@@ -147,6 +166,10 @@ export type ManufacturingOrder = {
   bomId: number
   quantity: number
   quantityDone: number
+  sourceWarehouseId?: number | null
+  destWarehouseId?: number | null
+  sourceWarehouse?: { id: number; name: string; code: string } | null
+  destWarehouse?: { id: number; name: string; code: string } | null
   product: { id: number; name: string; sku: string; kind?: string; costPrice?: number }
   bom?: { id: number; yieldQty: number; notes: string | null }
   lines?: ManufacturingLine[]
@@ -158,6 +181,8 @@ export type SalesOrder = {
   name: string
   state: string
   customerId: number
+  warehouseId?: number | null
+  warehouse?: { id: number; name: string; code: string } | null
   dateOrder: string
   validityDate: string | null
   amountUntaxed: number

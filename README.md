@@ -32,21 +32,21 @@ npm test
 ## What works
 
 - Contacts: companies and people, search, customer / supplier / employee flags, address, notes, and who created the record.
-- Products: goods and services, SKU, list price, cost, a purchasable flag, and finished goods or raw material.
+- Products: goods and services, SKU, list price, cost, a purchasable flag, finished goods or raw material, and an optional lot or serial flag.
 - Quotations: lines, discount, a configurable tax rate, and totals that show untaxed amount, tax, and the price including tax. Mark sent, confirm, cancel. This is not a fapiao.
 - Company settings: name, one currency code (CNY by default), and the default tax rate. Another currency can be stored later; the desk still uses one code.
 - English and Simplified Chinese on the desk. The **中文** / **EN** switch is remembered in a browser cookie.
-- Confirming checks the shelf. Short stock is refused with the product name and the quantity on hand.
-- Validating a delivery moves goods from main stock to customers and closes the order. A service-only order can be fulfilled without a stock move.
-- Stock: on-hand counts, receipts (positive adjustment), write-offs (negative), and recent moves.
-- Purchases: vendors are supplier contacts. An RFQ (draft) can be sent, then confirmed by an admin into a purchase order numbered PO0001. Confirming creates an incoming receipt. Receiving, including a partial quantity, adds stock to main stock and links the moves to the purchase. Print the RFQ or purchase order from the browser.
-- Manufacturing: a finished product has a bill of materials (components per yield). Orders number MO0001. A user can draft one; an admin confirms it, and a short component is named with the quantity on hand. Finishing consumes components from main stock and adds the finished goods. A partial quantity can be produced. Component cost can be saved onto the product. Print the order or the bill from the browser.
+- Confirming a sales order checks the warehouse on that order (上海仓 by default). Short stock is refused with the product name and the quantity on hand.
+- Validating a delivery moves goods from that warehouse’s default shelf to customers and closes the order. A service-only order can be fulfilled without a stock move.
+- Stock: several warehouses and locations, on-hand and cost valuation per location, counts, internal transfers (draft, ready, done), a move ledger, and reorder rules that suggest a purchase or a manufacturing order.
+- Purchases: vendors are supplier contacts. An RFQ (draft) can be sent, then confirmed by an admin into a purchase order numbered PO0001. The order names a receiving warehouse. Confirming creates an incoming receipt. Receiving, including a partial quantity, adds stock to that warehouse’s default shelf. Print the RFQ or purchase order from the browser.
+- Manufacturing: a finished product has a bill of materials (components per yield). Orders number MO0001. A user can draft one; an admin confirms it, and a short component is named with the quantity on hand at the source warehouse. Finishing consumes components there and adds finished goods to the destination warehouse. A partial quantity can be produced. Component cost can be saved onto the product. Print the order or the bill from the browser.
 - A printable quotation page, and a printable purchase page. Use the browser print dialog if you want a PDF.
 - Sign-in with a bcrypt password hash, an httpOnly session cookie, sign-out, a change-password page, and an admin screen to create users and reset passwords. Roles are `admin` or `user`.
 
 ## What this slice leaves out
 
-Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, multi-level manufacturing routes, more than one currency at once, and more than one warehouse. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
+Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, multi-level manufacturing routes, and more than one currency at once. Lot and serial numbers are recorded on the stock move; quantities are not split by lot. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
 
 ## REA
 

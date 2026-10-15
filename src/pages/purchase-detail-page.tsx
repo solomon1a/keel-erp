@@ -74,6 +74,7 @@ export function PurchaseDetailPage() {
           <p className="mt-1">
             <Link className="font-medium hover:underline" to={`/contacts/${row.vendorId}`}>{row.vendor.name}</Link>
           </p>
+          {row.warehouse ? <p className="text-sm text-muted-foreground">{t('purchase.warehouse')} · {row.warehouse.name}</p> : null}
         </div>
         <Badge tone={row.state}>{purchaseStateLabel(row.state, t)}</Badge>
       </div>

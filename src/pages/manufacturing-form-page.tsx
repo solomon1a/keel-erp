@@ -1,24 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
+import { defaultWarehouseId, WarehouseField } from '../components/warehouse-field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
-import type { BillOfMaterials, ManufacturingOrder } from '../lib/types.ts'
+import type { BillOfMaterials, ManufacturingOrder, Warehouse } from '../lib/types.ts'
 
 export function ManufacturingFormPage() {
   const { id } = useParams()
+  const [params] = useSearchParams()
   const isNew = !id
+  const seeded = useRef(false)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const [productId, setProductId] = useState('')
   const [quantity, setQuantity] = useState('1')
+  const [sourceWarehouseId, setSourceWarehouseId] = useState('')
+  const [destWarehouseId, setDestWarehouseId] = useState('')
   const [error, setError] = useState('')
 
   const boms = useQuery({ queryKey: ['boms'], queryFn: () => api<BillOfMaterials[]>('/api/boms') })
+  const warehouses = useQuery({ queryKey: ['warehouses'], queryFn: () => api<Warehouse[]>('/api/warehouses') })
   const order = useQuery({
     queryKey: ['manufacturing', id],
     queryFn: () => api<ManufacturingOrder>(`/api/manufacturing/${id}`),
@@ -29,13 +35,37 @@ export function ManufacturingFormPage() {
     if (!order.data) return
     setProductId(String(order.data.productId))
     setQuantity(String(order.data.quantity))
+    setSourceWarehouseId(order.data.sourceWarehouseId ? String(order.data.sourceWarehouseId) : '')
+    setDestWarehouseId(order.data.destWarehouseId ? String(order.data.destWarehouseId) : '')
   }, [order.data])
+
+  useEffect(() => {
+    if (!isNew || seeded.current) return
+    const product = params.get('product')
+    if (!product) return
+    seeded.current = true
+    setProductId(product)
+    const qty = params.get('qty')
+    if (qty && Number(qty) > 0) setQuantity(qty)
+  }, [isNew, params])
+
+  useEffect(() => {
+    if (!warehouses.data) return
+    const fallback = defaultWarehouseId(warehouses.data)
+    if (!sourceWarehouseId) setSourceWarehouseId(fallback)
+    if (!destWarehouseId) setDestWarehouseId(fallback)
+  }, [destWarehouseId, sourceWarehouseId, warehouses.data])
 
   const save = useMutation({
     mutationFn: () =>
       api<ManufacturingOrder>(isNew ? '/api/manufacturing' : `/api/manufacturing/${id}`, {
         method: isNew ? 'POST' : 'PUT',
-        body: JSON.stringify({ productId: Number(productId), quantity: Number(quantity) }),
+        body: JSON.stringify({
+          productId: Number(productId),
+          quantity: Number(quantity),
+          sourceWarehouseId: Number(sourceWarehouseId),
+          destWarehouseId: Number(destWarehouseId),
+        }),
       }),
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: ['manufacturing'] })
@@ -83,6 +113,20 @@ export function ManufacturingFormPage() {
         <Field label={t('mo.qty')}>
           <Input type="number" min="0" step="0.001" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
         </Field>
+        <WarehouseField
+          label={t('mo.sourceWarehouse')}
+          value={sourceWarehouseId}
+          onChange={setSourceWarehouseId}
+          warehouses={warehouses.data}
+          choose={t('stock.chooseWarehouse')}
+        />
+        <WarehouseField
+          label={t('mo.destWarehouse')}
+          value={destWarehouseId}
+          onChange={setDestWarehouseId}
+          warehouses={warehouses.data}
+          choose={t('stock.chooseWarehouse')}
+        />
       </div>
       {productId && !bom ? <p className="text-sm text-muted-foreground">{t('mo.noBom')}</p> : null}
       {bom ? (

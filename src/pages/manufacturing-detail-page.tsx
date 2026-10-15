@@ -75,6 +75,9 @@ export function ManufacturingDetailPage() {
             <span className="text-muted-foreground"> · {row.product.sku}</span>
           </p>
           <p className="text-sm text-muted-foreground">{t('mo.produced')} {row.quantityDone} / {row.quantity}</p>
+          <p className="text-sm text-muted-foreground">
+            {t('mo.sourceWarehouse')} {row.sourceWarehouse?.name ?? '—'} · {t('mo.destWarehouse')} {row.destWarehouse?.name ?? '—'}
+          </p>
         </div>
         <Badge tone={row.state}>{manufacturingStateLabel(row.state, t)}</Badge>
       </div>

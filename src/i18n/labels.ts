@@ -62,6 +62,21 @@ export function productKindLabel(kind: string, t: Translate) {
   }
 }
 
+export function transferStateLabel(state: string, t: Translate) {
+  switch (state) {
+    case 'draft':
+      return t('trState.draft')
+    case 'ready':
+      return t('trState.ready')
+    case 'done':
+      return t('trState.done')
+    case 'cancel':
+      return t('trState.cancel')
+    default:
+      return state
+  }
+}
+
 export function moveStateLabel(state: string, t: Translate) {
   switch (state) {
     case 'draft':
@@ -78,7 +93,7 @@ export function moveStateLabel(state: string, t: Translate) {
 export function locationLabel(type: string | undefined, fallback: string, t: Translate) {
   switch (type) {
     case 'internal':
-      return t('loc.internal')
+      return fallback
     case 'customer':
       return t('loc.customer')
     case 'supplier':

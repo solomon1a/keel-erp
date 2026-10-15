@@ -3,6 +3,7 @@ import { cn } from '../../lib/utils.ts'
 const tones: Record<string, string> = {
   draft: 'bg-secondary text-foreground',
   sent: 'bg-accent/25 text-foreground',
+  ready: 'bg-accent/25 text-foreground',
   sale: 'bg-primary text-primary-foreground',
   purchase: 'bg-primary text-primary-foreground',
   confirmed: 'bg-primary text-primary-foreground',

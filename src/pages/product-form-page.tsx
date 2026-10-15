@@ -21,6 +21,7 @@ export function ProductFormPage() {
     sku: '',
     type: 'product',
     kind: 'finished',
+    tracking: 'none',
     listPrice: '0',
     costPrice: '0',
     purchasable: false,
@@ -41,6 +42,7 @@ export function ProductFormPage() {
       sku: product.data.sku,
       type: product.data.type,
       kind: product.data.kind || 'finished',
+      tracking: product.data.tracking || 'none',
       listPrice: String(product.data.listPrice),
       costPrice: String(product.data.costPrice ?? 0),
       purchasable: product.data.purchasable,
@@ -58,6 +60,7 @@ export function ProductFormPage() {
           sku: form.sku,
           type: form.type,
           kind: form.type === 'service' ? 'finished' : form.kind,
+          tracking: form.tracking,
           listPrice: Number(form.listPrice),
           costPrice: Number(form.costPrice),
           purchasable: form.purchasable,
@@ -116,6 +119,13 @@ export function ProductFormPage() {
             </select>
           </Field>
         ) : null}
+        <Field label={t('product.tracking')} hint={t('product.trackHint')}>
+          <select className="h-10 rounded-md border border-border bg-card px-3" value={form.tracking} onChange={(event) => setForm({ ...form, tracking: event.target.value })}>
+            <option value="none">{t('product.trackNone')}</option>
+            <option value="lot">{t('product.trackLot')}</option>
+            <option value="serial">{t('product.trackSerial')}</option>
+          </select>
+        </Field>
         <label className="mt-7 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />
           {t('product.active')}

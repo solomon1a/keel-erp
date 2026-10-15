@@ -74,6 +74,7 @@ export const productInputSchema = z.object({
   sku: z.string().trim().min(1, 'SKU is required').max(40),
   type: z.enum(['product', 'service']),
   kind: z.enum(['finished', 'raw']),
+  tracking: z.enum(['none', 'lot', 'serial']),
   listPrice: z.number().min(0, 'Price cannot be negative'),
   costPrice: z.number().min(0, 'Cost cannot be negative'),
   purchasable: z.boolean(),
@@ -89,8 +90,11 @@ export const orderLineSchema = z.object({
   taxId: z.number().int().positive().nullable(),
 })
 
+const optionalWarehouseId = z.number().int().positive().optional()
+
 export const orderInputSchema = z.object({
   customerId: z.number().int().positive('Choose a customer'),
+  warehouseId: optionalWarehouseId,
   validityDate: z
     .string()
     .trim()
@@ -108,6 +112,7 @@ export const purchaseLineSchema = z.object({
 
 export const purchaseInputSchema = z.object({
   vendorId: z.number().int().positive('Choose a vendor'),
+  warehouseId: optionalWarehouseId,
   lines: z.array(purchaseLineSchema).min(1, 'Add at least one line'),
 })
 
@@ -137,6 +142,8 @@ export const bomInputSchema = z.object({
 export const manufacturingInputSchema = z.object({
   productId: z.number().int().positive('Choose a product'),
   quantity: z.number().positive('Quantity must be greater than zero'),
+  sourceWarehouseId: optionalWarehouseId,
+  destWarehouseId: optionalWarehouseId,
 })
 
 export const produceSchema = z.object({
@@ -145,8 +152,39 @@ export const produceSchema = z.object({
 
 export const stockAdjustSchema = z.object({
   productId: z.number().int().positive(),
+  locationId: z.number().int().positive().optional(),
   quantityDelta: z.number().refine((value) => value !== 0, 'Enter a quantity other than zero'),
   note: z.string().trim().min(1, 'Say why the stock changed').max(160),
+  lotName: optionalText,
+})
+
+export const warehouseInputSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(80),
+  code: z.string().trim().min(1, 'Code is required').max(12),
+  isDefault: z.boolean().optional(),
+})
+
+export const locationInputSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(80),
+})
+
+export const reorderRuleSchema = z.object({
+  productId: z.number().int().positive('Choose a product'),
+  warehouseId: z.number().int().positive('Choose a warehouse'),
+  minQty: z.number().min(0, 'Minimum cannot be negative'),
+  maxQty: z.number().positive('Maximum must be greater than zero'),
+})
+
+export const transferLineSchema = z.object({
+  productId: z.number().int().positive('Choose a product'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  lotName: optionalText,
+})
+
+export const transferInputSchema = z.object({
+  locationFromId: z.number().int().positive('Choose a source location'),
+  locationToId: z.number().int().positive('Choose a destination location'),
+  lines: z.array(transferLineSchema).min(1, 'Add at least one line'),
 })
 
 export type LoginInput = z.infer<typeof loginSchema>
@@ -163,3 +201,7 @@ export type BomInput = z.infer<typeof bomInputSchema>
 export type ManufacturingInput = z.infer<typeof manufacturingInputSchema>
 export type ProduceInput = z.infer<typeof produceSchema>
 export type StockAdjustInput = z.infer<typeof stockAdjustSchema>
+export type WarehouseInput = z.infer<typeof warehouseInputSchema>
+export type LocationInput = z.infer<typeof locationInputSchema>
+export type ReorderRuleInput = z.infer<typeof reorderRuleSchema>
+export type TransferInput = z.infer<typeof transferInputSchema>

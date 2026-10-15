@@ -62,7 +62,7 @@ describe('manufacturing', () => {
     })
     await call('/api/stock/adjust', maya, {
       method: 'POST',
-      body: JSON.stringify({ productId: yarn.id, quantityDelta: 5, note: 'Yarn for the bench' }),
+      body: JSON.stringify({ productId: yarn.id, quantityDelta: 5, note: 'Yarn for the bench', lotName: 'YN-BENCH' }),
     })
 
     const confirmed = await call(`/api/manufacturing/${draft.id}/confirm`, maya, { method: 'POST' })

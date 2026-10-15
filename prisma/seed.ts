@@ -51,17 +51,28 @@ export async function seedDatabase(client: PrismaClient = prisma) {
 
   await client.tax.create({ data: { name: '增值税', rate: 13, isDefault: true } })
 
+  const shanghai = await client.warehouse.create({
+    data: { name: '上海仓', code: 'SH', isDefault: true, companyId: company.id },
+  })
+  const shenzhen = await client.warehouse.create({
+    data: { name: '深圳门店', code: 'SZ', isDefault: false, companyId: company.id },
+  })
   await client.stockLocation.createMany({
     data: [
-      { name: 'Main stock', type: 'internal', companyId: company.id },
       { name: 'Customers', type: 'customer', companyId: company.id },
       { name: 'Vendors', type: 'supplier', companyId: company.id },
       { name: 'Adjustments', type: 'inventory', companyId: company.id },
       { name: 'Production', type: 'production', companyId: company.id },
     ],
   })
-  const internal = await client.stockLocation.findFirstOrThrow({
-    where: { companyId: company.id, type: 'internal' },
+  const internal = await client.stockLocation.create({
+    data: { name: '主库', type: 'internal', isDefault: true, warehouseId: shanghai.id, companyId: company.id },
+  })
+  await client.stockLocation.create({
+    data: { name: '成品区', type: 'internal', isDefault: false, warehouseId: shanghai.id, companyId: company.id },
+  })
+  const shop = await client.stockLocation.create({
+    data: { name: '店面', type: 'internal', isDefault: true, warehouseId: shenzhen.id, companyId: company.id },
   })
   const supplier = await client.stockLocation.findFirstOrThrow({
     where: { companyId: company.id, type: 'supplier' },
@@ -294,6 +305,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       costPrice: 40,
       purchasable: true,
       description: '毛毯用纱。',
+      tracking: 'lot',
       companyId: company.id,
     },
   })
@@ -302,6 +314,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   await client.sequence.create({ data: { name: 'sales.order', next: 1 } })
   await client.sequence.create({ data: { name: 'purchase.order', next: 1 } })
   await client.sequence.create({ data: { name: 'manufacturing.order', next: 1 } })
+  await client.sequence.create({ data: { name: 'stock.transfer', next: 1 } })
   await client.salesOrder.create({
     data: {
       name: 'SO0001',
@@ -313,6 +326,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       amountUntaxed: 190,
       amountTax: 24.7,
       amountTotal: 214.7,
+      warehouseId: shanghai.id,
       createdById: maya.id,
       lines: {
         create: [
@@ -351,6 +365,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       amountUntaxed: 2000,
       amountTax: 260,
       amountTotal: 2260,
+      warehouseId: shanghai.id,
       createdById: maya.id,
       lines: {
         create: [
@@ -400,12 +415,38 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       bomId: toteBom.id,
       companyId: company.id,
       quantity: 4,
+      sourceWarehouseId: shanghai.id,
+      destWarehouseId: shanghai.id,
       createdById: maya.id,
       lines: {
         create: [
           { productId: canvas.id, quantity: 6 },
           { productId: yarn.id, quantity: 0.6 },
         ],
+      },
+    },
+  })
+
+  await client.reorderRule.create({
+    data: {
+      productId: tote.id,
+      warehouseId: shanghai.id,
+      companyId: company.id,
+      minQty: 5,
+      maxQty: 12,
+    },
+  })
+
+  await client.stockTransfer.create({
+    data: {
+      name: 'INT0001',
+      state: 'draft',
+      companyId: company.id,
+      locationFromId: internal.id,
+      locationToId: shop.id,
+      createdById: maya.id,
+      lines: {
+        create: [{ productId: notebook.id, quantity: 2 }],
       },
     },
   })

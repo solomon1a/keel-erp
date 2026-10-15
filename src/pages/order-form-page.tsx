@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
+import { defaultWarehouseId, WarehouseField } from '../components/warehouse-field.tsx'
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -10,7 +11,7 @@ import { singleTaxRate } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { dateInput } from '../lib/format.ts'
-import type { Contact, Product, SalesOrder, Tax } from '../lib/types.ts'
+import type { Contact, Product, SalesOrder, Tax, Warehouse } from '../lib/types.ts'
 
 type DraftLine = {
   productId: string
@@ -29,6 +30,7 @@ export function OrderFormPage() {
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const [customerId, setCustomerId] = useState('')
+  const [warehouseId, setWarehouseId] = useState('')
   const [validityDate, setValidityDate] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([blankLine()])
   const [error, setError] = useState('')
@@ -39,6 +41,7 @@ export function OrderFormPage() {
   })
   const products = useQuery({ queryKey: ['products'], queryFn: () => api<Product[]>('/api/products') })
   const taxes = useQuery({ queryKey: ['taxes'], queryFn: () => api<Tax[]>('/api/taxes') })
+  const warehouses = useQuery({ queryKey: ['warehouses'], queryFn: () => api<Warehouse[]>('/api/warehouses') })
   const order = useQuery({
     queryKey: ['order', id],
     queryFn: () => api<SalesOrder>(`/api/orders/${id}`),
@@ -50,6 +53,7 @@ export function OrderFormPage() {
   useEffect(() => {
     if (!order.data) return
     setCustomerId(String(order.data.customerId))
+    setWarehouseId(order.data.warehouseId ? String(order.data.warehouseId) : '')
     setValidityDate(dateInput(order.data.validityDate))
     setLines(
       (order.data.lines ?? []).map((line) => ({
@@ -61,6 +65,11 @@ export function OrderFormPage() {
       })),
     )
   }, [order.data])
+
+  useEffect(() => {
+    if (warehouseId || !warehouses.data) return
+    setWarehouseId(defaultWarehouseId(warehouses.data))
+  }, [warehouseId, warehouses.data])
 
   useEffect(() => {
     if (!defaultTaxId) return
@@ -93,6 +102,7 @@ export function OrderFormPage() {
         method: isNew ? 'POST' : 'PUT',
         body: JSON.stringify({
           customerId: Number(customerId),
+          warehouseId: Number(warehouseId),
           validityDate,
           lines: lines.map((line) => ({
             productId: Number(line.productId),
@@ -145,6 +155,13 @@ export function OrderFormPage() {
             ))}
           </select>
         </Field>
+        <WarehouseField
+          label={t('quote.warehouse')}
+          value={warehouseId}
+          onChange={setWarehouseId}
+          warehouses={warehouses.data}
+          choose={t('stock.chooseWarehouse')}
+        />
         <Field label={t('quote.valid')}>
           <Input type="date" value={validityDate} onChange={(event) => setValidityDate(event.target.value)} />
         </Field>

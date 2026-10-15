@@ -2,12 +2,13 @@ import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { PurchaseInput, ReceivePurchaseInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { applyQuant, companyLocations, roundQty } from './stock.ts'
+import { applyQuant, companyLocations, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
 
 const editableStates = new Set(['draft', 'sent'])
 
 const purchaseInclude = {
   vendor: { select: { id: true, name: true, email: true, city: true } },
+  warehouse: { select: { id: true, name: true, code: true } },
   lines: {
     include: {
       product: { select: { id: true, name: true, sku: true, type: true, kind: true } },
@@ -85,11 +86,13 @@ export async function createPurchase(companyId: number, userId: number, input: P
     await requireVendor(tx, companyId, input.vendorId)
     const lines = await buildLines(tx, companyId, input.lines)
     const totals = sumLines(lines)
+    const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
     return tx.purchaseOrder.create({
       data: {
         name: await nextPurchaseName(tx),
         state: 'draft',
         vendorId: input.vendorId,
+        warehouseId,
         companyId,
         dateOrder: new Date(),
         ...totals,
@@ -111,11 +114,13 @@ export async function updatePurchase(companyId: number, orderId: number, input: 
     await requireVendor(tx, companyId, input.vendorId)
     const lines = await buildLines(tx, companyId, input.lines)
     const totals = sumLines(lines)
+    const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
     await tx.purchaseOrderLine.deleteMany({ where: { orderId } })
     return tx.purchaseOrder.update({
       where: { id: orderId },
       data: {
         vendorId: input.vendorId,
+        warehouseId,
         ...totals,
         lines: { create: lines },
       },
@@ -152,13 +157,14 @@ export async function confirmPurchase(companyId: number, orderId: number) {
     }
 
     const locations = await companyLocations(tx, companyId)
+    const destination = await warehouseStockLocation(tx, companyId, order.warehouseId)
     for (const line of order.lines) {
       if (line.product.type !== 'product') continue
       await tx.stockMove.create({
         data: {
           productId: line.productId,
           locationFromId: locations.supplier.id,
-          locationToId: locations.internal.id,
+          locationToId: destination.location.id,
           quantity: line.quantity,
           state: 'draft',
           reference: order.name,

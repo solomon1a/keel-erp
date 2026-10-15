@@ -8,6 +8,7 @@ import {
   contactInputSchema,
   createUserSchema,
   bomInputSchema,
+  locationInputSchema,
   loginSchema,
   manufacturingInputSchema,
   orderInputSchema,
@@ -15,8 +16,11 @@ import {
   productInputSchema,
   purchaseInputSchema,
   receivePurchaseSchema,
+  reorderRuleSchema,
   resetPasswordSchema,
   stockAdjustSchema,
+  transferInputSchema,
+  warehouseInputSchema,
 } from '../shared/schemas.ts'
 import {
   type AppEnv,
@@ -33,6 +37,22 @@ import {
   writeSessionCookie,
 } from './auth.ts'
 import { prisma } from './db.ts'
+import {
+  addLocation,
+  cancelTransfer,
+  completeTransfer,
+  createTransfer,
+  createWarehouse,
+  listMoves,
+  listReorderRules,
+  listWarehouses,
+  readyTransfer,
+  renameLocation,
+  saveReorderRule,
+  stockLevels,
+  updateTransfer,
+  updateWarehouse,
+} from './services/inventory.ts'
 import { AppError } from './errors.ts'
 import { adjustStock, cancelOrder, confirmOrder, createOrder, deliverOrder, markOrderSent, updateOrder } from './services/orders.ts'
 import {
@@ -69,6 +89,7 @@ function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; 
 
 const orderInclude = {
   customer: { select: { id: true, name: true, email: true, city: true } },
+  warehouse: { select: { id: true, name: true, code: true } },
   lines: {
     include: {
       product: { select: { id: true, name: true, sku: true, type: true } },
@@ -408,6 +429,7 @@ export function createApp() {
         listPrice: product.listPrice,
         costPrice: product.costPrice,
         purchasable: product.purchasable,
+        tracking: product.tracking,
         description: product.description,
         active: product.active,
         onHand: product.quants.reduce((sum, quant) => sum + quant.quantity, 0),
@@ -538,6 +560,7 @@ export function createApp() {
       where: { id: Number(c.req.param('id')), companyId: user.companyId },
       include: {
         vendor: { select: { id: true, name: true, email: true, city: true } },
+        warehouse: { select: { id: true, name: true, code: true } },
         lines: {
           include: {
             product: { select: { id: true, name: true, sku: true, type: true, kind: true } },
@@ -681,40 +704,136 @@ export function createApp() {
 
   app.get('/api/stock', async (c) => {
     const user = c.get('user')
-    const [products, moves] = await Promise.all([
-      prisma.product.findMany({
-        where: { companyId: user.companyId, type: 'product' },
-        include: { quants: { where: { location: { type: 'internal' } } } },
-        orderBy: { name: 'asc' },
+    return c.json(await stockLevels(user.companyId))
+  })
+
+  app.get('/api/stock/moves', async (c) => {
+    const user = c.get('user')
+    const productId = Number(c.req.query('productId'))
+    const locationId = Number(c.req.query('locationId'))
+    return c.json(
+      await listMoves(user.companyId, {
+        productId: Number.isInteger(productId) && productId > 0 ? productId : undefined,
+        locationId: Number.isInteger(locationId) && locationId > 0 ? locationId : undefined,
       }),
-      prisma.stockMove.findMany({
-        where: { product: { companyId: user.companyId } },
-        include: {
-          product: { select: { name: true, sku: true } },
-          locationFrom: { select: { name: true, type: true } },
-          locationTo: { select: { name: true, type: true } },
-        },
-        orderBy: { id: 'desc' },
-        take: 20,
-      }),
-    ])
-    return c.json({
-      levels: products.map((product) => ({
-        id: product.id,
-        name: product.name,
-        sku: product.sku,
-        active: product.active,
-        onHand: product.quants.reduce((sum, quant) => sum + quant.quantity, 0),
-      })),
-      moves,
-    })
+    )
+  })
+
+  app.get('/api/stock/replenish', async (c) => {
+    const user = c.get('user')
+    return c.json(await listReorderRules(user.companyId))
+  })
+
+  app.post('/api/stock/replenish', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(reorderRuleSchema, await c.req.json())
+    return c.json(await saveReorderRule(user.companyId, input), 201)
   })
 
   app.post('/api/stock/adjust', async (c) => {
     const user = c.get('user')
     const input = parseBody(stockAdjustSchema, await c.req.json())
-    const move = await adjustStock(user.companyId, input.productId, input.quantityDelta, input.note)
+    const move = await adjustStock(
+      user.companyId,
+      input.productId,
+      input.quantityDelta,
+      input.note,
+      input.locationId,
+      input.lotName,
+    )
     return c.json(move, 201)
+  })
+
+  app.get('/api/warehouses', async (c) => {
+    const user = c.get('user')
+    return c.json(await listWarehouses(user.companyId))
+  })
+
+  app.post('/api/warehouses', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(warehouseInputSchema, await c.req.json())
+    return c.json(await createWarehouse(user.companyId, input), 201)
+  })
+
+  app.patch('/api/warehouses/:id', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(warehouseInputSchema, await c.req.json())
+    return c.json(await updateWarehouse(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/warehouses/:id/locations', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(locationInputSchema, await c.req.json())
+    return c.json(await addLocation(user.companyId, Number(c.req.param('id')), input), 201)
+  })
+
+  app.patch('/api/locations/:id', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(locationInputSchema, await c.req.json())
+    return c.json(await renameLocation(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.get('/api/transfers', async (c) => {
+    const user = c.get('user')
+    const state = c.req.query('state')
+    const rows = await prisma.stockTransfer.findMany({
+      where: { companyId: user.companyId, ...(state && state !== 'all' ? { state } : {}) },
+      include: {
+        locationFrom: { select: { name: true, warehouse: { select: { name: true } } } },
+        locationTo: { select: { name: true, warehouse: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    return c.json(rows)
+  })
+
+  app.get('/api/transfers/:id', async (c) => {
+    const user = c.get('user')
+    const row = await prisma.stockTransfer.findFirst({
+      where: { id: Number(c.req.param('id')), companyId: user.companyId },
+      include: {
+        locationFrom: { select: { id: true, name: true, type: true, warehouse: { select: { id: true, name: true } } } },
+        locationTo: { select: { id: true, name: true, type: true, warehouse: { select: { id: true, name: true } } } },
+        lines: { include: { product: { select: { id: true, name: true, sku: true, tracking: true } } } },
+        moves: {
+          include: {
+            product: { select: { name: true, sku: true } },
+            locationFrom: { select: { name: true, type: true } },
+            locationTo: { select: { name: true, type: true } },
+          },
+        },
+      },
+    })
+    if (!row) throw new AppError(404, 'Transfer not found.')
+    return c.json(row)
+  })
+
+  app.post('/api/transfers', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(transferInputSchema, await c.req.json())
+    return c.json(await createTransfer(user.companyId, user.id, input), 201)
+  })
+
+  app.put('/api/transfers/:id', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(transferInputSchema, await c.req.json())
+    return c.json(await updateTransfer(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/transfers/:id/ready', async (c) => {
+    const user = c.get('user')
+    return c.json(await readyTransfer(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/transfers/:id/done', async (c) => {
+    const user = c.get('user')
+    return c.json(await completeTransfer(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/transfers/:id/cancel', async (c) => {
+    const user = c.get('user')
+    return c.json(await cancelTransfer(user.companyId, Number(c.req.param('id'))))
   })
 
   return app
@@ -728,6 +847,7 @@ function productRecord(input: {
   listPrice: number
   costPrice: number
   purchasable: boolean
+  tracking: 'none' | 'lot' | 'serial'
   description: string | null
   active: boolean
 }) {
@@ -735,6 +855,7 @@ function productRecord(input: {
     ...input,
     sku: input.sku.toUpperCase(),
     kind: input.type === 'service' ? 'finished' : input.kind,
+    tracking: input.type === 'service' ? 'none' : input.tracking,
   }
 }
 

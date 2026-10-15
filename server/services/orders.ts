@@ -2,12 +2,13 @@ import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { OrderInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { applyQuant, companyLocations, onHand, roundQty } from './stock.ts'
+import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
 
 const editableStates = new Set(['draft', 'sent'])
 
 const orderInclude = {
   customer: { select: { id: true, name: true, email: true, city: true } },
+  warehouse: { select: { id: true, name: true, code: true } },
   lines: {
     include: {
       product: { select: { id: true, name: true, sku: true, type: true } },
@@ -93,11 +94,13 @@ export async function createOrder(companyId: number, userId: number, input: Orde
     await requireCustomer(tx, companyId, input.customerId)
     const lines = await buildLines(tx, companyId, input.lines)
     const totals = sumLines(lines)
+    const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
     return tx.salesOrder.create({
       data: {
         name: await nextOrderName(tx),
         state: 'draft',
         customerId: input.customerId,
+        warehouseId,
         companyId,
         dateOrder: new Date(),
         validityDate: parseValidity(input.validityDate),
@@ -120,11 +123,13 @@ export async function updateOrder(companyId: number, orderId: number, input: Ord
     await requireCustomer(tx, companyId, input.customerId)
     const lines = await buildLines(tx, companyId, input.lines)
     const totals = sumLines(lines)
+    const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
     await tx.salesOrderLine.deleteMany({ where: { orderId } })
     return tx.salesOrder.update({
       where: { id: orderId },
       data: {
         customerId: input.customerId,
+        warehouseId,
         validityDate: parseValidity(input.validityDate),
         ...totals,
         lines: { create: lines },
@@ -162,6 +167,7 @@ export async function confirmOrder(companyId: number, orderId: number) {
     }
 
     const locations = await companyLocations(tx, companyId)
+    const source = await warehouseStockLocation(tx, companyId, order.warehouseId)
     const needed = new Map<number, { name: string; quantity: number }>()
     for (const line of order.lines) {
       if (line.product.type !== 'product') continue
@@ -173,7 +179,7 @@ export async function confirmOrder(companyId: number, orderId: number) {
     }
 
     for (const [productId, need] of needed) {
-      const available = await onHand(tx, productId, locations.internal.id)
+      const available = await onHand(tx, productId, source.location.id)
       if (available + 0.0001 < need.quantity) {
         throw new AppError(
           409,
@@ -187,7 +193,7 @@ export async function confirmOrder(companyId: number, orderId: number) {
       await tx.stockMove.create({
         data: {
           productId: line.productId,
-          locationFromId: locations.internal.id,
+          locationFromId: source.location.id,
           locationToId: locations.customer.id,
           quantity: line.quantity,
           state: 'draft',
@@ -252,17 +258,31 @@ export async function cancelOrder(companyId: number, orderId: number) {
   })
 }
 
-export async function adjustStock(companyId: number, productId: number, quantityDelta: number, note: string) {
+export async function adjustStock(
+  companyId: number,
+  productId: number,
+  quantityDelta: number,
+  note: string,
+  locationId?: number | null,
+  lotName?: string | null,
+) {
   return prisma.$transaction(async (tx) => {
     const product = await tx.product.findFirst({ where: { id: productId, companyId } })
     if (!product) throw new AppError(404, 'Product not found.')
     if (product.type !== 'product') {
       throw new AppError(400, 'Services are not stocked.')
     }
+    if (product.tracking !== 'none' && !lotName) {
+      throw new AppError(400, `${product.name} needs a lot or serial number.`)
+    }
     const locations = await companyLocations(tx, companyId)
+    const shelf = locationId
+      ? await tx.stockLocation.findFirst({ where: { id: locationId, companyId, type: 'internal' } })
+      : locations.internal
+    if (!shelf) throw new AppError(400, 'Choose a stock location.')
     const delta = roundQty(quantityDelta)
-    const from = delta > 0 ? locations.supplier : locations.internal
-    const to = delta > 0 ? locations.internal : locations.adjustment
+    const from = delta > 0 ? locations.supplier : shelf
+    const to = delta > 0 ? shelf : locations.adjustment
     const quantity = Math.abs(delta)
     await applyQuant(tx, product.id, from.id, -quantity)
     await applyQuant(tx, product.id, to.id, quantity)
@@ -274,6 +294,7 @@ export async function adjustStock(companyId: number, productId: number, quantity
         quantity,
         state: 'done',
         reference: note,
+        lotName: lotName || null,
         date: new Date(),
       },
       include: {
