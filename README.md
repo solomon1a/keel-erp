@@ -47,6 +47,7 @@ npm test
 - Online shop: a public catalog, product page, cart, and guest or account checkout. The order lands in Sales and stock leaves the online warehouse. WeChat Pay, Alipay, and card are recorded only.
 - Invoices and bills from sales, purchases, and the register, with payments, credit notes, a small China-style chart of accounts, journals, a general ledger, profit and loss, a balance sheet, and a VAT report. The printable invoice has fapiao fields and says it is not filed with the Golden Tax platform.
 - Pipeline: leads and opportunities on a kanban, activities, and a button that turns a live lead into a draft quotation.
+- Staff: departments, employees, daily attendance, and leave that can be approved or refused.
 - A printable quotation page, and a printable purchase page. Use the browser print dialog if you want a PDF.
 - Sign-in with a bcrypt password hash, an httpOnly session cookie, sign-out, a change-password page, and an admin screen to create users and reset passwords. Roles are `admin` or `user`.
 

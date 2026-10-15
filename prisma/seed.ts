@@ -726,6 +726,48 @@ export async function seedDatabase(client: PrismaClient = prisma) {
     },
   })
 
+  const salesDept = await client.department.create({ data: { name: '销售部', companyId: company.id } })
+  const plantDept = await client.department.create({ data: { name: '生产部', companyId: company.id } })
+  await client.employee.create({
+    data: {
+      name: '周宁',
+      email: 'zhou.ning@northline.example',
+      phone: '13600004444',
+      jobTitle: '销售',
+      departmentId: salesDept.id,
+      companyId: company.id,
+      attendances: {
+        create: [{ workDate: new Date('2026-04-14T00:00:00.000Z'), status: 'present' }],
+      },
+      leaves: {
+        create: [{
+          kind: 'sick',
+          dateFrom: new Date('2026-04-18T00:00:00.000Z'),
+          dateTo: new Date('2026-04-18T00:00:00.000Z'),
+          state: 'draft',
+          reason: '发烧',
+        }],
+      },
+    },
+  })
+  await client.employee.create({
+    data: {
+      name: '何工',
+      jobTitle: '班组长',
+      departmentId: plantDept.id,
+      companyId: company.id,
+      leaves: {
+        create: [{
+          kind: 'annual',
+          dateFrom: new Date('2026-05-01T00:00:00.000Z'),
+          dateTo: new Date('2026-05-03T00:00:00.000Z'),
+          state: 'approved',
+          reason: '劳动节',
+        }],
+      },
+    },
+  })
+
   await client.journalEntry.create({
     data: {
       name: 'JE0001',

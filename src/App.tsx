@@ -8,6 +8,7 @@ import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
+import { EmployeePage, HrPage } from './pages/hr.tsx'
 import { BomDetailPage } from './pages/bom-detail-page.tsx'
 import { BomFormPage } from './pages/bom-form-page.tsx'
 import { BomPrintPage } from './pages/bom-print-page.tsx'
@@ -82,6 +83,8 @@ export default function App() {
             <Route path="/accounting/:id" element={<InvoicePage />} />
             <Route path="/crm" element={<CrmPage />} />
             <Route path="/crm/:id" element={<LeadPage />} />
+            <Route path="/hr" element={<HrPage />} />
+            <Route path="/hr/:id" element={<EmployeePage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />

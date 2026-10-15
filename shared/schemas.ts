@@ -335,3 +335,36 @@ export const crmActivitySchema = z.object({
 
 export type CrmLeadInput = z.infer<typeof crmLeadSchema>
 export type CrmActivityInput = z.infer<typeof crmActivitySchema>
+
+const dayField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date.')
+
+export const departmentSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(80),
+})
+
+export const employeeSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  email: z.string().trim().max(160).optional().transform((value) => (value ? value : null)),
+  phone: optionalText,
+  jobTitle: optionalText,
+  departmentId: z.number().int().positive().nullable(),
+  active: z.boolean().default(true),
+})
+
+export const attendanceSchema = z.object({
+  workDate: dayField,
+  status: z.enum(['present', 'absent', 'late']),
+  note: optionalText,
+})
+
+export const leaveSchema = z.object({
+  kind: z.enum(['annual', 'sick', 'personal']),
+  dateFrom: dayField,
+  dateTo: dayField,
+  reason: optionalText,
+})
+
+export type DepartmentInput = z.infer<typeof departmentSchema>
+export type EmployeeInput = z.infer<typeof employeeSchema>
+export type AttendanceInput = z.infer<typeof attendanceSchema>
+export type LeaveInput = z.infer<typeof leaveSchema>

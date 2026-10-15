@@ -36,6 +36,8 @@ model Company {
   invoices      Invoice[]
   entries       JournalEntry[]
   leads         Lead[]
+  departments   Department[]
+  employees     Employee[]
   /// Seller taxpayer ID printed on invoices. Not a Golden Tax registration.
   taxId         String?
   address       String?
@@ -738,4 +740,61 @@ model Activity {
   dueOn     DateTime?
   done      Boolean   @default(false)
   createdAt DateTime  @default(now())
+}
+
+model Department {
+  id        Int        @id @default(autoincrement())
+  name      String
+  companyId Int
+  company   Company    @relation(fields: [companyId], references: [id])
+  employees Employee[]
+  createdAt DateTime   @default(now())
+
+  @@unique([companyId, name])
+}
+
+model Employee {
+  id           Int          @id @default(autoincrement())
+  name         String
+  email        String?
+  phone        String?
+  jobTitle     String?
+  active       Boolean      @default(true)
+  departmentId Int?
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  companyId    Int
+  company      Company      @relation(fields: [companyId], references: [id])
+  attendances  Attendance[]
+  leaves       LeaveRequest[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([companyId])
+}
+
+model Attendance {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate   DateTime
+  /// present, absent, late
+  status     String
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, workDate])
+}
+
+model LeaveRequest {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  /// annual, sick, personal
+  kind       String
+  dateFrom   DateTime
+  dateTo     DateTime
+  /// draft, approved, refused
+  state      String   @default("draft")
+  reason     String?
+  createdAt  DateTime @default(now())
 }
