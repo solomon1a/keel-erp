@@ -6,6 +6,8 @@ Northline Goods is loaded the first time the database is empty, so you can click
 
 ## Run it
 
+On a Mac, follow [RUN_LOCAL.md](RUN_LOCAL.md). Otherwise:
+
 ```bash
 npm install
 npm run dev
