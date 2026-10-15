@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --color-background: #f3eee4;
+  --color-foreground: #1c1914;
+  --color-card: #fbf7f0;
+  --color-primary: #1d3c34;
+  --color-primary-foreground: #f6f1e6;
+  --color-secondary: #e7dfd1;
+  --color-secondary-foreground: #1c1914;
+  --color-muted: #e7dfd1;
+  --color-muted-foreground: #5e584e;
+  --color-border: #d8cfc0;
+  --color-accent: #b8884a;
+  --color-accent-foreground: #1c1914;
+  --color-destructive: #8e342c;
+  --color-ring: #1d3c34;
+  --radius-lg: 0.8rem;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at top left, rgba(184, 136, 74, 0.16), transparent 28rem),
+    var(--color-background);
+  color: var(--color-foreground);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}

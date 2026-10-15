@@ -3,6 +3,8 @@
 **Based on**: Odoo CE 17.0 Architecture Analysis  
 **Date**: October 14, 2026
 
+The first slice of this plan is the Keel app at the repo root: contacts, quotations, and a single stock room. Run it with `npm run dev` (see the README). Auth passwords, email, accounting, CRM, and Postgres are still ahead of this slice. The local database is SQLite through Prisma.
+
 This document provides recommendations for building a modern web ERP system inspired by Odoo's architecture, using contemporary technologies and best practices.
 
 ---

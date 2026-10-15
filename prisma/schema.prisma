@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        Int             @id @default(autoincrement())
+  name      String
+  city      String
+  users     User[]
+  contacts  Contact[]
+  products  Product[]
+  orders    SalesOrder[]
+  locations StockLocation[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model User {
+  id              Int          @id @default(autoincrement())
+  name            String
+  email           String       @unique
+  role            String
+  companyId       Int
+  company         Company      @relation(fields: [companyId], references: [id])
+  createdContacts Contact[]    @relation("ContactCreatedBy")
+  updatedContacts Contact[]    @relation("ContactUpdatedBy")
+  createdOrders   SalesOrder[] @relation("OrderCreatedBy")
+  createdAt       DateTime     @default(now())
+}
+
+model Country {
+  id       Int       @id @default(autoincrement())
+  name     String
+  code     String    @unique
+  contacts Contact[]
+}
+
+model Contact {
+  id          Int          @id @default(autoincrement())
+  name        String
+  email       String?
+  phone       String?
+  isCompany   Boolean      @default(false)
+  isCustomer  Boolean      @default(false)
+  isSupplier  Boolean      @default(false)
+  isEmployee  Boolean      @default(false)
+  street      String?
+  city        String?
+  state       String?
+  postalCode  String?
+  notes       String?
+  parentId    Int?
+  parent      Contact?     @relation("ContactHierarchy", fields: [parentId], references: [id])
+  children    Contact[]    @relation("ContactHierarchy")
+  countryId   Int?
+  country     Country?     @relation(fields: [countryId], references: [id])
+  companyId   Int
+  company     Company      @relation(fields: [companyId], references: [id])
+  orders      SalesOrder[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  createdById Int?
+  updatedById Int?
+  createdBy   User?        @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?        @relation("ContactUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([companyId, name])
+}
+
+model Tax {
+  id    Int              @id @default(autoincrement())
+  name  String
+  rate  Float
+  lines SalesOrderLine[]
+}
+
+model Product {
+  id          Int              @id @default(autoincrement())
+  name        String
+  sku         String
+  type        String
+  listPrice   Float
+  description String?
+  active      Boolean          @default(true)
+  companyId   Int
+  company     Company          @relation(fields: [companyId], references: [id])
+  lines       SalesOrderLine[]
+  quants      StockQuant[]
+  moves       StockMove[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([companyId, sku])
+}
+
+model Sequence {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  next Int    @default(0)
+}
+
+model SalesOrder {
+  id            Int              @id @default(autoincrement())
+  name          String
+  state         String
+  customerId    Int
+  customer      Contact          @relation(fields: [customerId], references: [id])
+  companyId     Int
+  company       Company          @relation(fields: [companyId], references: [id])
+  dateOrder     DateTime
+  validityDate  DateTime?
+  amountUntaxed Float
+  amountTax     Float
+  amountTotal   Float
+  lines         SalesOrderLine[]
+  moves         StockMove[]
+  createdById   Int?
+  createdBy     User?            @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model SalesOrderLine {
+  id        Int         @id @default(autoincrement())
+  orderId   Int
+  order     SalesOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product     @relation(fields: [productId], references: [id])
+  description String
+  quantity  Float
+  unitPrice Float
+  discount  Float       @default(0)
+  taxId     Int?
+  tax       Tax?        @relation(fields: [taxId], references: [id])
+  subtotal  Float
+  taxAmount Float
+}
+
+model StockLocation {
+  id        Int          @id @default(autoincrement())
+  name      String
+  type      String
+  companyId Int
+  company   Company      @relation(fields: [companyId], references: [id])
+  quants    StockQuant[]
+  movesFrom StockMove[]  @relation("MoveFrom")
+  movesTo   StockMove[]  @relation("MoveTo")
+
+  @@unique([companyId, type])
+}
+
+model StockQuant {
+  id         Int           @id @default(autoincrement())
+  productId  Int
+  product    Product       @relation(fields: [productId], references: [id])
+  locationId Int
+  location   StockLocation @relation(fields: [locationId], references: [id])
+  quantity   Float
+
+  @@unique([productId, locationId])
+}
+
+model StockMove {
+  id             Int           @id @default(autoincrement())
+  productId      Int
+  product        Product       @relation(fields: [productId], references: [id])
+  locationFromId Int
+  locationFrom   StockLocation @relation("MoveFrom", fields: [locationFromId], references: [id])
+  locationToId   Int
+  locationTo     StockLocation @relation("MoveTo", fields: [locationToId], references: [id])
+  quantity       Float
+  state          String
+  reference      String
+  orderId        Int?
+  order          SalesOrder?   @relation(fields: [orderId], references: [id])
+  date           DateTime
+}
