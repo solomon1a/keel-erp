@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { Textarea } from '../components/ui/textarea.tsx'
-import { countryLabel, orderStateLabel } from '../i18n/labels.ts'
+import { countryLabel, orderStateLabel, purchaseStateLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { useMoney, useShortDate } from '../lib/format.ts'
@@ -28,6 +28,11 @@ type FormState = {
   countryId: string
 }
 
+function startingForm(vendor: boolean): FormState {
+  if (!vendor) return empty
+  return { ...empty, isCompany: true, isCustomer: false, isSupplier: true }
+}
+
 const empty: FormState = {
   name: '',
   email: '',
@@ -47,13 +52,15 @@ const empty: FormState = {
 
 export function ContactFormPage() {
   const { id } = useParams()
+  const [params] = useSearchParams()
   const isNew = !id
+  const startAsVendor = isNew && params.get('supplier') === '1'
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const money = useMoney()
   const shortDate = useShortDate()
-  const [form, setForm] = useState<FormState>(empty)
+  const [form, setForm] = useState<FormState>(() => startingForm(startAsVendor))
   const [error, setError] = useState('')
 
   const contact = useQuery({
@@ -222,6 +229,19 @@ export function ContactFormPage() {
               <ul className="mt-2 grid gap-2 text-sm">
                 {contact.data.children.map((child) => (
                   <li key={child.id}><Link className="hover:underline" to={`/contacts/${child.id}`}>{child.name}</Link></li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {contact.data.purchaseOrders && contact.data.purchaseOrders.length > 0 ? (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="font-semibold">{t('contact.purchases')}</p>
+              <ul className="mt-2 grid gap-2 text-sm">
+                {contact.data.purchaseOrders.map((order) => (
+                  <li key={order.id} className="flex justify-between gap-2">
+                    <Link className="hover:underline" to={`/purchases/${order.id}`}>{order.name}</Link>
+                    <span>{money(order.amountTotal)} · {purchaseStateLabel(order.state, t)}</span>
+                  </li>
                 ))}
               </ul>
             </div>

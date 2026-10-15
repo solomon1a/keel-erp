@@ -1,0 +1,272 @@
+import { lineAmounts, sumLines } from '../../src/domain/money.ts'
+import type { PurchaseInput, ReceivePurchaseInput } from '../../shared/schemas.ts'
+import { prisma, type Tx } from '../db.ts'
+import { AppError } from '../errors.ts'
+import { applyQuant, companyLocations, roundQty } from './stock.ts'
+
+const editableStates = new Set(['draft', 'sent'])
+
+const purchaseInclude = {
+  vendor: { select: { id: true, name: true, email: true, city: true } },
+  lines: {
+    include: {
+      product: { select: { id: true, name: true, sku: true, type: true, kind: true } },
+      tax: { select: { id: true, name: true, rate: true } },
+    },
+  },
+  moves: {
+    include: {
+      product: { select: { name: true, sku: true } },
+      locationFrom: { select: { name: true, type: true } },
+      locationTo: { select: { name: true, type: true } },
+    },
+    orderBy: { id: 'asc' as const },
+  },
+}
+
+async function nextPurchaseName(tx: Tx): Promise<string> {
+  const sequence = await tx.sequence.update({
+    where: { name: 'purchase.order' },
+    data: { next: { increment: 1 } },
+  })
+  return `PO${String(sequence.next).padStart(4, '0')}`
+}
+
+async function requireVendor(tx: Tx, companyId: number, vendorId: number) {
+  const vendor = await tx.contact.findFirst({ where: { id: vendorId, companyId } })
+  if (!vendor) throw new AppError(400, 'Choose a vendor from your contacts.')
+  if (!vendor.isSupplier) throw new AppError(400, `${vendor.name} is not marked as a supplier.`)
+  return vendor
+}
+
+async function buildLines(tx: Tx, companyId: number, lines: PurchaseInput['lines']) {
+  const products = await tx.product.findMany({
+    where: { companyId, id: { in: lines.map((line) => line.productId) } },
+  })
+  const taxes = await tx.tax.findMany()
+  const productById = new Map(products.map((product) => [product.id, product]))
+  const taxById = new Map(taxes.map((tax) => [tax.id, tax]))
+
+  return lines.map((line, index) => {
+    const product = productById.get(line.productId)
+    if (!product) {
+      throw new AppError(400, `Line ${index + 1} uses a product that is not in this company.`)
+    }
+    if (!product.active) {
+      throw new AppError(400, `${product.name} is archived.`)
+    }
+    if (!product.purchasable) {
+      throw new AppError(400, `${product.name} is not marked purchasable.`)
+    }
+    const tax = line.taxId ? taxById.get(line.taxId) : undefined
+    if (line.taxId && !tax) {
+      throw new AppError(400, `Line ${index + 1} uses an unknown tax.`)
+    }
+    const amounts = lineAmounts({
+      quantity: line.quantity,
+      unitPrice: line.unitCost,
+      discount: 0,
+      taxRate: tax?.rate ?? 0,
+    })
+    return {
+      productId: product.id,
+      description: product.name,
+      quantity: roundQty(line.quantity),
+      unitCost: line.unitCost,
+      taxId: tax?.id ?? null,
+      subtotal: amounts.subtotal,
+      taxAmount: amounts.taxAmount,
+    }
+  })
+}
+
+export async function createPurchase(companyId: number, userId: number, input: PurchaseInput) {
+  return prisma.$transaction(async (tx) => {
+    await requireVendor(tx, companyId, input.vendorId)
+    const lines = await buildLines(tx, companyId, input.lines)
+    const totals = sumLines(lines)
+    return tx.purchaseOrder.create({
+      data: {
+        name: await nextPurchaseName(tx),
+        state: 'draft',
+        vendorId: input.vendorId,
+        companyId,
+        dateOrder: new Date(),
+        ...totals,
+        createdById: userId,
+        lines: { create: lines },
+      },
+      include: purchaseInclude,
+    })
+  })
+}
+
+export async function updatePurchase(companyId: number, orderId: number, input: PurchaseInput) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.purchaseOrder.findFirst({ where: { id: orderId, companyId } })
+    if (!order) throw new AppError(404, 'Purchase order not found.')
+    if (!editableStates.has(order.state)) {
+      throw new AppError(409, 'Only a draft or sent RFQ can be edited.')
+    }
+    await requireVendor(tx, companyId, input.vendorId)
+    const lines = await buildLines(tx, companyId, input.lines)
+    const totals = sumLines(lines)
+    await tx.purchaseOrderLine.deleteMany({ where: { orderId } })
+    return tx.purchaseOrder.update({
+      where: { id: orderId },
+      data: {
+        vendorId: input.vendorId,
+        ...totals,
+        lines: { create: lines },
+      },
+      include: purchaseInclude,
+    })
+  })
+}
+
+export async function markPurchaseSent(companyId: number, orderId: number) {
+  const order = await prisma.purchaseOrder.findFirst({ where: { id: orderId, companyId } })
+  if (!order) throw new AppError(404, 'Purchase order not found.')
+  if (order.state !== 'draft') {
+    throw new AppError(409, 'Only a draft RFQ can be marked sent.')
+  }
+  return prisma.purchaseOrder.update({
+    where: { id: orderId },
+    data: { state: 'sent' },
+    include: purchaseInclude,
+  })
+}
+
+export async function confirmPurchase(companyId: number, orderId: number) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.purchaseOrder.findFirst({
+      where: { id: orderId, companyId },
+      include: { lines: { include: { product: true } } },
+    })
+    if (!order) throw new AppError(404, 'Purchase order not found.')
+    if (!editableStates.has(order.state)) {
+      throw new AppError(409, 'This purchase is already confirmed or closed.')
+    }
+    if (order.lines.length === 0) {
+      throw new AppError(400, 'Add a line before confirming.')
+    }
+
+    const locations = await companyLocations(tx, companyId)
+    for (const line of order.lines) {
+      if (line.product.type !== 'product') continue
+      await tx.stockMove.create({
+        data: {
+          productId: line.productId,
+          locationFromId: locations.supplier.id,
+          locationToId: locations.internal.id,
+          quantity: line.quantity,
+          state: 'draft',
+          reference: order.name,
+          purchaseOrderId: order.id,
+          date: new Date(),
+        },
+      })
+    }
+
+    return tx.purchaseOrder.update({
+      where: { id: order.id },
+      data: { state: 'purchase' },
+      include: purchaseInclude,
+    })
+  })
+}
+
+export async function receivePurchase(companyId: number, orderId: number, input: ReceivePurchaseInput) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.purchaseOrder.findFirst({
+      where: { id: orderId, companyId },
+      include: { moves: true },
+    })
+    if (!order) throw new AppError(404, 'Purchase order not found.')
+    if (order.state !== 'purchase') {
+      throw new AppError(409, 'Confirm the purchase before receiving it.')
+    }
+
+    const pending = order.moves.filter((move) => move.state === 'draft')
+    if (pending.length === 0) {
+      return tx.purchaseOrder.update({
+        where: { id: order.id },
+        data: { state: 'done' },
+        include: purchaseInclude,
+      })
+    }
+
+    const requested = input.lines ?? pending.map((move) => ({ moveId: move.id, quantity: move.quantity }))
+    if (requested.length === 0) {
+      throw new AppError(400, 'Enter a quantity to receive.')
+    }
+
+    for (const row of requested) {
+      const move = pending.find((item) => item.id === row.moveId)
+      if (!move) throw new AppError(400, 'That receipt line is not open.')
+      const quantity = roundQty(row.quantity)
+      if (quantity <= 0) throw new AppError(400, 'Quantity must be greater than zero.')
+      if (quantity - move.quantity > 0.0001) {
+        throw new AppError(400, 'You cannot receive more than the open quantity.')
+      }
+      await applyQuant(tx, move.productId, move.locationFromId, -quantity)
+      await applyQuant(tx, move.productId, move.locationToId, quantity)
+      await tx.stockMove.update({
+        where: { id: move.id },
+        data: { state: 'done', quantity, date: new Date() },
+      })
+      const remainder = roundQty(move.quantity - quantity)
+      if (remainder > 0.0001) {
+        await tx.stockMove.create({
+          data: {
+            productId: move.productId,
+            locationFromId: move.locationFromId,
+            locationToId: move.locationToId,
+            quantity: remainder,
+            state: 'draft',
+            reference: order.name,
+            purchaseOrderId: order.id,
+            date: new Date(),
+          },
+        })
+      }
+    }
+
+    const stillOpen = await tx.stockMove.count({
+      where: { purchaseOrderId: order.id, state: 'draft' },
+    })
+    return tx.purchaseOrder.update({
+      where: { id: order.id },
+      data: { state: stillOpen === 0 ? 'done' : 'purchase' },
+      include: purchaseInclude,
+    })
+  })
+}
+
+export async function cancelPurchase(companyId: number, orderId: number) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.purchaseOrder.findFirst({ where: { id: orderId, companyId } })
+    if (!order) throw new AppError(404, 'Purchase order not found.')
+    if (order.state === 'done') {
+      throw new AppError(409, 'A received purchase stays on the books. It cannot be cancelled.')
+    }
+    const received = await tx.stockMove.count({
+      where: { purchaseOrderId: orderId, state: 'done' },
+    })
+    if (received > 0) {
+      throw new AppError(409, 'Goods from this purchase are already in stock, so it cannot be cancelled.')
+    }
+    if (order.state === 'cancel') {
+      return tx.purchaseOrder.findFirstOrThrow({ where: { id: orderId }, include: purchaseInclude })
+    }
+    await tx.stockMove.updateMany({
+      where: { purchaseOrderId: orderId, state: 'draft' },
+      data: { state: 'cancel' },
+    })
+    return tx.purchaseOrder.update({
+      where: { id: orderId },
+      data: { state: 'cancel' },
+      include: purchaseInclude,
+    })
+  })
+}

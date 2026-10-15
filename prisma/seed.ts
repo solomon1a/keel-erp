@@ -148,6 +148,38 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       updatedById: maya.id,
     },
   })
+  const suhang = await client.contact.create({
+    data: {
+      name: '苏杭织造',
+      email: 'orders@suhang.example',
+      phone: '0512-555-0188',
+      isCompany: true,
+      isSupplier: true,
+      street: '吴中区纺织路 18 号',
+      city: '苏州',
+      countryId: china.id,
+      companyId: company.id,
+      notes: '帆布与坯布。',
+      createdById: maya.id,
+      updatedById: maya.id,
+    },
+  })
+  await client.contact.create({
+    data: {
+      name: '青浦纱线',
+      email: 'sales@qingpu-yarn.example',
+      phone: '021-555-0166',
+      isCompany: true,
+      isSupplier: true,
+      street: '青浦区盈港路 88 号',
+      city: '上海',
+      countryId: china.id,
+      companyId: company.id,
+      notes: '羊毛纱。',
+      createdById: maya.id,
+      updatedById: maya.id,
+    },
+  })
   await client.contact.create({
     data: {
       name: 'Lena Ortiz',
@@ -168,7 +200,10 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       name: 'Field notebook',
       sku: 'NB-01',
       type: 'product',
+      kind: 'finished',
       listPrice: 18,
+      costPrice: 6,
+      purchasable: false,
       description: 'Lined, 160 pages, stitched binding.',
       companyId: company.id,
     },
@@ -178,7 +213,10 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       name: 'Wool blanket',
       sku: 'BL-04',
       type: 'product',
+      kind: 'finished',
       listPrice: 86,
+      costPrice: 42,
+      purchasable: false,
       description: 'Charcoal throw, washed wool.',
       companyId: company.id,
     },
@@ -188,7 +226,10 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       name: 'Route planning',
       sku: 'SV-02',
       type: 'service',
+      kind: 'finished',
       listPrice: 140,
+      costPrice: 0,
+      purchasable: false,
       description: 'Half-day planning session for a delivery route.',
       companyId: company.id,
     },
@@ -198,7 +239,10 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       name: 'Canvas tote',
       sku: 'TO-11',
       type: 'product',
+      kind: 'finished',
       listPrice: 24,
+      costPrice: 9,
+      purchasable: true,
       description: 'Natural canvas, one interior pocket.',
       companyId: company.id,
     },
@@ -226,8 +270,36 @@ export async function seedDatabase(client: PrismaClient = prisma) {
     })
   }
 
+  const canvas = await client.product.create({
+    data: {
+      name: '本色帆布',
+      sku: 'RM-CV',
+      type: 'product',
+      kind: 'raw',
+      listPrice: 0,
+      costPrice: 12,
+      purchasable: true,
+      description: '坯布，供以后裁成包袋。',
+      companyId: company.id,
+    },
+  })
+  const yarn = await client.product.create({
+    data: {
+      name: '羊毛纱',
+      sku: 'RM-YN',
+      type: 'product',
+      kind: 'raw',
+      listPrice: 0,
+      costPrice: 40,
+      purchasable: true,
+      description: '毛毯用纱。',
+      companyId: company.id,
+    },
+  })
+
   const tax = await client.tax.findFirstOrThrow()
   await client.sequence.create({ data: { name: 'sales.order', next: 1 } })
+  await client.sequence.create({ data: { name: 'purchase.order', next: 1 } })
   await client.salesOrder.create({
     data: {
       name: 'SO0001',
@@ -261,6 +333,42 @@ export async function seedDatabase(client: PrismaClient = prisma) {
             taxId: tax.id,
             subtotal: 18,
             taxAmount: 2.34,
+          },
+        ],
+      },
+    },
+  })
+
+  await client.purchaseOrder.create({
+    data: {
+      name: 'PO0001',
+      state: 'draft',
+      vendorId: suhang.id,
+      companyId: company.id,
+      dateOrder: new Date('2026-04-10T09:00:00.000Z'),
+      amountUntaxed: 2000,
+      amountTax: 260,
+      amountTotal: 2260,
+      createdById: maya.id,
+      lines: {
+        create: [
+          {
+            productId: canvas.id,
+            description: canvas.name,
+            quantity: 100,
+            unitCost: 12,
+            taxId: tax.id,
+            subtotal: 1200,
+            taxAmount: 156,
+          },
+          {
+            productId: yarn.id,
+            description: yarn.name,
+            quantity: 20,
+            unitCost: 40,
+            taxId: tax.id,
+            subtotal: 800,
+            taxAmount: 104,
           },
         ],
       },

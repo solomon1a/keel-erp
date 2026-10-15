@@ -39,6 +39,7 @@ export type Contact = {
   country: { id: number; name: string } | null
   children?: Array<{ id: number; name: string; email: string | null; phone: string | null }>
   orders?: Array<{ id: number; name: string; state: string; amountTotal: number; dateOrder: string }>
+  purchaseOrders?: Array<{ id: number; name: string; state: string; amountTotal: number; dateOrder: string }>
   createdAt: string
   updatedAt: string
   createdBy?: { name: string } | null
@@ -51,7 +52,10 @@ export type Product = {
   name: string
   sku: string
   type: string
+  kind: string
   listPrice: number
+  costPrice: number
+  purchasable: boolean
   description: string | null
   active: boolean
   onHand?: number
@@ -80,6 +84,33 @@ export type StockMove = {
   product: { name: string; sku: string }
   locationFrom: { name: string; type: string }
   locationTo: { name: string; type: string }
+}
+
+export type PurchaseLine = {
+  id?: number
+  productId: number
+  description: string
+  quantity: number
+  unitCost: number
+  taxId: number | null
+  subtotal: number
+  taxAmount: number
+  product?: { id: number; name: string; sku: string; type: string; kind?: string }
+  tax?: { id: number; name: string; rate: number } | null
+}
+
+export type PurchaseOrder = {
+  id: number
+  name: string
+  state: string
+  vendorId: number
+  dateOrder: string
+  amountUntaxed: number
+  amountTax: number
+  amountTotal: number
+  vendor: { id: number; name: string; email?: string | null; city?: string | null }
+  lines?: PurchaseLine[]
+  moves?: StockMove[]
 }
 
 export type SalesOrder = {

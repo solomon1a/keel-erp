@@ -73,7 +73,10 @@ export const productInputSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   sku: z.string().trim().min(1, 'SKU is required').max(40),
   type: z.enum(['product', 'service']),
+  kind: z.enum(['finished', 'raw']),
   listPrice: z.number().min(0, 'Price cannot be negative'),
+  costPrice: z.number().min(0, 'Cost cannot be negative'),
+  purchasable: z.boolean(),
   description: optionalText,
   active: z.boolean(),
 })
@@ -96,6 +99,29 @@ export const orderInputSchema = z.object({
   lines: z.array(orderLineSchema).min(1, 'Add at least one line'),
 })
 
+export const purchaseLineSchema = z.object({
+  productId: z.number().int().positive('Choose a product'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  unitCost: z.number().min(0, 'Cost cannot be negative'),
+  taxId: z.number().int().positive().nullable(),
+})
+
+export const purchaseInputSchema = z.object({
+  vendorId: z.number().int().positive('Choose a vendor'),
+  lines: z.array(purchaseLineSchema).min(1, 'Add at least one line'),
+})
+
+export const receivePurchaseSchema = z.object({
+  lines: z
+    .array(
+      z.object({
+        moveId: z.number().int().positive(),
+        quantity: z.number().positive('Quantity must be greater than zero'),
+      }),
+    )
+    .optional(),
+})
+
 export const stockAdjustSchema = z.object({
   productId: z.number().int().positive(),
   quantityDelta: z.number().refine((value) => value !== 0, 'Enter a quantity other than zero'),
@@ -110,4 +136,6 @@ export type CompanySettingsInput = z.infer<typeof companySettingsSchema>
 export type ContactInput = z.infer<typeof contactInputSchema>
 export type ProductInput = z.infer<typeof productInputSchema>
 export type OrderInput = z.infer<typeof orderInputSchema>
+export type PurchaseInput = z.infer<typeof purchaseInputSchema>
+export type ReceivePurchaseInput = z.infer<typeof receivePurchaseSchema>
 export type StockAdjustInput = z.infer<typeof stockAdjustSchema>

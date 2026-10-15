@@ -17,6 +17,34 @@ export function orderStateLabel(state: string, t: Translate) {
   }
 }
 
+export function purchaseStateLabel(state: string, t: Translate) {
+  switch (state) {
+    case 'draft':
+      return t('poState.draft')
+    case 'sent':
+      return t('poState.sent')
+    case 'purchase':
+      return t('poState.purchase')
+    case 'done':
+      return t('poState.done')
+    case 'cancel':
+      return t('poState.cancel')
+    default:
+      return state
+  }
+}
+
+export function productKindLabel(kind: string, t: Translate) {
+  switch (kind) {
+    case 'finished':
+      return t('kind.finished')
+    case 'raw':
+      return t('kind.raw')
+    default:
+      return kind
+  }
+}
+
 export function moveStateLabel(state: string, t: Translate) {
   switch (state) {
     case 'draft':

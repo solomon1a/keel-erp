@@ -13,6 +13,7 @@ const links = [
   ['/contacts', 'nav.contacts'],
   ['/products', 'nav.products'],
   ['/orders', 'nav.orders'],
+  ['/purchases', 'nav.purchases'],
   ['/inventory', 'nav.stock'],
   ['/settings', 'nav.settings'],
   ['/account/password', 'nav.password'],

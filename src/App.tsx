@@ -15,7 +15,12 @@ import { SettingsPage } from './pages/settings-page.tsx'
 import { PrintPage } from './pages/print-page.tsx'
 import { ProductFormPage } from './pages/product-form-page.tsx'
 import { ProductsPage } from './pages/products-page.tsx'
+import { PurchaseDetailPage } from './pages/purchase-detail-page.tsx'
+import { PurchaseFormPage } from './pages/purchase-form-page.tsx'
+import { PurchasePrintPage } from './pages/purchase-print-page.tsx'
+import { PurchasesPage } from './pages/purchases-page.tsx'
 import { SignInPage } from './pages/sign-in-page.tsx'
+import { VendorsPage } from './pages/vendors-page.tsx'
 
 const queryClient = new QueryClient()
 
@@ -27,6 +32,7 @@ export default function App() {
         <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/orders/:id/print" element={<PrintPage />} />
+          <Route path="/purchases/:id/print" element={<PurchasePrintPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<DeskPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
@@ -39,6 +45,11 @@ export default function App() {
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />
             <Route path="/orders/:id/edit" element={<OrderFormPage />} />
+            <Route path="/purchases" element={<PurchasesPage />} />
+            <Route path="/purchases/new" element={<PurchaseFormPage />} />
+            <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
+            <Route path="/purchases/:id/edit" element={<PurchaseFormPage />} />
+            <Route path="/vendors" element={<VendorsPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account/password" element={<PasswordPage />} />
             <Route path="/settings" element={<SettingsPage />} />

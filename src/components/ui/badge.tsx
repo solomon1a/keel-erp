@@ -4,6 +4,7 @@ const tones: Record<string, string> = {
   draft: 'bg-secondary text-foreground',
   sent: 'bg-accent/25 text-foreground',
   sale: 'bg-primary text-primary-foreground',
+  purchase: 'bg-primary text-primary-foreground',
   done: 'bg-foreground text-background',
   cancel: 'bg-destructive/15 text-destructive',
   product: 'bg-primary/10 text-primary',

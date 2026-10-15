@@ -20,7 +20,10 @@ export function ProductFormPage() {
     name: '',
     sku: '',
     type: 'product',
+    kind: 'finished',
     listPrice: '0',
+    costPrice: '0',
+    purchasable: false,
     description: '',
     active: true,
   })
@@ -37,7 +40,10 @@ export function ProductFormPage() {
       name: product.data.name,
       sku: product.data.sku,
       type: product.data.type,
+      kind: product.data.kind || 'finished',
       listPrice: String(product.data.listPrice),
+      costPrice: String(product.data.costPrice ?? 0),
+      purchasable: product.data.purchasable,
       description: product.data.description ?? '',
       active: product.data.active,
     })
@@ -51,7 +57,10 @@ export function ProductFormPage() {
           name: form.name,
           sku: form.sku,
           type: form.type,
+          kind: form.type === 'service' ? 'finished' : form.kind,
           listPrice: Number(form.listPrice),
+          costPrice: Number(form.costPrice),
+          purchasable: form.purchasable,
           description: form.description,
           active: form.active,
         }),
@@ -96,11 +105,27 @@ export function ProductFormPage() {
         <Field label={t('product.price')}>
           <Input type="number" min="0" step="0.01" value={form.listPrice} onChange={(event) => setForm({ ...form, listPrice: event.target.value })} />
         </Field>
+        <Field label={t('product.cost')}>
+          <Input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => setForm({ ...form, costPrice: event.target.value })} />
+        </Field>
+        {form.type === 'product' ? (
+          <Field label={t('product.kind')}>
+            <select className="h-10 rounded-md border border-border bg-card px-3" value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value })}>
+              <option value="finished">{t('kind.finished')}</option>
+              <option value="raw">{t('kind.raw')}</option>
+            </select>
+          </Field>
+        ) : null}
         <label className="mt-7 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />
           {t('product.active')}
         </label>
+        <label className="mt-7 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={form.purchasable} onChange={(event) => setForm({ ...form, purchasable: event.target.checked })} />
+          {t('product.purchasable')}
+        </label>
       </div>
+      <p className="text-sm text-muted-foreground">{t('product.purchasableHint')}</p>
       <Field label={t('product.description')}>
         <Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       </Field>

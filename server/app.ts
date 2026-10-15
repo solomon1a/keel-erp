@@ -10,6 +10,8 @@ import {
   loginSchema,
   orderInputSchema,
   productInputSchema,
+  purchaseInputSchema,
+  receivePurchaseSchema,
   resetPasswordSchema,
   stockAdjustSchema,
 } from '../shared/schemas.ts'
@@ -30,6 +32,14 @@ import {
 import { prisma } from './db.ts'
 import { AppError } from './errors.ts'
 import { adjustStock, cancelOrder, confirmOrder, createOrder, deliverOrder, markOrderSent, updateOrder } from './services/orders.ts'
+import {
+  cancelPurchase,
+  confirmPurchase,
+  createPurchase,
+  markPurchaseSent,
+  receivePurchase,
+  updatePurchase,
+} from './services/purchases.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -298,6 +308,7 @@ export function createApp() {
         country: { select: { id: true, name: true } },
         children: { select: { id: true, name: true, email: true, phone: true }, orderBy: { name: 'asc' } },
         orders: { orderBy: { dateOrder: 'desc' }, take: 12 },
+        purchaseOrders: { orderBy: { dateOrder: 'desc' }, take: 12 },
         createdBy: { select: { name: true } },
         updatedBy: { select: { name: true } },
       },
@@ -346,10 +357,10 @@ export function createApp() {
     const id = Number(c.req.param('id'))
     const existing = await prisma.contact.findFirst({
       where: { id, companyId: user.companyId },
-      include: { _count: { select: { children: true, orders: true } } },
+      include: { _count: { select: { children: true, orders: true, purchaseOrders: true } } },
     })
     if (!existing) throw new AppError(404, 'Contact not found.')
-    if (existing._count.orders > 0) {
+    if (existing._count.orders > 0 || existing._count.purchaseOrders > 0) {
       throw new AppError(409, 'This contact has orders, so the record stays.')
     }
     if (existing._count.children > 0) {
@@ -372,7 +383,10 @@ export function createApp() {
         name: product.name,
         sku: product.sku,
         type: product.type,
+        kind: product.kind,
         listPrice: product.listPrice,
+        costPrice: product.costPrice,
+        purchasable: product.purchasable,
         description: product.description,
         active: product.active,
         onHand: product.quants.reduce((sum, quant) => sum + quant.quantity, 0),
@@ -394,7 +408,7 @@ export function createApp() {
     const input = parseBody(productInputSchema, await c.req.json())
     try {
       const product = await prisma.product.create({
-        data: { ...input, sku: input.sku.toUpperCase(), companyId: user.companyId },
+        data: { ...productRecord(input), companyId: user.companyId },
       })
       return c.json(product, 201)
     } catch (error) {
@@ -414,7 +428,7 @@ export function createApp() {
     try {
       const product = await prisma.product.update({
         where: { id },
-        data: { ...input, sku: input.sku.toUpperCase() },
+        data: productRecord(input),
       })
       return c.json(product)
     } catch (error) {
@@ -482,6 +496,81 @@ export function createApp() {
     return c.json(await cancelOrder(user.companyId, Number(c.req.param('id'))))
   })
 
+  app.get('/api/purchases', async (c) => {
+    const user = c.get('user')
+    const state = c.req.query('state')
+    const orders = await prisma.purchaseOrder.findMany({
+      where: {
+        companyId: user.companyId,
+        ...(state && state !== 'all' ? { state } : {}),
+      },
+      include: { vendor: { select: { id: true, name: true } } },
+      orderBy: { dateOrder: 'desc' },
+      take: 200,
+    })
+    return c.json(orders)
+  })
+
+  app.get('/api/purchases/:id', async (c) => {
+    const user = c.get('user')
+    const order = await prisma.purchaseOrder.findFirst({
+      where: { id: Number(c.req.param('id')), companyId: user.companyId },
+      include: {
+        vendor: { select: { id: true, name: true, email: true, city: true } },
+        lines: {
+          include: {
+            product: { select: { id: true, name: true, sku: true, type: true, kind: true } },
+            tax: { select: { id: true, name: true, rate: true } },
+          },
+        },
+        moves: {
+          include: {
+            product: { select: { name: true, sku: true } },
+            locationFrom: { select: { name: true, type: true } },
+            locationTo: { select: { name: true, type: true } },
+          },
+          orderBy: { id: 'asc' },
+        },
+      },
+    })
+    if (!order) throw new AppError(404, 'Purchase order not found.')
+    return c.json(order)
+  })
+
+  app.post('/api/purchases', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(purchaseInputSchema, await c.req.json())
+    return c.json(await createPurchase(user.companyId, user.id, input), 201)
+  })
+
+  app.put('/api/purchases/:id', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(purchaseInputSchema, await c.req.json())
+    return c.json(await updatePurchase(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/purchases/:id/send', async (c) => {
+    const user = c.get('user')
+    return c.json(await markPurchaseSent(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/purchases/:id/confirm', async (c) => {
+    const user = c.get('user')
+    requireAdmin(user)
+    return c.json(await confirmPurchase(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/purchases/:id/receive', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(receivePurchaseSchema, await c.req.json())
+    return c.json(await receivePurchase(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/purchases/:id/cancel', async (c) => {
+    const user = c.get('user')
+    return c.json(await cancelPurchase(user.companyId, Number(c.req.param('id'))))
+  })
+
   app.get('/api/stock', async (c) => {
     const user = c.get('user')
     const [products, moves] = await Promise.all([
@@ -521,6 +610,24 @@ export function createApp() {
   })
 
   return app
+}
+
+function productRecord(input: {
+  name: string
+  sku: string
+  type: 'product' | 'service'
+  kind: 'finished' | 'raw'
+  listPrice: number
+  costPrice: number
+  purchasable: boolean
+  description: string | null
+  active: boolean
+}) {
+  return {
+    ...input,
+    sku: input.sku.toUpperCase(),
+    kind: input.type === 'service' ? 'finished' : input.kind,
+  }
 }
 
 async function assertContactLinks(

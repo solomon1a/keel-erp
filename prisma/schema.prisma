@@ -18,6 +18,7 @@ model Company {
   contacts  Contact[]
   products  Product[]
   orders    SalesOrder[]
+  purchases PurchaseOrder[]
   locations StockLocation[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
@@ -34,8 +35,9 @@ model User {
   sessions        Session[]
   createdContacts Contact[]    @relation("ContactCreatedBy")
   updatedContacts Contact[]    @relation("ContactUpdatedBy")
-  createdOrders   SalesOrder[] @relation("OrderCreatedBy")
-  createdAt       DateTime     @default(now())
+  createdOrders    SalesOrder[]    @relation("OrderCreatedBy")
+  createdPurchases PurchaseOrder[] @relation("PurchaseCreatedBy")
+  createdAt        DateTime        @default(now())
 }
 
 model Session {
@@ -75,10 +77,11 @@ model Contact {
   children    Contact[]    @relation("ContactHierarchy")
   countryId   Int?
   country     Country?     @relation(fields: [countryId], references: [id])
-  companyId   Int
-  company     Company      @relation(fields: [companyId], references: [id])
-  orders      SalesOrder[]
-  createdAt   DateTime     @default(now())
+  companyId      Int
+  company        Company         @relation(fields: [companyId], references: [id])
+  orders         SalesOrder[]
+  purchaseOrders PurchaseOrder[]
+  createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
   createdById Int?
   updatedById Int?
@@ -89,28 +92,35 @@ model Contact {
 }
 
 model Tax {
-  id        Int              @id @default(autoincrement())
-  name      String
-  rate      Float
-  isDefault Boolean          @default(false)
-  lines     SalesOrderLine[]
+  id             Int                 @id @default(autoincrement())
+  name           String
+  rate           Float
+  isDefault      Boolean             @default(false)
+  lines          SalesOrderLine[]
+  purchaseLines  PurchaseOrderLine[]
 }
 
 model Product {
-  id          Int              @id @default(autoincrement())
-  name        String
-  sku         String
-  type        String
-  listPrice   Float
-  description String?
-  active      Boolean          @default(true)
-  companyId   Int
-  company     Company          @relation(fields: [companyId], references: [id])
-  lines       SalesOrderLine[]
-  quants      StockQuant[]
-  moves       StockMove[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id           Int                 @id @default(autoincrement())
+  name         String
+  sku          String
+  /// `product` (stocked) or `service`.
+  type         String
+  /// `finished` goods or `raw` material. Services stay `finished`; manufacturing comes later.
+  kind         String              @default("finished")
+  listPrice    Float
+  costPrice    Float               @default(0)
+  purchasable  Boolean             @default(false)
+  description  String?
+  active       Boolean             @default(true)
+  companyId    Int
+  company      Company             @relation(fields: [companyId], references: [id])
+  lines        SalesOrderLine[]
+  purchaseLines PurchaseOrderLine[]
+  quants       StockQuant[]
+  moves        StockMove[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
 
   @@unique([companyId, sku])
 }
@@ -161,6 +171,45 @@ model SalesOrderLine {
   taxAmount Float
 }
 
+model PurchaseOrder {
+  id            Int                 @id @default(autoincrement())
+  name          String
+  /// draft (RFQ), sent, purchase (confirmed), done (received), cancel
+  state         String
+  vendorId      Int
+  vendor        Contact             @relation(fields: [vendorId], references: [id])
+  companyId     Int
+  company       Company             @relation(fields: [companyId], references: [id])
+  dateOrder     DateTime
+  amountUntaxed Float
+  amountTax     Float
+  amountTotal   Float
+  lines         PurchaseOrderLine[]
+  moves         StockMove[]
+  createdById   Int?
+  createdBy     User?               @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model PurchaseOrderLine {
+  id          Int           @id @default(autoincrement())
+  orderId     Int
+  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   Int
+  product     Product       @relation(fields: [productId], references: [id])
+  description String
+  quantity    Float
+  unitCost    Float
+  taxId       Int?
+  tax         Tax?          @relation(fields: [taxId], references: [id])
+  subtotal    Float
+  taxAmount   Float
+}
+
 model StockLocation {
   id        Int          @id @default(autoincrement())
   name      String
@@ -195,8 +244,10 @@ model StockMove {
   locationTo     StockLocation @relation("MoveTo", fields: [locationToId], references: [id])
   quantity       Float
   state          String
-  reference      String
-  orderId        Int?
-  order          SalesOrder?   @relation(fields: [orderId], references: [id])
-  date           DateTime
+  reference       String
+  orderId         Int?
+  order           SalesOrder?    @relation(fields: [orderId], references: [id])
+  purchaseOrderId Int?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  date            DateTime
 }

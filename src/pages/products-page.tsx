@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
+import { productKindLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api } from '../lib/api.ts'
 import { useMoney } from '../lib/format.ts'
@@ -28,13 +29,15 @@ export function ProductsPage() {
         <EmptyState title={t('products.emptyTitle')} body={t('products.emptyBody')} />
       ) : null}
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">{t('products.colProduct')}</th>
               <th className="px-4 py-3 font-medium">{t('products.colSku')}</th>
               <th className="px-4 py-3 font-medium">{t('products.colType')}</th>
+              <th className="px-4 py-3 font-medium">{t('products.colKind')}</th>
               <th className="px-4 py-3 font-medium">{t('products.colPrice')}</th>
+              <th className="px-4 py-3 font-medium">{t('products.colCost')}</th>
               <th className="px-4 py-3 font-medium">{t('products.colOnHand')}</th>
             </tr>
           </thead>
@@ -49,7 +52,9 @@ export function ProductsPage() {
                 <td className="px-4 py-3">
                   <Badge tone={product.type}>{product.type === 'product' ? t('products.goods') : t('products.service')}</Badge>
                 </td>
+                <td className="px-4 py-3">{product.type === 'product' ? productKindLabel(product.kind, t) : '—'}</td>
                 <td className="px-4 py-3">{money(product.listPrice)}</td>
+                <td className="px-4 py-3">{money(product.costPrice)}</td>
                 <td className="px-4 py-3">{product.type === 'product' ? product.onHand : '—'}</td>
               </tr>
             ))}
