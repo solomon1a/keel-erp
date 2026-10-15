@@ -14,7 +14,7 @@ npm run db:reset
 npm run dev
 ```
 
-`cp` creates `.env` with `DATABASE_URL="file:./dev.db"`. That file is gitignored. `npm run db:reset` deletes any old `prisma/dev.db`, applies the schema, and loads the sample company. Run it again after this update. An older database is missing purchase orders, product cost, and the sample vendors; `npm run dev` will not rewrite that seed.
+`cp` creates `.env` with `DATABASE_URL="file:./dev.db"`. That file is gitignored. `npm run db:reset` deletes any old `prisma/dev.db`, applies the schema, and loads the sample company. Run it again after this update. An older database is missing bills of materials, manufacturing orders, and the production stock location; `npm run dev` will not rewrite that seed.
 
 `npm run dev` starts the API on port 43124 and the desk on port 43123.
 
@@ -34,5 +34,7 @@ The sample company is **江北良品** in Shanghai. Money defaults to CNY (¥). 
 **Purchases** drafts an RFQ (PO0001, PO0002, …). Maya and Jonah can create and send one. Only Maya (admin) can confirm it. Confirming opens an incoming receipt from vendors into main stock. **Receive** can take part of a line; **Receive all** takes the rest. A received order cannot be cancelled. **Print** opens the RFQ or purchase order for the browser print dialog.
 
 **Vendors** lists contacts marked as suppliers (苏杭织造 and 青浦纱线 are in the sample, plus Brightmill Supply). **New vendor** opens a contact with the supplier flag already on. Products have a cost, a purchasable flag, and a kind: finished goods or raw material (本色帆布, 羊毛纱). Only purchasable products can be put on a purchase order. Raw materials are stocked now; manufacturing is later.
+
+**Manufacturing** uses a bill of materials. The sample bill makes a canvas tote from 本色帆布 and 羊毛纱, and **MO0001** is a draft for 4 totes. Jonah can draft an order. Only Maya can confirm it. Confirm names any component that is short and how many are on hand. **Draft a purchase for the shortage** opens an RFQ with those quantities. After confirm, **Start**, then **Produce** (a partial quantity is allowed) or **Produce the rest**. Components leave main stock and the finished totes arrive there. On the bill, **Save as product cost** writes the component cost onto the product. **Print** works for the order and the bill.
 
 **People** adds accounts and resets passwords. **Password** changes the signed-in account. **Sign out** clears the session cookie. Stop both processes with Ctrl-C in that terminal.

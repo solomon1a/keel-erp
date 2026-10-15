@@ -11,10 +11,11 @@ export async function companyLocations(tx: Tx, companyId: number) {
   const customer = rows.find((row) => row.type === 'customer')
   const supplier = rows.find((row) => row.type === 'supplier')
   const adjustment = rows.find((row) => row.type === 'inventory')
-  if (!internal || !customer || !supplier || !adjustment) {
+  const production = rows.find((row) => row.type === 'production')
+  if (!internal || !customer || !supplier || !adjustment || !production) {
     throw new AppError(500, 'Stock locations are not set up for this company.')
   }
-  return { internal, customer, supplier, adjustment }
+  return { internal, customer, supplier, adjustment, production }
 }
 
 export async function onHand(tx: Tx, productId: number, locationId: number): Promise<number> {

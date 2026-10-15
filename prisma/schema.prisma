@@ -17,9 +17,11 @@ model Company {
   users     User[]
   contacts  Contact[]
   products  Product[]
-  orders    SalesOrder[]
-  purchases PurchaseOrder[]
-  locations StockLocation[]
+  orders        SalesOrder[]
+  purchases     PurchaseOrder[]
+  boms          BillOfMaterials[]
+  manufacturing ManufacturingOrder[]
+  locations     StockLocation[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 }
@@ -36,8 +38,9 @@ model User {
   createdContacts Contact[]    @relation("ContactCreatedBy")
   updatedContacts Contact[]    @relation("ContactUpdatedBy")
   createdOrders    SalesOrder[]    @relation("OrderCreatedBy")
-  createdPurchases PurchaseOrder[] @relation("PurchaseCreatedBy")
-  createdAt        DateTime        @default(now())
+  createdPurchases     PurchaseOrder[]     @relation("PurchaseCreatedBy")
+  createdManufacturing ManufacturingOrder[] @relation("ManufacturingCreatedBy")
+  createdAt            DateTime            @default(now())
 }
 
 model Session {
@@ -106,7 +109,7 @@ model Product {
   sku          String
   /// `product` (stocked) or `service`.
   type         String
-  /// `finished` goods or `raw` material. Services stay `finished`; manufacturing comes later.
+  /// `finished` goods or `raw` material. Services stay `finished`.
   kind         String              @default("finished")
   listPrice    Float
   costPrice    Float               @default(0)
@@ -115,10 +118,14 @@ model Product {
   active       Boolean             @default(true)
   companyId    Int
   company      Company             @relation(fields: [companyId], references: [id])
-  lines        SalesOrderLine[]
-  purchaseLines PurchaseOrderLine[]
-  quants       StockQuant[]
-  moves        StockMove[]
+  lines                    SalesOrderLine[]
+  purchaseLines            PurchaseOrderLine[]
+  boms                     BillOfMaterials[]        @relation("BomFinished")
+  bomLines                 BomLine[]
+  manufacturingOrders      ManufacturingOrder[]
+  manufacturingComponents  ManufacturingComponent[]
+  quants                   StockQuant[]
+  moves                    StockMove[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
@@ -210,6 +217,67 @@ model PurchaseOrderLine {
   taxAmount   Float
 }
 
+model BillOfMaterials {
+  id         Int                  @id @default(autoincrement())
+  productId  Int                  @unique
+  product    Product              @relation("BomFinished", fields: [productId], references: [id])
+  companyId  Int
+  company    Company              @relation(fields: [companyId], references: [id])
+  /// Finished units this recipe makes. Component quantities are for this many units.
+  yieldQty   Float                @default(1)
+  notes      String?
+  lines      BomLine[]
+  orders     ManufacturingOrder[]
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@index([companyId])
+}
+
+model BomLine {
+  id        Int             @id @default(autoincrement())
+  bomId     Int
+  bom       BillOfMaterials @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product         @relation(fields: [productId], references: [id])
+  quantity  Float
+}
+
+model ManufacturingOrder {
+  id             Int                       @id @default(autoincrement())
+  name           String
+  /// draft, confirmed, progress, done, cancel
+  state          String
+  productId      Int
+  product        Product                   @relation(fields: [productId], references: [id])
+  bomId          Int
+  bom            BillOfMaterials           @relation(fields: [bomId], references: [id])
+  companyId      Int
+  company        Company                   @relation(fields: [companyId], references: [id])
+  quantity       Float
+  quantityDone   Float                     @default(0)
+  lines          ManufacturingComponent[]
+  moves          StockMove[]
+  createdById    Int?
+  createdBy      User?                     @relation("ManufacturingCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model ManufacturingComponent {
+  id        Int                 @id @default(autoincrement())
+  orderId   Int
+  order     ManufacturingOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product             @relation(fields: [productId], references: [id])
+  /// Total component quantity for the full order.
+  quantity  Float
+  consumed  Float               @default(0)
+}
+
 model StockLocation {
   id        Int          @id @default(autoincrement())
   name      String
@@ -247,7 +315,9 @@ model StockMove {
   reference       String
   orderId         Int?
   order           SalesOrder?    @relation(fields: [orderId], references: [id])
-  purchaseOrderId Int?
-  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  date            DateTime
+  purchaseOrderId      Int?
+  purchaseOrder        PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id])
+  manufacturingOrderId Int?
+  manufacturingOrder   ManufacturingOrder? @relation(fields: [manufacturingOrderId], references: [id])
+  date                 DateTime
 }

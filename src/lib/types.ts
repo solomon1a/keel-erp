@@ -113,6 +113,46 @@ export type PurchaseOrder = {
   moves?: StockMove[]
 }
 
+export type BomLine = {
+  id?: number
+  productId: number
+  quantity: number
+  product?: { id: number; name: string; sku: string; costPrice: number; kind: string; type: string; purchasable?: boolean }
+}
+
+export type BillOfMaterials = {
+  id: number
+  productId: number
+  yieldQty: number
+  notes: string | null
+  unitCost: number
+  product: { id: number; name: string; sku: string; kind: string; costPrice: number; type: string }
+  lines: BomLine[]
+}
+
+export type ManufacturingLine = {
+  id: number
+  productId: number
+  quantity: number
+  consumed: number
+  onHand?: number
+  product: { id: number; name: string; sku: string; costPrice: number; purchasable: boolean; kind: string }
+}
+
+export type ManufacturingOrder = {
+  id: number
+  name: string
+  state: string
+  productId: number
+  bomId: number
+  quantity: number
+  quantityDone: number
+  product: { id: number; name: string; sku: string; kind?: string; costPrice?: number }
+  bom?: { id: number; yieldQty: number; notes: string | null }
+  lines?: ManufacturingLine[]
+  moves?: StockMove[]
+}
+
 export type SalesOrder = {
   id: number
   name: string

@@ -40,12 +40,13 @@ npm test
 - Validating a delivery moves goods from main stock to customers and closes the order. A service-only order can be fulfilled without a stock move.
 - Stock: on-hand counts, receipts (positive adjustment), write-offs (negative), and recent moves.
 - Purchases: vendors are supplier contacts. An RFQ (draft) can be sent, then confirmed by an admin into a purchase order numbered PO0001. Confirming creates an incoming receipt. Receiving, including a partial quantity, adds stock to main stock and links the moves to the purchase. Print the RFQ or purchase order from the browser.
+- Manufacturing: a finished product has a bill of materials (components per yield). Orders number MO0001. A user can draft one; an admin confirms it, and a short component is named with the quantity on hand. Finishing consumes components from main stock and adds the finished goods. A partial quantity can be produced. Component cost can be saved onto the product. Print the order or the bill from the browser.
 - A printable quotation page, and a printable purchase page. Use the browser print dialog if you want a PDF.
 - Sign-in with a bcrypt password hash, an httpOnly session cookie, sign-out, a change-password page, and an admin screen to create users and reset passwords. Roles are `admin` or `user`.
 
 ## What this slice leaves out
 
-Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, manufacturing that consumes raw materials, more than one currency at once, and more than one warehouse. Roles are stored and checked for the people screen and for confirming a purchase; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
+Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, multi-level manufacturing routes, more than one currency at once, and more than one warehouse. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
 
 ## REA
 

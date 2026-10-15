@@ -6,7 +6,15 @@ import { AdminUsersPage } from './pages/admin-users-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
+import { BomDetailPage } from './pages/bom-detail-page.tsx'
+import { BomFormPage } from './pages/bom-form-page.tsx'
+import { BomPrintPage } from './pages/bom-print-page.tsx'
+import { BomsPage } from './pages/boms-page.tsx'
 import { InventoryPage } from './pages/inventory-page.tsx'
+import { ManufacturingDetailPage } from './pages/manufacturing-detail-page.tsx'
+import { ManufacturingFormPage } from './pages/manufacturing-form-page.tsx'
+import { ManufacturingPage } from './pages/manufacturing-page.tsx'
+import { ManufacturingPrintPage } from './pages/manufacturing-print-page.tsx'
 import { OrderDetailPage } from './pages/order-detail-page.tsx'
 import { OrderFormPage } from './pages/order-form-page.tsx'
 import { OrdersPage } from './pages/orders-page.tsx'
@@ -33,6 +41,8 @@ export default function App() {
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/orders/:id/print" element={<PrintPage />} />
           <Route path="/purchases/:id/print" element={<PurchasePrintPage />} />
+          <Route path="/manufacturing/:id/print" element={<ManufacturingPrintPage />} />
+          <Route path="/boms/:id/print" element={<BomPrintPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<DeskPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
@@ -50,6 +60,14 @@ export default function App() {
             <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
             <Route path="/purchases/:id/edit" element={<PurchaseFormPage />} />
             <Route path="/vendors" element={<VendorsPage />} />
+            <Route path="/manufacturing" element={<ManufacturingPage />} />
+            <Route path="/manufacturing/new" element={<ManufacturingFormPage />} />
+            <Route path="/manufacturing/:id" element={<ManufacturingDetailPage />} />
+            <Route path="/manufacturing/:id/edit" element={<ManufacturingFormPage />} />
+            <Route path="/boms" element={<BomsPage />} />
+            <Route path="/boms/new" element={<BomFormPage />} />
+            <Route path="/boms/:id" element={<BomDetailPage />} />
+            <Route path="/boms/:id/edit" element={<BomFormPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/account/password" element={<PasswordPage />} />
             <Route path="/settings" element={<SettingsPage />} />

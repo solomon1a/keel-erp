@@ -34,6 +34,23 @@ export function purchaseStateLabel(state: string, t: Translate) {
   }
 }
 
+export function manufacturingStateLabel(state: string, t: Translate) {
+  switch (state) {
+    case 'draft':
+      return t('moState.draft')
+    case 'confirmed':
+      return t('moState.confirmed')
+    case 'progress':
+      return t('moState.progress')
+    case 'done':
+      return t('moState.done')
+    case 'cancel':
+      return t('moState.cancel')
+    default:
+      return state
+  }
+}
+
 export function productKindLabel(kind: string, t: Translate) {
   switch (kind) {
     case 'finished':
@@ -68,6 +85,8 @@ export function locationLabel(type: string | undefined, fallback: string, t: Tra
       return t('loc.supplier')
     case 'inventory':
       return t('loc.inventory')
+    case 'production':
+      return t('loc.production')
     default:
       return fallback
   }

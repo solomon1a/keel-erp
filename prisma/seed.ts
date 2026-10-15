@@ -57,6 +57,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       { name: 'Customers', type: 'customer', companyId: company.id },
       { name: 'Vendors', type: 'supplier', companyId: company.id },
       { name: 'Adjustments', type: 'inventory', companyId: company.id },
+      { name: 'Production', type: 'production', companyId: company.id },
     ],
   })
   const internal = await client.stockLocation.findFirstOrThrow({
@@ -300,6 +301,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   const tax = await client.tax.findFirstOrThrow()
   await client.sequence.create({ data: { name: 'sales.order', next: 1 } })
   await client.sequence.create({ data: { name: 'purchase.order', next: 1 } })
+  await client.sequence.create({ data: { name: 'manufacturing.order', next: 1 } })
   await client.salesOrder.create({
     data: {
       name: 'SO0001',
@@ -370,6 +372,39 @@ export async function seedDatabase(client: PrismaClient = prisma) {
             subtotal: 800,
             taxAmount: 104,
           },
+        ],
+      },
+    },
+  })
+
+  const toteBom = await client.billOfMaterials.create({
+    data: {
+      productId: tote.id,
+      companyId: company.id,
+      yieldQty: 1,
+      notes: '一只帆布包：包身用本色帆布，提手用羊毛纱。',
+      lines: {
+        create: [
+          { productId: canvas.id, quantity: 1.5 },
+          { productId: yarn.id, quantity: 0.15 },
+        ],
+      },
+    },
+  })
+
+  await client.manufacturingOrder.create({
+    data: {
+      name: 'MO0001',
+      state: 'draft',
+      productId: tote.id,
+      bomId: toteBom.id,
+      companyId: company.id,
+      quantity: 4,
+      createdById: maya.id,
+      lines: {
+        create: [
+          { productId: canvas.id, quantity: 6 },
+          { productId: yarn.id, quantity: 0.6 },
         ],
       },
     },

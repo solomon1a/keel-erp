@@ -122,6 +122,27 @@ export const receivePurchaseSchema = z.object({
     .optional(),
 })
 
+export const bomLineSchema = z.object({
+  productId: z.number().int().positive('Choose a component'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+})
+
+export const bomInputSchema = z.object({
+  productId: z.number().int().positive('Choose a finished product'),
+  yieldQty: z.number().positive('Yield must be greater than zero'),
+  notes: optionalText,
+  lines: z.array(bomLineSchema).min(1, 'Add at least one component'),
+})
+
+export const manufacturingInputSchema = z.object({
+  productId: z.number().int().positive('Choose a product'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+})
+
+export const produceSchema = z.object({
+  quantity: z.number().positive('Quantity must be greater than zero').optional(),
+})
+
 export const stockAdjustSchema = z.object({
   productId: z.number().int().positive(),
   quantityDelta: z.number().refine((value) => value !== 0, 'Enter a quantity other than zero'),
@@ -138,4 +159,7 @@ export type ProductInput = z.infer<typeof productInputSchema>
 export type OrderInput = z.infer<typeof orderInputSchema>
 export type PurchaseInput = z.infer<typeof purchaseInputSchema>
 export type ReceivePurchaseInput = z.infer<typeof receivePurchaseSchema>
+export type BomInput = z.infer<typeof bomInputSchema>
+export type ManufacturingInput = z.infer<typeof manufacturingInputSchema>
+export type ProduceInput = z.infer<typeof produceSchema>
 export type StockAdjustInput = z.infer<typeof stockAdjustSchema>

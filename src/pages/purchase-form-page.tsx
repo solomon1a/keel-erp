@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -22,7 +22,9 @@ const blankLine = (taxId = ''): DraftLine => ({ productId: '', quantity: '1', un
 
 export function PurchaseFormPage() {
   const { id } = useParams()
+  const [params] = useSearchParams()
   const isNew = !id
+  const seededNeed = useRef(false)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { t } = useI18n()
@@ -56,6 +58,23 @@ export function PurchaseFormPage() {
       })),
     )
   }, [order.data])
+
+  useEffect(() => {
+    if (!isNew || seededNeed.current || !products.data || !defaultTaxId) return
+    const need = params.get('need')
+    if (!need) return
+    const next = need.split(',').flatMap((part) => {
+      const [idText, qtyText] = part.split(':')
+      const productId = Number(idText)
+      const quantity = Number(qtyText)
+      const product = products.data?.find((item) => item.id === productId)
+      if (!product || !(quantity > 0)) return []
+      return [{ productId: String(productId), quantity: String(quantity), unitCost: String(product.costPrice), taxId: String(defaultTaxId) }]
+    })
+    if (next.length === 0) return
+    seededNeed.current = true
+    setLines(next)
+  }, [defaultTaxId, isNew, params, products.data])
 
   useEffect(() => {
     if (!defaultTaxId) return

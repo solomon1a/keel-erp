@@ -7,8 +7,11 @@ import {
   companySettingsSchema,
   contactInputSchema,
   createUserSchema,
+  bomInputSchema,
   loginSchema,
+  manufacturingInputSchema,
   orderInputSchema,
+  produceSchema,
   productInputSchema,
   purchaseInputSchema,
   receivePurchaseSchema,
@@ -40,6 +43,21 @@ import {
   receivePurchase,
   updatePurchase,
 } from './services/purchases.ts'
+import {
+  applyBomCost,
+  cancelManufacturing,
+  confirmManufacturing,
+  createBom,
+  createManufacturing,
+  deleteBom,
+  getBom,
+  getManufacturing,
+  listBoms,
+  produceManufacturing,
+  startManufacturing,
+  updateBom,
+  updateManufacturing,
+} from './services/manufacturing.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -76,7 +94,10 @@ export function createApp() {
 
   app.onError((error, c) => {
     if (error instanceof AppError) {
-      return c.json({ error: error.message }, error.status as 400)
+      return c.json(
+        error.details ? { error: error.message, details: error.details } : { error: error.message },
+        error.status as 400,
+      )
     }
     if (error instanceof HTTPException) {
       return c.json({ error: error.message }, error.status)
@@ -569,6 +590,93 @@ export function createApp() {
   app.post('/api/purchases/:id/cancel', async (c) => {
     const user = c.get('user')
     return c.json(await cancelPurchase(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/boms', async (c) => {
+    const user = c.get('user')
+    return c.json(await listBoms(user.companyId))
+  })
+
+  app.get('/api/boms/:id', async (c) => {
+    const user = c.get('user')
+    return c.json(await getBom(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/boms', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(bomInputSchema, await c.req.json())
+    return c.json(await createBom(user.companyId, input), 201)
+  })
+
+  app.put('/api/boms/:id', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(bomInputSchema, await c.req.json())
+    return c.json(await updateBom(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.delete('/api/boms/:id', async (c) => {
+    const user = c.get('user')
+    await deleteBom(user.companyId, Number(c.req.param('id')))
+    return c.body(null, 204)
+  })
+
+  app.post('/api/boms/:id/cost', async (c) => {
+    const user = c.get('user')
+    return c.json(await applyBomCost(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/manufacturing', async (c) => {
+    const user = c.get('user')
+    const state = c.req.query('state')
+    const orders = await prisma.manufacturingOrder.findMany({
+      where: {
+        companyId: user.companyId,
+        ...(state && state !== 'all' ? { state } : {}),
+      },
+      include: { product: { select: { id: true, name: true, sku: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    })
+    return c.json(orders)
+  })
+
+  app.get('/api/manufacturing/:id', async (c) => {
+    const user = c.get('user')
+    return c.json(await getManufacturing(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(manufacturingInputSchema, await c.req.json())
+    return c.json(await createManufacturing(user.companyId, user.id, input), 201)
+  })
+
+  app.put('/api/manufacturing/:id', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(manufacturingInputSchema, await c.req.json())
+    return c.json(await updateManufacturing(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/manufacturing/:id/confirm', async (c) => {
+    const user = c.get('user')
+    requireAdmin(user)
+    return c.json(await confirmManufacturing(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing/:id/start', async (c) => {
+    const user = c.get('user')
+    return c.json(await startManufacturing(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing/:id/produce', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(produceSchema, await c.req.json())
+    return c.json(await produceManufacturing(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/manufacturing/:id/cancel', async (c) => {
+    const user = c.get('user')
+    return c.json(await cancelManufacturing(user.companyId, Number(c.req.param('id'))))
   })
 
   app.get('/api/stock', async (c) => {

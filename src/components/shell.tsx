@@ -14,6 +14,7 @@ const links = [
   ['/products', 'nav.products'],
   ['/orders', 'nav.orders'],
   ['/purchases', 'nav.purchases'],
+  ['/manufacturing', 'nav.manufacturing'],
   ['/inventory', 'nav.stock'],
   ['/settings', 'nav.settings'],
   ['/account/password', 'nav.password'],
