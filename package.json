@@ -4,11 +4,14 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "prisma db push && concurrently -n api,web -c blue,green \"tsx server/index.ts\" \"vite --host 0.0.0.0 --port 43123\"",
+    "postinstall": "prisma generate",
+    "dev": "prisma migrate deploy && concurrently -n api,web -c blue,green \"tsx server/index.ts\" \"vite --host 0.0.0.0 --port 43123\"",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "test": "prisma generate && vitest run",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit",
-    "db:reset": "rm -f prisma/dev.db prisma/dev.db-journal && prisma db push && tsx prisma/seed.ts"
+    "db:reset": "node --env-file=.env --import tsx prisma/reset.ts && prisma migrate deploy && prisma db seed",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -20,6 +23,7 @@
     "@tanstack/react-query": "^5.104.3",
     "bcryptjs": "^3.0.3",
     "hono": "^4.13.13",
+    "prisma": "^6.19.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.90.0",
@@ -42,7 +46,6 @@
     "concurrently": "^10.0.6",
     "lucide-react": "^1.57.0",
     "oxlint": "^1.81.0",
-    "prisma": "^6.19.0",
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",

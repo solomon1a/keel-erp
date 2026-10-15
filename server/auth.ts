@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
@@ -51,8 +51,23 @@ export function requireAdmin(user: SessionUser) {
   }
 }
 
+const devSessionSecret = 'keel-dev-session-secret'
+
+function sessionSecret() {
+  const secret = process.env.SESSION_SECRET
+  if (secret && secret.length >= 16) return secret
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') {
+    throw new AppError(500, 'SESSION_SECRET is not set.')
+  }
+  return devSessionSecret
+}
+
 function tokenHash(token: string) {
-  return createHash('sha256').update(token).digest('hex')
+  return createHmac('sha256', sessionSecret()).update(token).digest('hex')
+}
+
+function cookieIsSecure() {
+  return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
 }
 
 function toSessionUser(row: {
@@ -110,13 +125,13 @@ export function writeSessionCookie(c: Context, token: string, maxAge: number) {
     sameSite: 'Lax',
     path: '/',
     maxAge,
-    // The Mac dev server is http://127.0.0.1. A Secure cookie would be dropped there.
-    secure: false,
+    // Secure only on HTTPS. Local `npm run dev` stays http://127.0.0.1.
+    secure: cookieIsSecure(),
   })
 }
 
 export function clearSessionCookie(c: Context) {
-  deleteCookie(c, sessionCookieName, { path: '/' })
+  deleteCookie(c, sessionCookieName, { path: '/', secure: cookieIsSecure() })
 }
 
 export async function findUserByEmail(email: string) {

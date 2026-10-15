@@ -13,5 +13,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["server", "prisma/seed.ts", "shared", "src/domain", "tests", "vitest.setup.ts"]
+  "include": ["server", "api", "prisma/seed.ts", "prisma/reset.ts", "shared", "src/domain", "tests", "vitest.setup.ts"]
 }

@@ -1,20 +1,14 @@
-import { execSync } from 'node:child_process'
-import { rmSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { demoPasswords, seedDatabase } from '../prisma/seed.ts'
+import { demoPasswords } from '../prisma/seed.ts'
 import { prisma } from '../server/db.ts'
 import { call, signIn } from './http.ts'
+import { resetAndSeed } from './reset-db.ts'
 
 let maya = ''
 let jonah = ''
 
 beforeAll(async () => {
-  rmSync('prisma/test.db', { force: true })
-  execSync('npx prisma db push --skip-generate', {
-    stdio: 'pipe',
-    env: { ...process.env, DATABASE_URL: 'file:./test.db' },
-  })
-  await seedDatabase(prisma)
+  await resetAndSeed()
   maya = await signIn('maya@northline.example', demoPasswords.maya)
   jonah = await signIn('jonah@northline.example', demoPasswords.jonah)
 })

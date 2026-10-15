@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 .env
+.vercel
 prisma/*.db
 prisma/*.db-journal
 dist-ssr

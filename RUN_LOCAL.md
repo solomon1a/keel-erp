@@ -1,22 +1,42 @@
 # Run Keel on a Mac
 
-Node 26 and npm 11. The database is a local SQLite file. No account or API key is required.
+Node 26 and npm 11. Keel needs Postgres. No payment account or API key is required for the desk itself.
 
-From the unpacked project folder:
+From the project folder, start a database, then the app.
+
+Docker (matches `.env.example`):
+
+```bash
+docker compose up -d
+```
+
+The first start creates `keel` and `keel_test`. `keel_test` is only for `npm test`.
+
+Without Docker, install Postgres 16 (Postgres.app or `brew install postgresql@16`), start it, and create the same role and databases:
+
+```bash
+createuser -s keel
+psql -d postgres -c "ALTER USER keel WITH PASSWORD 'keel';"
+createdb -O keel keel
+createdb -O keel keel_test
+```
+
+Or use a hosted dev database (a Neon branch is enough). Copy that project's pooled URL into `DATABASE_URL` and its direct URL into `DIRECT_URL`. On a single local server both URLs are the same. Tests read `KEEL_TEST_DATABASE_URL` when the default `keel_test` login does not match your machine.
 
 ```bash
 node -v
 npm -v
 cp .env.example .env
 npm install
-npx prisma generate
 npm run db:reset
 npm run dev
 ```
 
-`cp` creates `.env` with `DATABASE_URL="file:./dev.db"`. That file is gitignored. `npm run db:reset` deletes any old `prisma/dev.db`, applies the schema, and loads the sample company. Run it again after this update. An older database is missing shop barcodes, product categories, the Shenzhen register session, and the stock on the shop shelf; `npm run dev` will not rewrite that seed.
+`cp` creates `.env`. That file is gitignored. Edit the URLs if your Postgres user or host is different. `SESSION_SECRET` can stay as the example on your own machine. `npm install` runs `prisma generate`.
 
-`npm run dev` starts the API on port 43124 and the desk on port 43123.
+`npm run db:reset` clears the schema on `DIRECT_URL`, applies `prisma/migrations`, and loads the sample company. Run it again any time you want the demo data back. `npm run dev` applies migrations if they are pending, then starts the API. It seeds only when the company table is empty, so an older database is left as it is until you reset.
+
+`npm run dev` starts the API on port 43124 and the desk on port 43123. The session cookie is not marked Secure on this http address. A production or Vercel process marks it Secure. See [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md) for the hosted demo.
 
 Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
 

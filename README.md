@@ -6,18 +6,20 @@ Keel is a small operations desk for one company: contacts, quotations, and the s
 
 ## Run it
 
-On a Mac, follow [RUN_LOCAL.md](RUN_LOCAL.md). Otherwise:
+On a Mac, follow [RUN_LOCAL.md](RUN_LOCAL.md). The database is Postgres (local or a hosted dev database). A partner demo on Vercel is [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
 
 ```bash
+cp .env.example .env
 npm install
+npm run db:reset
 npm run dev
 ```
 
-Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The desk and API listen on every interface (ports 43123 and 43124) so a cloud preview can reach them. Vite proxies `/api` to the API.
+Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The desk and API listen on every interface (ports 43123 and 43124) so a cloud preview can reach them. Vite proxies `/api` to the API. On Vercel the desk is static and `/api` is the same Hono app, so the session cookie stays on one origin.
 
-Sign in with email and password. The session is an httpOnly cookie. Demo accounts are listed in [RUN_LOCAL.md](RUN_LOCAL.md). Maya Chen is an admin and can add people or reset passwords. Anyone signed in can change their own password.
+Sign in with email and password. The session is an httpOnly cookie, and it is marked Secure on HTTPS. Demo accounts are listed in [RUN_LOCAL.md](RUN_LOCAL.md). Maya Chen is an admin and can add people or reset passwords. Anyone signed in can change their own password.
 
-To wipe the local database and load the sample company again:
+To wipe the database in `DIRECT_URL` and load the sample company again:
 
 ```bash
 npm run db:reset
@@ -47,7 +49,7 @@ npm test
 
 ## What this slice leaves out
 
-Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, multi-level manufacturing routes, more than one currency at once, and a live card or wallet gateway. Lot and serial numbers are recorded on the stock move; quantities are not split by lot. WeChat Pay and Alipay on the register are payment methods on the sale, not connections to those networks. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
+Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, multi-level manufacturing routes, more than one currency at once, and a live card or wallet gateway. Lot and serial numbers are recorded on the stock move; quantities are not split by lot. WeChat Pay and Alipay on the register are payment methods on the sale, not connections to those networks. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The app stores data in Postgres. Local setup is in [RUN_LOCAL.md](RUN_LOCAL.md), and the Vercel demo is in [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
 
 ## REA
 
