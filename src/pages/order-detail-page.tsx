@@ -54,6 +54,11 @@ export function OrderDetailPage() {
             {row.validityDate ? <span className="text-muted-foreground"> · {t('order.validUntil', { date: shortDate(row.validityDate) })}</span> : null}
           </p>
           {row.warehouse ? <p className="text-sm text-muted-foreground">{t('quote.warehouse')} · {row.warehouse.name}</p> : null}
+          {row.origin === 'shop' ? (
+            <p className="text-sm text-muted-foreground">
+              {t('order.shopOrigin')} · {t('order.shopPayment')} · {row.paymentMethod ?? ''}
+            </p>
+          ) : null}
         </div>
         <Badge tone={row.state}>{orderStateLabel(row.state, t)}</Badge>
       </div>

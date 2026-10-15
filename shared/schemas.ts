@@ -78,6 +78,7 @@ export const productInputSchema = z.object({
   listPrice: z.number().min(0, 'Price cannot be negative'),
   costPrice: z.number().min(0, 'Cost cannot be negative'),
   purchasable: z.boolean(),
+  websitePublished: z.boolean().default(false),
   description: optionalText,
   active: z.boolean(),
   barcode: z
@@ -263,3 +264,33 @@ export type PosSessionOpenInput = z.infer<typeof posSessionOpenSchema>
 export type PosSessionCloseInput = z.infer<typeof posSessionCloseSchema>
 export type PosOrderInput = z.infer<typeof posOrderSchema>
 export type PosRefundInput = z.infer<typeof posRefundSchema>
+
+export const shopPaymentMethods = ['wechat', 'alipay', 'card'] as const
+
+export const shopAccountSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  email: emailSchema,
+  password: passwordSchema,
+  phone: optionalText,
+})
+
+export const shopCheckoutSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  email: emailSchema,
+  phone: optionalText,
+  street: optionalText,
+  city: optionalText,
+  paymentMethod: z.enum(shopPaymentMethods),
+  lines: z
+    .array(
+      z.object({
+        productId: z.number().int().positive(),
+        quantity: z.number().positive('Quantity must be greater than zero').max(999),
+      }),
+    )
+    .min(1, 'Add a product before checkout.')
+    .max(40),
+})
+
+export type ShopAccountInput = z.infer<typeof shopAccountSchema>
+export type ShopCheckoutInput = z.infer<typeof shopCheckoutSchema>

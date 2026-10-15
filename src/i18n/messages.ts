@@ -1,4 +1,6 @@
-const en = {
+import { enShop, zhShop } from './shop-messages.ts'
+
+const enBase = {
   'lang.label': 'Language',
   'lang.en': 'EN',
   'lang.zh': '中文',
@@ -618,7 +620,7 @@ const en = {
   'country.MX': 'Mexico',
 }
 
-const zh: { [K in keyof typeof en]: string } = {
+const zhBase: { [K in keyof typeof enBase]: string } = {
   'lang.label': '语言',
   'lang.en': 'EN',
   'lang.zh': '中文',
@@ -1237,6 +1239,9 @@ const zh: { [K in keyof typeof en]: string } = {
   'country.JP': '日本',
   'country.MX': '墨西哥',
 }
+
+const en = { ...enBase, ...enShop }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop }
 
 export const messages = { en, zh }
 

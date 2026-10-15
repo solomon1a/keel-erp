@@ -67,6 +67,7 @@ export function OrdersPage() {
               <tr key={order.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">
                   <Link className="font-semibold hover:underline" to={`/orders/${order.id}`}>{order.name}</Link>
+                  {order.origin === 'shop' ? <span className="ml-2 text-xs text-muted-foreground">{t('order.shopOrigin')}</span> : null}
                 </td>
                 <td className="px-4 py-3">{order.customer.name}</td>
                 <td className="px-4 py-3"><Badge tone={order.state}>{orderStateLabel(order.state, t)}</Badge></td>

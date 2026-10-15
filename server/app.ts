@@ -41,6 +41,7 @@ import {
   writeSessionCookie,
 } from './auth.ts'
 import { prisma } from './db.ts'
+import { registerShopRoutes } from './shop-routes.ts'
 import {
   addLocation,
   cancelTransfer,
@@ -123,7 +124,9 @@ const orderInclude = {
 }
 
 function isPublicApi(method: string, path: string) {
-  return (method === 'GET' && path === '/api/health') || (method === 'POST' && path === '/api/session/login')
+  if (method === 'GET' && path === '/api/health') return true
+  if (method === 'POST' && path === '/api/session/login') return true
+  return path === '/api/shop' || path.startsWith('/api/shop/')
 }
 
 export function createApp() {
@@ -925,6 +928,8 @@ export function createApp() {
     return c.json(await posReport(user.companyId, warehouseId, date))
   })
 
+  registerShopRoutes(app)
+
   return app
 }
 
@@ -936,6 +941,7 @@ function productRecord(input: {
   listPrice: number
   costPrice: number
   purchasable: boolean
+  websitePublished: boolean
   tracking: 'none' | 'lot' | 'serial'
   description: string | null
   active: boolean

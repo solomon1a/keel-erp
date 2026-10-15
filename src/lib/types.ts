@@ -71,6 +71,7 @@ export type Product = {
   listPrice: number
   costPrice: number
   purchasable: boolean
+  websitePublished?: boolean
   tracking: string
   barcode: string | null
   categoryId: number | null
@@ -276,6 +277,9 @@ export type SalesOrder = {
   amountUntaxed: number
   amountTax: number
   amountTotal: number
+  origin?: string
+  paymentMethod?: string | null
+  paymentState?: string | null
   customer: { id: number; name: string; email?: string | null; city?: string | null }
   lines?: OrderLine[]
   moves?: StockMove[]

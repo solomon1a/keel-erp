@@ -49,6 +49,8 @@ Sign in with a demo account. The emails and passwords are unchanged:
 | Maya Chen | admin | maya@northline.example | keel-maya-desk |
 | Jonah Ellis | user | jonah@northline.example | keel-jonah-desk |
 
+The public shop is [http://127.0.0.1:43123/shop](http://127.0.0.1:43123/shop). Field notebook, Wool blanket, and Canvas tote are published. Checkout writes a sales order and takes stock from 上海仓. Payments are recorded as WeChat Pay, Alipay, or card. Shop account: 林晓, `lin@northline.example` / `keel-lin-shop`. SO0002 is her seeded blanket order.
+
 The sample company is **江北良品** in Shanghai. Money defaults to CNY (¥). The default tax is 增值税 at 13%. Maya can change the company name, currency code, and default tax rate on **Company**. Quotations and purchase orders show untaxed amount, tax, and the total. That page is not a fapiao; official Chinese VAT invoices are left for a later accounting slice.
 
 **Purchases** drafts an RFQ (PO0001, PO0002, …). Maya and Jonah can create and send one. Only Maya (admin) can confirm it. The order picks a receiving warehouse; the sample uses 上海仓. Confirming opens an incoming receipt into that warehouse’s default shelf. **Receive** can take part of a line; **Receive all** takes the rest. A received order cannot be cancelled. **Print** opens the RFQ or purchase order for the browser print dialog.

@@ -34,6 +34,7 @@ import { PosReportPage } from './pages/pos-report-page.tsx'
 import { PosScreenPage } from './pages/pos-screen-page.tsx'
 import { PosSessionsPage } from './pages/pos-sessions-page.tsx'
 import { SettingsPage } from './pages/settings-page.tsx'
+import { ShopAccountPage, ShopCartPage, ShopCatalogPage, ShopCheckoutPage, ShopProductPage, ShopThanksPage } from './pages/shop.tsx'
 import { PrintPage } from './pages/print-page.tsx'
 import { ProductFormPage } from './pages/product-form-page.tsx'
 import { ProductsPage } from './pages/products-page.tsx'
@@ -53,6 +54,12 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/shop" element={<ShopCatalogPage />} />
+          <Route path="/shop/p/:id" element={<ShopProductPage />} />
+          <Route path="/shop/cart" element={<ShopCartPage />} />
+          <Route path="/shop/checkout" element={<ShopCheckoutPage />} />
+          <Route path="/shop/account" element={<ShopAccountPage />} />
+          <Route path="/shop/thanks/:token" element={<ShopThanksPage />} />
           <Route path="/orders/:id/print" element={<PrintPage />} />
           <Route path="/purchases/:id/print" element={<PurchasePrintPage />} />
           <Route path="/manufacturing/:id/print" element={<ManufacturingPrintPage />} />

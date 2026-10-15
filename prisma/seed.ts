@@ -6,6 +6,7 @@ const prisma = new PrismaClient()
 export const demoPasswords = {
   maya: 'keel-maya-desk',
   jonah: 'keel-jonah-desk',
+  lin: 'keel-lin-shop',
 } as const
 
 export async function seedDatabase(client: PrismaClient = prisma) {
@@ -54,6 +55,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   const shanghai = await client.warehouse.create({
     data: { name: '上海仓', code: 'SH', isDefault: true, companyId: company.id },
   })
+  await client.company.update({ where: { id: company.id }, data: { onlineWarehouseId: shanghai.id } })
   const shenzhen = await client.warehouse.create({
     data: { name: '深圳门店', code: 'SZ', isDefault: false, companyId: company.id },
   })
@@ -224,6 +226,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       costPrice: 6,
       purchasable: false,
       barcode: '6901000000018',
+      websitePublished: true,
       categoryId: stationery.id,
       description: 'Lined, 160 pages, stitched binding.',
       companyId: company.id,
@@ -239,6 +242,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       costPrice: 42,
       purchasable: false,
       barcode: '6901000000025',
+      websitePublished: true,
       categoryId: home.id,
       description: 'Charcoal throw, washed wool.',
       companyId: company.id,
@@ -267,6 +271,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       costPrice: 9,
       purchasable: true,
       barcode: '6901000000032',
+      websitePublished: true,
       categoryId: home.id,
       description: 'Natural canvas, one interior pocket.',
       companyId: company.id,
@@ -324,7 +329,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   })
 
   const tax = await client.tax.findFirstOrThrow()
-  await client.sequence.create({ data: { name: 'sales.order', next: 1 } })
+  await client.sequence.create({ data: { name: 'sales.order', next: 2 } })
   await client.sequence.create({ data: { name: 'purchase.order', next: 1 } })
   await client.sequence.create({ data: { name: 'manufacturing.order', next: 1 } })
   await client.sequence.create({ data: { name: 'stock.transfer', next: 1 } })
@@ -547,6 +552,77 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       reference: sale.name,
       posOrderId: sale.id,
       date: soldAt,
+    },
+  })
+
+  const lin = await client.contact.create({
+    data: {
+      name: '林晓',
+      email: 'lin@northline.example',
+      phone: '13800001111',
+      isCompany: false,
+      isCustomer: true,
+      street: '江北路 18 号',
+      city: '上海',
+      countryId: china.id,
+      companyId: company.id,
+      createdById: maya.id,
+      updatedById: maya.id,
+    },
+  })
+  await client.shopCustomer.create({
+    data: {
+      name: '林晓',
+      email: 'lin@northline.example',
+      passwordHash: await hashPassword(demoPasswords.lin),
+      phone: '13800001111',
+      contactId: lin.id,
+      companyId: company.id,
+    },
+  })
+  const webSale = await client.salesOrder.create({
+    data: {
+      name: 'SO0002',
+      state: 'done',
+      origin: 'shop',
+      paymentMethod: 'wechat',
+      paymentState: 'recorded',
+      publicToken: 'shop-demo-blanket',
+      customerId: lin.id,
+      warehouseId: shanghai.id,
+      companyId: company.id,
+      dateOrder: new Date('2026-04-12T08:00:00.000Z'),
+      amountUntaxed: 86,
+      amountTax: 11.18,
+      amountTotal: 97.18,
+      lines: {
+        create: [{
+          productId: blanket.id,
+          description: blanket.name,
+          quantity: 1,
+          unitPrice: 86,
+          discount: 0,
+          taxId: tax.id,
+          subtotal: 86,
+          taxAmount: 11.18,
+        }],
+      },
+    },
+  })
+  await client.stockQuant.update({
+    where: { productId_locationId: { productId: blanket.id, locationId: internal.id } },
+    data: { quantity: 11 },
+  })
+  await client.stockMove.create({
+    data: {
+      productId: blanket.id,
+      locationFromId: internal.id,
+      locationToId: customers.id,
+      quantity: 1,
+      state: 'done',
+      reference: webSale.name,
+      orderId: webSale.id,
+      date: new Date('2026-04-12T08:00:00.000Z'),
     },
   })
 }

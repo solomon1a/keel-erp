@@ -27,6 +27,7 @@ export function ProductFormPage() {
     listPrice: '0',
     costPrice: '0',
     purchasable: false,
+    websitePublished: false,
     description: '',
     active: true,
   })
@@ -54,6 +55,7 @@ export function ProductFormPage() {
       listPrice: String(product.data.listPrice),
       costPrice: String(product.data.costPrice ?? 0),
       purchasable: product.data.purchasable,
+      websitePublished: product.data.websitePublished ?? false,
       description: product.data.description ?? '',
       active: product.data.active,
     })
@@ -74,6 +76,7 @@ export function ProductFormPage() {
           listPrice: Number(form.listPrice),
           costPrice: Number(form.costPrice),
           purchasable: form.purchasable,
+          websitePublished: form.websitePublished,
           description: form.description,
           active: form.active,
         }),
@@ -155,8 +158,12 @@ export function ProductFormPage() {
           <input type="checkbox" checked={form.purchasable} onChange={(event) => setForm({ ...form, purchasable: event.target.checked })} />
           {t('product.purchasable')}
         </label>
+        <label className="mt-7 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={form.websitePublished} onChange={(event) => setForm({ ...form, websitePublished: event.target.checked })} />
+          {t('product.published')}
+        </label>
       </div>
-      <p className="text-sm text-muted-foreground">{t('product.purchasableHint')}</p>
+      <p className="text-sm text-muted-foreground">{t('product.purchasableHint')} {t('product.publishedHint')}</p>
       <Field label={t('product.description')}>
         <Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       </Field>

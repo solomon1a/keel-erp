@@ -66,6 +66,14 @@ function tokenHash(token: string) {
   return createHmac('sha256', sessionSecret()).update(token).digest('hex')
 }
 
+export function hashSessionToken(token: string) {
+  return tokenHash(token)
+}
+
+export function sessionCookieSecure() {
+  return cookieIsSecure()
+}
+
 function cookieIsSecure() {
   return process.env.NODE_ENV === 'production' || process.env.VERCEL === '1'
 }

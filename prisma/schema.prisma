@@ -30,6 +30,10 @@ model Company {
   categories    ProductCategory[]
   posSessions   PosSession[]
   posOrders     PosOrder[]
+  shopCustomers ShopCustomer[]
+  /// Warehouse that fills online orders. Empty uses the default warehouse.
+  onlineWarehouseId Int?
+  onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 }
@@ -97,6 +101,7 @@ model Contact {
   orders         SalesOrder[]
   purchaseOrders PurchaseOrder[]
   posOrders      PosOrder[]
+  shopCustomers  ShopCustomer[]
   createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
   createdById Int?
@@ -147,6 +152,8 @@ model Product {
   category     ProductCategory?    @relation(fields: [categoryId], references: [id])
   /// Shop barcode. Empty products are not looked up from the register scanner.
   barcode      String?
+  /// Shown on the public shop. Raw materials stay off unless someone publishes them.
+  websitePublished Boolean          @default(false)
   posLines     PosOrderLine[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
@@ -164,6 +171,33 @@ model ProductCategory {
   products  Product[]
 
   @@unique([companyId, name])
+}
+
+model ShopCustomer {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String
+  passwordHash String
+  phone        String?
+  contactId    Int
+  contact      Contact       @relation(fields: [contactId], references: [id])
+  companyId    Int
+  company      Company       @relation(fields: [companyId], references: [id])
+  sessions     ShopSession[]
+  createdAt    DateTime      @default(now())
+
+  @@unique([companyId, email])
+}
+
+model ShopSession {
+  id         Int          @id @default(autoincrement())
+  tokenHash  String       @unique
+  customerId Int
+  customer   ShopCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime     @default(now())
+
+  @@index([customerId])
 }
 
 model Sequence {
@@ -189,6 +223,13 @@ model SalesOrder {
   moves         StockMove[]
   warehouseId   Int?
   warehouse     Warehouse?       @relation(fields: [warehouseId], references: [id])
+  /// `desk` or `shop`.
+  origin        String           @default("desk")
+  /// `wechat`, `alipay`, or `card` when the order came from the shop. Recorded only.
+  paymentMethod String?
+  /// `recorded` when a shop payment was stored. No gateway capture.
+  paymentState  String?
+  publicToken   String?          @unique
   createdById   Int?
   createdBy     User?            @relation("OrderCreatedBy", fields: [createdById], references: [id])
   createdAt     DateTime         @default(now())
@@ -335,6 +376,7 @@ model Warehouse {
   reorderRules  ReorderRule[]
   posSessions   PosSession[]
   posOrders     PosOrder[]
+  onlineFor     Company[]            @relation("CompanyOnlineWarehouse")
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
