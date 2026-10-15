@@ -17,7 +17,6 @@ export const zhDesk = {
   'desk.payable': '应付供应商',
   'desk.shopOrders': '网店订单',
   'desk.staff': '在职员工',
-  'desk.leave': '待批请假',
   'desk.leaveCount': '{count} 条待批',
   'desk.profit': '利润',
   'desk.vat': '应交增值税',
