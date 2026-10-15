@@ -24,13 +24,26 @@ model User {
   id              Int          @id @default(autoincrement())
   name            String
   email           String       @unique
+  passwordHash    String
   role            String
   companyId       Int
   company         Company      @relation(fields: [companyId], references: [id])
+  sessions        Session[]
   createdContacts Contact[]    @relation("ContactCreatedBy")
   updatedContacts Contact[]    @relation("ContactUpdatedBy")
   createdOrders   SalesOrder[] @relation("OrderCreatedBy")
   createdAt       DateTime     @default(now())
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Country {

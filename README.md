@@ -15,7 +15,7 @@ npm run dev
 
 Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The desk and API listen on every interface (ports 43123 and 43124) so a cloud preview can reach them. Vite proxies `/api` to the API.
 
-Pick Maya Chen or Jonah Ellis on the sign-in screen. That name is stored in the browser and sent as `x-user-id`. It is a desk sign-in, not a password.
+Sign in with email and password. The session is an httpOnly cookie. Demo accounts are listed in [RUN_LOCAL.md](RUN_LOCAL.md). Maya Chen is an admin and can add people or reset passwords. Anyone signed in can change their own password.
 
 To wipe the local database and load the sample company again:
 
@@ -38,10 +38,11 @@ npm test
 - Validating a delivery moves goods from main stock to customers and closes the order. A service-only order can be fulfilled without a stock move.
 - Stock: on-hand counts, receipts (positive adjustment), write-offs (negative), and recent moves.
 - A printable quotation page. Use the browser print dialog if you want a PDF.
+- Sign-in with a bcrypt password hash, an httpOnly session cookie, sign-out, a change-password page, and an admin screen to create users and reset passwords. Roles are `admin` or `user`.
 
 ## What this slice leaves out
 
-Passwords, roles that actually block buttons, email, a generated PDF file, accounting, CRM, purchasing, and more than one warehouse. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
+Email delivery, a generated PDF file, accounting, CRM, purchasing, and more than one warehouse. Roles are stored and checked for the people screen; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
 
 ## REA
 

@@ -1,19 +1,40 @@
 import { PrismaClient } from '@prisma/client'
+import { hashPassword } from '../server/auth.ts'
 
 const prisma = new PrismaClient()
+
+export const demoPasswords = {
+  maya: 'keel-maya-desk',
+  jonah: 'keel-jonah-desk',
+} as const
 
 export async function seedDatabase(client: PrismaClient = prisma) {
   const company = await client.company.create({
     data: { name: 'Northline Goods', city: 'Portland' },
   })
 
-  await client.user.createMany({
-    data: [
-      { name: 'Maya Chen', email: 'maya@northline.example', role: 'manager', companyId: company.id },
-      { name: 'Jonah Ellis', email: 'jonah@northline.example', role: 'sales', companyId: company.id },
-    ],
+  const [mayaHash, jonahHash] = await Promise.all([
+    hashPassword(demoPasswords.maya),
+    hashPassword(demoPasswords.jonah),
+  ])
+  const maya = await client.user.create({
+    data: {
+      name: 'Maya Chen',
+      email: 'maya@northline.example',
+      role: 'admin',
+      passwordHash: mayaHash,
+      companyId: company.id,
+    },
   })
-  const maya = await client.user.findUniqueOrThrow({ where: { email: 'maya@northline.example' } })
+  await client.user.create({
+    data: {
+      name: 'Jonah Ellis',
+      email: 'jonah@northline.example',
+      role: 'user',
+      passwordHash: jonahHash,
+      companyId: company.id,
+    },
+  })
 
   const countries = await Promise.all(
     [

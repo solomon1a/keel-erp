@@ -1,9 +1,12 @@
 import { execSync } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { seedDatabase } from '../prisma/seed.ts'
-import { createApp } from '../server/app.ts'
+import { demoPasswords, seedDatabase } from '../prisma/seed.ts'
 import { prisma } from '../server/db.ts'
+import { call, signIn } from './http.ts'
+
+let maya = ''
+let jonah = ''
 
 beforeAll(async () => {
   rmSync('prisma/test.db', { force: true })
@@ -12,29 +15,16 @@ beforeAll(async () => {
     env: { ...process.env, DATABASE_URL: 'file:./test.db' },
   })
   await seedDatabase(prisma)
+  maya = await signIn('maya@northline.example', demoPasswords.maya)
+  jonah = await signIn('jonah@northline.example', demoPasswords.jonah)
 })
 
 afterAll(async () => {
   await prisma.$disconnect()
 })
 
-async function actor(email: string) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { email } })
-  return String(user.id)
-}
-
-async function call(path: string, user: string, init: RequestInit = {}) {
-  const headers = new Headers(init.headers)
-  headers.set('x-user-id', user)
-  if (init.body) headers.set('content-type', 'application/json')
-  const response = await createApp().request(path, { ...init, headers })
-  const text = await response.text()
-  return { status: response.status, body: text ? JSON.parse(text) as Record<string, unknown> : null }
-}
-
 describe('sales and stock', () => {
   it('refuses to confirm when the shelf is short, then delivers after a receipt', async () => {
-    const maya = await actor('maya@northline.example')
     const milo = await prisma.contact.findFirstOrThrow({ where: { name: 'Milo Park' } })
     const tote = await prisma.product.findFirstOrThrow({ where: { sku: 'TO-11' } })
     const tax = await prisma.tax.findFirstOrThrow()
@@ -79,7 +69,6 @@ describe('sales and stock', () => {
   })
 
   it('fulfills a service quotation without touching stock', async () => {
-    const jonah = await actor('jonah@northline.example')
     const avery = await prisma.contact.findFirstOrThrow({ where: { name: 'Avery Lang' } })
     const service = await prisma.product.findFirstOrThrow({ where: { sku: 'SV-02' } })
     const created = await call('/api/orders', jonah, {

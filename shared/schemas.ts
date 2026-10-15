@@ -1,4 +1,35 @@
 import { z } from 'zod'
+import { roleValues } from './roles.ts'
+
+const emailSchema = z
+  .string()
+  .trim()
+  .max(160)
+  .refine((value) => z.email().safeParse(value).success, 'Enter a valid email')
+  .transform((value) => value.toLowerCase())
+
+export const passwordSchema = z.string().min(8, 'Use at least 8 characters').max(200)
+
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Password is required').max(200),
+})
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Enter your current password').max(200),
+  newPassword: passwordSchema,
+})
+
+export const createUserSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  email: emailSchema,
+  password: passwordSchema,
+  role: z.enum(roleValues),
+})
+
+export const resetPasswordSchema = z.object({
+  password: passwordSchema,
+})
 
 const optionalText = z
   .string()
@@ -63,6 +94,10 @@ export const stockAdjustSchema = z.object({
   note: z.string().trim().min(1, 'Say why the stock changed').max(160),
 })
 
+export type LoginInput = z.infer<typeof loginSchema>
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
+export type CreateUserInput = z.infer<typeof createUserSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
 export type ContactInput = z.infer<typeof contactInputSchema>
 export type ProductInput = z.infer<typeof productInputSchema>
 export type OrderInput = z.infer<typeof orderInputSchema>

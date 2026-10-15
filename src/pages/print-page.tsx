@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/button.tsx'
 import { api } from '../lib/api.ts'
 import { money, orderStateLabel, shortDate } from '../lib/format.ts'
@@ -9,7 +9,16 @@ export function PrintPage() {
   const { id } = useParams()
   const order = useQuery({ queryKey: ['order', id], queryFn: () => api<SalesOrder>(`/api/orders/${id}`) })
   if (order.isLoading) return <p className="p-8 text-sm">Preparing the page…</p>
-  if (order.isError) return <p className="p-8 text-sm text-destructive">{order.error.message}</p>
+  if (order.isError) {
+    return (
+      <p className="p-8 text-sm">
+        <span className="text-destructive">{order.error.message}</span>{' '}
+        <Link className="underline" to="/sign-in">
+          Sign in
+        </Link>
+      </p>
+    )
+  }
   const row = order.data
   if (!row) return null
 

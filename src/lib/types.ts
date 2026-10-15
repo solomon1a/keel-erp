@@ -1,9 +1,19 @@
+import type { Role } from '../../shared/roles.ts'
+
 export type User = {
   id: number
   name: string
   email: string
-  role: string
+  role: Role
   company: { id: number; name: string; city: string }
+}
+
+export type DeskUser = {
+  id: number
+  name: string
+  email: string
+  role: Role
+  createdAt: string
 }
 
 export type Country = { id: number; name: string; code: string }

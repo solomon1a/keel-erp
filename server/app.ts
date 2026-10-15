@@ -1,37 +1,34 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { Prisma } from '@prisma/client'
+import { parseRole } from '../shared/roles.ts'
 import {
+  changePasswordSchema,
   contactInputSchema,
+  createUserSchema,
+  loginSchema,
   orderInputSchema,
   productInputSchema,
+  resetPasswordSchema,
   stockAdjustSchema,
 } from '../shared/schemas.ts'
+import {
+  type AppEnv,
+  clearSessionCookie,
+  closeSession,
+  closeUserSessions,
+  findUserByEmail,
+  hashPassword,
+  openSession,
+  passwordMatches,
+  readSessionToken,
+  requireAdmin,
+  userFromToken,
+  writeSessionCookie,
+} from './auth.ts'
 import { prisma } from './db.ts'
 import { AppError } from './errors.ts'
 import { adjustStock, cancelOrder, confirmOrder, createOrder, deliverOrder, markOrderSent, updateOrder } from './services/orders.ts'
-
-type SessionUser = {
-  id: number
-  name: string
-  email: string
-  role: string
-  companyId: number
-  company: { id: number; name: string; city: string }
-}
-
-async function currentUser(header: string | undefined): Promise<SessionUser> {
-  const id = Number(header)
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new AppError(401, 'Pick who is working before changing records.')
-  }
-  const user = await prisma.user.findUnique({
-    where: { id },
-    include: { company: { select: { id: true, name: true, city: true } } },
-  })
-  if (!user) throw new AppError(401, 'That person is not on the desk list.')
-  return user
-}
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -59,8 +56,12 @@ const orderInclude = {
   },
 }
 
+function isPublicApi(method: string, path: string) {
+  return (method === 'GET' && path === '/api/health') || (method === 'POST' && path === '/api/session/login')
+}
+
 export function createApp() {
-  const app = new Hono()
+  const app = new Hono<AppEnv>()
 
   app.onError((error, c) => {
     if (error instanceof AppError) {
@@ -76,33 +77,123 @@ export function createApp() {
     return c.json({ error: 'Something went wrong while saving that.' }, 500)
   })
 
+  app.use('/api/*', async (c, next) => {
+    if (isPublicApi(c.req.method, c.req.path)) {
+      await next()
+      return
+    }
+    const user = await userFromToken(readSessionToken(c))
+    if (!user) throw new AppError(401, 'Sign in to continue.')
+    c.set('user', user)
+    await next()
+  })
+
   app.get('/api/health', (c) => c.json({ ok: true }))
 
-  app.get('/api/session/users', async (c) => {
+  app.post('/api/session/login', async (c) => {
+    const input = parseBody(loginSchema, await c.req.json())
+    const account = await findUserByEmail(input.email)
+    const matches = await passwordMatches(input.password, account?.passwordHash ?? null)
+    if (!account || !matches) throw new AppError(401, 'Email or password is wrong.')
+    const role = parseRole(account.role)
+    if (!role) throw new AppError(500, 'This account has an unknown role.')
+    const session = await openSession(account.id)
+    writeSessionCookie(c, session.token, session.maxAge)
+    return c.json({
+      id: account.id,
+      name: account.name,
+      email: account.email,
+      role,
+      companyId: account.companyId,
+      company: account.company,
+    })
+  })
+
+  app.post('/api/session/logout', async (c) => {
+    await closeSession(readSessionToken(c))
+    clearSessionCookie(c)
+    return c.body(null, 204)
+  })
+
+  app.get('/api/session/me', (c) => c.json(c.get('user')))
+
+  app.post('/api/session/password', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(changePasswordSchema, await c.req.json())
+    const account = await prisma.user.findUnique({ where: { id: user.id }, select: { passwordHash: true } })
+    const matches = await passwordMatches(input.currentPassword, account?.passwordHash ?? null)
+    if (!account || !matches) throw new AppError(400, 'Current password is wrong.')
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await hashPassword(input.newPassword) },
+    })
+    await closeUserSessions(user.id)
+    const session = await openSession(user.id)
+    writeSessionCookie(c, session.token, session.maxAge)
+    return c.json({ ok: true })
+  })
+
+  app.get('/api/admin/users', async (c) => {
+    const user = c.get('user')
+    requireAdmin(user)
     const users = await prisma.user.findMany({
+      where: { companyId: user.companyId },
       orderBy: { name: 'asc' },
-      include: { company: { select: { id: true, name: true, city: true } } },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
     })
     return c.json(users)
   })
 
-  app.get('/api/session/me', async (c) => {
-    return c.json(await currentUser(c.req.header('x-user-id')))
+  app.post('/api/admin/users', async (c) => {
+    const user = c.get('user')
+    requireAdmin(user)
+    const input = parseBody(createUserSchema, await c.req.json())
+    try {
+      const created = await prisma.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          role: input.role,
+          passwordHash: await hashPassword(input.password),
+          companyId: user.companyId,
+        },
+        select: { id: true, name: true, email: true, role: true, createdAt: true },
+      })
+      return c.json(created, 201)
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AppError(409, 'That email is already used.')
+      }
+      throw error
+    }
+  })
+
+  app.post('/api/admin/users/:id/password', async (c) => {
+    const user = c.get('user')
+    requireAdmin(user)
+    const id = Number(c.req.param('id'))
+    const existing = await prisma.user.findFirst({ where: { id, companyId: user.companyId }, select: { id: true } })
+    if (!existing) throw new AppError(404, 'That person is not on this desk.')
+    const input = parseBody(resetPasswordSchema, await c.req.json())
+    await prisma.user.update({ where: { id }, data: { passwordHash: await hashPassword(input.password) } })
+    await closeUserSessions(id)
+    if (id === user.id) {
+      const session = await openSession(user.id)
+      writeSessionCookie(c, session.token, session.maxAge)
+    }
+    return c.json({ ok: true })
   })
 
   app.get('/api/countries', async (c) => {
-    await currentUser(c.req.header('x-user-id'))
-    const countries = await prisma.country.findMany({ orderBy: { name: 'asc' } })
-    return c.json(countries)
+    return c.json(await prisma.country.findMany({ orderBy: { name: 'asc' } }))
   })
 
   app.get('/api/taxes', async (c) => {
-    await currentUser(c.req.header('x-user-id'))
     return c.json(await prisma.tax.findMany({ orderBy: { name: 'asc' } }))
   })
 
   app.get('/api/desk', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const [contactCount, productCount, openOrders, recentOrders, products] = await Promise.all([
       prisma.contact.count({ where: { companyId: user.companyId } }),
       prisma.product.count({ where: { companyId: user.companyId, active: true } }),
@@ -131,7 +222,7 @@ export function createApp() {
   })
 
   app.get('/api/contacts', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const search = c.req.query('search')?.trim()
     const kind = c.req.query('kind')
     const role = c.req.query('role')
@@ -166,7 +257,7 @@ export function createApp() {
   })
 
   app.get('/api/contacts/:id', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const contact = await prisma.contact.findFirst({
       where: { id: Number(c.req.param('id')), companyId: user.companyId },
       include: {
@@ -183,7 +274,7 @@ export function createApp() {
   })
 
   app.post('/api/contacts', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const input = parseBody(contactInputSchema, await c.req.json())
     await assertContactLinks(user.companyId, input.parentId, input.countryId, input.isCompany)
     const contact = await prisma.contact.create({
@@ -199,7 +290,7 @@ export function createApp() {
   })
 
   app.patch('/api/contacts/:id', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const id = Number(c.req.param('id'))
     const existing = await prisma.contact.findFirst({ where: { id, companyId: user.companyId } })
     if (!existing) throw new AppError(404, 'Contact not found.')
@@ -218,7 +309,7 @@ export function createApp() {
   })
 
   app.delete('/api/contacts/:id', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const id = Number(c.req.param('id'))
     const existing = await prisma.contact.findFirst({
       where: { id, companyId: user.companyId },
@@ -236,7 +327,7 @@ export function createApp() {
   })
 
   app.get('/api/products', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const products = await prisma.product.findMany({
       where: { companyId: user.companyId },
       include: { quants: { where: { location: { type: 'internal' } } } },
@@ -257,7 +348,7 @@ export function createApp() {
   })
 
   app.get('/api/products/:id', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const product = await prisma.product.findFirst({
       where: { id: Number(c.req.param('id')), companyId: user.companyId },
     })
@@ -266,7 +357,7 @@ export function createApp() {
   })
 
   app.post('/api/products', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const input = parseBody(productInputSchema, await c.req.json())
     try {
       const product = await prisma.product.create({
@@ -282,7 +373,7 @@ export function createApp() {
   })
 
   app.patch('/api/products/:id', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const id = Number(c.req.param('id'))
     const existing = await prisma.product.findFirst({ where: { id, companyId: user.companyId } })
     if (!existing) throw new AppError(404, 'Product not found.')
@@ -302,7 +393,7 @@ export function createApp() {
   })
 
   app.get('/api/orders', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const state = c.req.query('state')
     const orders = await prisma.salesOrder.findMany({
       where: {
@@ -317,7 +408,7 @@ export function createApp() {
   })
 
   app.get('/api/orders/:id', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const order = await prisma.salesOrder.findFirst({
       where: { id: Number(c.req.param('id')), companyId: user.companyId },
       include: orderInclude,
@@ -327,39 +418,39 @@ export function createApp() {
   })
 
   app.post('/api/orders', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const input = parseBody(orderInputSchema, await c.req.json())
     return c.json(await createOrder(user.companyId, user.id, input), 201)
   })
 
   app.put('/api/orders/:id', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const input = parseBody(orderInputSchema, await c.req.json())
     return c.json(await updateOrder(user.companyId, Number(c.req.param('id')), input))
   })
 
   app.post('/api/orders/:id/send', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     return c.json(await markOrderSent(user.companyId, Number(c.req.param('id'))))
   })
 
   app.post('/api/orders/:id/confirm', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     return c.json(await confirmOrder(user.companyId, Number(c.req.param('id'))))
   })
 
   app.post('/api/orders/:id/deliver', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     return c.json(await deliverOrder(user.companyId, Number(c.req.param('id'))))
   })
 
   app.post('/api/orders/:id/cancel', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     return c.json(await cancelOrder(user.companyId, Number(c.req.param('id'))))
   })
 
   app.get('/api/stock', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const [products, moves] = await Promise.all([
       prisma.product.findMany({
         where: { companyId: user.companyId, type: 'product' },
@@ -390,7 +481,7 @@ export function createApp() {
   })
 
   app.post('/api/stock/adjust', async (c) => {
-    const user = await currentUser(c.req.header('x-user-id'))
+    const user = c.get('user')
     const input = parseBody(stockAdjustSchema, await c.req.json())
     const move = await adjustStock(user.companyId, input.productId, input.quantityDelta, input.note)
     return c.json(move, 201)
