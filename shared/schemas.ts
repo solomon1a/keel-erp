@@ -80,6 +80,19 @@ export const productInputSchema = z.object({
   purchasable: z.boolean(),
   description: optionalText,
   active: z.boolean(),
+  barcode: z
+    .string()
+    .trim()
+    .max(32)
+    .optional()
+    .transform((value) => (value ? value : null)),
+  categoryId: z
+    .number()
+    .int()
+    .positive()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? null),
 })
 
 export const orderLineSchema = z.object({
@@ -181,6 +194,47 @@ export const transferLineSchema = z.object({
   lotName: optionalText,
 })
 
+export const paymentMethodSchema = z.enum(['cash', 'card', 'wechat', 'alipay'])
+
+export const posPaymentSchema = z.object({
+  method: paymentMethodSchema,
+  amount: z.number().positive('Amount must be greater than zero'),
+  tendered: z.number().min(0, 'Cash received cannot be negative').optional(),
+})
+
+export const posSessionOpenSchema = z.object({
+  warehouseId: z.number().int().positive('Choose a shop'),
+  openingCash: z.number().min(0, 'Opening cash cannot be negative'),
+})
+
+export const posSessionCloseSchema = z.object({
+  closingCash: z.number().min(0, 'Counted cash cannot be negative'),
+  note: optionalText,
+})
+
+export const posOrderLineSchema = z.object({
+  productId: z.number().int().positive('Choose a product'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  discount: z.number().min(0).max(100).optional(),
+})
+
+export const posOrderSchema = z.object({
+  sessionId: z.number().int().positive('Open a session first'),
+  customerId: z.number().int().positive().nullable().optional(),
+  lines: z.array(posOrderLineSchema).min(1, 'Add at least one product'),
+  payments: z.array(posPaymentSchema).min(1, 'Add a payment'),
+})
+
+export const posRefundLineSchema = z.object({
+  lineId: z.number().int().positive(),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+})
+
+export const posRefundSchema = z.object({
+  lines: z.array(posRefundLineSchema).min(1, 'Choose what to refund'),
+  payments: z.array(posPaymentSchema).min(1, 'Add a refund payment'),
+})
+
 export const transferInputSchema = z.object({
   locationFromId: z.number().int().positive('Choose a source location'),
   locationToId: z.number().int().positive('Choose a destination location'),
@@ -205,3 +259,7 @@ export type WarehouseInput = z.infer<typeof warehouseInputSchema>
 export type LocationInput = z.infer<typeof locationInputSchema>
 export type ReorderRuleInput = z.infer<typeof reorderRuleSchema>
 export type TransferInput = z.infer<typeof transferInputSchema>
+export type PosSessionOpenInput = z.infer<typeof posSessionOpenSchema>
+export type PosSessionCloseInput = z.infer<typeof posSessionCloseSchema>
+export type PosOrderInput = z.infer<typeof posOrderSchema>
+export type PosRefundInput = z.infer<typeof posRefundSchema>

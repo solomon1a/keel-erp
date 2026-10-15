@@ -22,6 +22,8 @@ export function ProductFormPage() {
     type: 'product',
     kind: 'finished',
     tracking: 'none',
+    barcode: '',
+    categoryId: '',
     listPrice: '0',
     costPrice: '0',
     purchasable: false,
@@ -29,6 +31,10 @@ export function ProductFormPage() {
     active: true,
   })
 
+  const categories = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api<Array<{ id: number; name: string }>>('/api/categories'),
+  })
   const product = useQuery({
     queryKey: ['product', id],
     queryFn: () => api<Product>(`/api/products/${id}`),
@@ -43,6 +49,8 @@ export function ProductFormPage() {
       type: product.data.type,
       kind: product.data.kind || 'finished',
       tracking: product.data.tracking || 'none',
+      barcode: product.data.barcode ?? '',
+      categoryId: product.data.categoryId ? String(product.data.categoryId) : '',
       listPrice: String(product.data.listPrice),
       costPrice: String(product.data.costPrice ?? 0),
       purchasable: product.data.purchasable,
@@ -61,6 +69,8 @@ export function ProductFormPage() {
           type: form.type,
           kind: form.type === 'service' ? 'finished' : form.kind,
           tracking: form.tracking,
+          barcode: form.barcode,
+          categoryId: form.categoryId ? Number(form.categoryId) : null,
           listPrice: Number(form.listPrice),
           costPrice: Number(form.costPrice),
           purchasable: form.purchasable,
@@ -98,6 +108,17 @@ export function ProductFormPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Field label={t('product.sku')}>
           <Input value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} required />
+        </Field>
+        <Field label={t('product.barcode')}>
+          <Input value={form.barcode} onChange={(event) => setForm({ ...form, barcode: event.target.value })} />
+        </Field>
+        <Field label={t('product.category')}>
+          <select className="h-10 rounded-md border border-border bg-card px-3" value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })}>
+            <option value="">{t('product.noCategory')}</option>
+            {categories.data?.map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
         </Field>
         <Field label={t('product.type')}>
           <select className="h-10 rounded-md border border-border bg-card px-3" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>

@@ -72,6 +72,8 @@ export type Product = {
   costPrice: number
   purchasable: boolean
   tracking: string
+  barcode: string | null
+  categoryId: number | null
   description: string | null
   active: boolean
   onHand?: number
@@ -174,6 +176,92 @@ export type ManufacturingOrder = {
   bom?: { id: number; yieldQty: number; notes: string | null }
   lines?: ManufacturingLine[]
   moves?: StockMove[]
+}
+
+export type PosPayment = {
+  id?: number
+  method: string
+  direction: string
+  amount: number
+  tendered: number | null
+  change: number | null
+}
+
+export type PosLine = {
+  id: number
+  productId: number
+  description: string
+  quantity: number
+  refundedQty: number
+  unitPrice: number
+  discount: number
+  taxRate: number
+  subtotal: number
+  taxAmount: number
+  product?: { id: number; name: string; sku: string; barcode: string | null }
+}
+
+export type PosOrder = {
+  id: number
+  name: string
+  state: string
+  sessionId: number
+  warehouseId: number
+  customerId: number | null
+  amountUntaxed: number
+  amountTax: number
+  amountTotal: number
+  amountRefunded: number
+  createdAt: string
+  customer: { id: number; name: string } | null
+  warehouse?: { id: number; name: string; code: string }
+  session?: { id: number; name: string; state?: string }
+  lines?: PosLine[]
+  payments?: PosPayment[]
+  createdBy?: { id: number; name: string }
+}
+
+export type PosSummary = {
+  orderCount: number
+  salesTotal: number
+  refundTotal: number
+  net: number
+  expectedCash: number
+  payments: Record<string, number>
+  refunds: Record<string, number>
+}
+
+export type PosSession = {
+  id: number
+  name: string
+  state: string
+  warehouseId: number
+  openingCash: number
+  closingCash: number | null
+  difference: number | null
+  note: string | null
+  openedAt: string
+  closedAt: string | null
+  warehouse: { id: number; name: string; code: string }
+  openedBy?: { name: string }
+  closedBy?: { name: string } | null
+  summary: PosSummary
+}
+
+export type PosCatalog = {
+  warehouse: { id: number; name: string; code: string }
+  location: { id: number; name: string }
+  categories: Array<{ id: number; name: string }>
+  products: Array<{
+    id: number
+    name: string
+    sku: string
+    barcode: string | null
+    listPrice: number
+    categoryId: number | null
+    categoryName: string | null
+    onHand: number
+  }>
 }
 
 export type SalesOrder = {

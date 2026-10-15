@@ -25,6 +25,9 @@ model Company {
   transfers     StockTransfer[]
   reorderRules  ReorderRule[]
   locations     StockLocation[]
+  categories    ProductCategory[]
+  posSessions   PosSession[]
+  posOrders     PosOrder[]
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 }
@@ -44,6 +47,9 @@ model User {
   createdPurchases     PurchaseOrder[]     @relation("PurchaseCreatedBy")
   createdManufacturing ManufacturingOrder[] @relation("ManufacturingCreatedBy")
   createdTransfers     StockTransfer[]     @relation("TransferCreatedBy")
+  openedSessions       PosSession[]        @relation("PosOpenedBy")
+  closedSessions       PosSession[]        @relation("PosClosedBy")
+  posOrders            PosOrder[]          @relation("PosOrderCreatedBy")
   createdAt            DateTime            @default(now())
 }
 
@@ -88,6 +94,7 @@ model Contact {
   company        Company         @relation(fields: [companyId], references: [id])
   orders         SalesOrder[]
   purchaseOrders PurchaseOrder[]
+  posOrders      PosOrder[]
   createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
   createdById Int?
@@ -134,10 +141,27 @@ model Product {
   moves                    StockMove[]
   reorderRules             ReorderRule[]
   transferLines            StockTransferLine[]
+  categoryId   Int?
+  category     ProductCategory?    @relation(fields: [categoryId], references: [id])
+  /// Shop barcode. Empty products are not looked up from the register scanner.
+  barcode      String?
+  posLines     PosOrderLine[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
   @@unique([companyId, sku])
+  @@unique([companyId, barcode])
+  @@index([categoryId])
+}
+
+model ProductCategory {
+  id        Int       @id @default(autoincrement())
+  name      String
+  companyId Int
+  company   Company   @relation(fields: [companyId], references: [id])
+  products  Product[]
+
+  @@unique([companyId, name])
 }
 
 model Sequence {
@@ -307,6 +331,8 @@ model Warehouse {
   moSources     ManufacturingOrder[] @relation("MoSource")
   moDestinations ManufacturingOrder[] @relation("MoDest")
   reorderRules  ReorderRule[]
+  posSessions   PosSession[]
+  posOrders     PosOrder[]
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
@@ -410,5 +436,94 @@ model StockMove {
   manufacturingOrder   ManufacturingOrder? @relation(fields: [manufacturingOrderId], references: [id])
   transferId           Int?
   transfer             StockTransfer?      @relation(fields: [transferId], references: [id])
+  posOrderId           Int?
+  posOrder             PosOrder?           @relation(fields: [posOrderId], references: [id])
   date                 DateTime
+}
+
+model PosSession {
+  id           Int        @id @default(autoincrement())
+  name         String
+  /// open or closed
+  state        String
+  warehouseId  Int
+  warehouse    Warehouse  @relation(fields: [warehouseId], references: [id])
+  companyId    Int
+  company      Company    @relation(fields: [companyId], references: [id])
+  openingCash  Float
+  closingCash  Float?
+  /// Counted cash minus expected cash. Empty while the session is open.
+  difference   Float?
+  note         String?
+  openedById   Int
+  openedBy     User       @relation("PosOpenedBy", fields: [openedById], references: [id])
+  closedById   Int?
+  closedBy     User?      @relation("PosClosedBy", fields: [closedById], references: [id])
+  openedAt     DateTime   @default(now())
+  closedAt     DateTime?
+  orders       PosOrder[]
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+  @@index([warehouseId, state])
+}
+
+model PosOrder {
+  id             Int            @id @default(autoincrement())
+  name           String
+  /// paid, partial, or refunded
+  state          String
+  sessionId      Int
+  session        PosSession     @relation(fields: [sessionId], references: [id])
+  companyId      Int
+  company        Company        @relation(fields: [companyId], references: [id])
+  warehouseId    Int
+  warehouse      Warehouse      @relation(fields: [warehouseId], references: [id])
+  customerId     Int?
+  customer       Contact?       @relation(fields: [customerId], references: [id])
+  amountUntaxed  Float
+  amountTax      Float
+  amountTotal    Float
+  amountRefunded Float          @default(0)
+  lines          PosOrderLine[]
+  payments       PosPayment[]
+  moves          StockMove[]
+  createdById    Int
+  createdBy      User           @relation("PosOrderCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime       @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId, createdAt])
+  @@index([sessionId])
+}
+
+model PosOrderLine {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   Int
+  product     Product  @relation(fields: [productId], references: [id])
+  description String
+  quantity    Float
+  refundedQty Float    @default(0)
+  unitPrice   Float
+  discount    Float    @default(0)
+  taxRate     Float
+  subtotal    Float
+  taxAmount   Float
+}
+
+model PosPayment {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// cash, card, wechat, or alipay
+  method    String
+  /// payment or refund
+  direction String
+  /// Amount applied to the sale, or given back on a refund.
+  amount    Float
+  tendered  Float?
+  change    Float?
+  createdAt DateTime @default(now())
 }

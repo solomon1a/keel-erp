@@ -12,6 +12,10 @@ import {
   loginSchema,
   manufacturingInputSchema,
   orderInputSchema,
+  posOrderSchema,
+  posRefundSchema,
+  posSessionCloseSchema,
+  posSessionOpenSchema,
   produceSchema,
   productInputSchema,
   purchaseInputSchema,
@@ -54,6 +58,18 @@ import {
   updateWarehouse,
 } from './services/inventory.ts'
 import { AppError } from './errors.ts'
+import {
+  closePosSession,
+  createPosOrder,
+  getPosOrder,
+  getSession,
+  listPosOrders,
+  listSessions,
+  openPosSession,
+  posCatalog,
+  posReport,
+  refundPosOrder,
+} from './services/pos.ts'
 import { adjustStock, cancelOrder, confirmOrder, createOrder, deliverOrder, markOrderSent, updateOrder } from './services/orders.ts'
 import {
   cancelPurchase,
@@ -430,6 +446,8 @@ export function createApp() {
         costPrice: product.costPrice,
         purchasable: product.purchasable,
         tracking: product.tracking,
+        barcode: product.barcode,
+        categoryId: product.categoryId,
         description: product.description,
         active: product.active,
         onHand: product.quants.reduce((sum, quant) => sum + quant.quantity, 0),
@@ -449,6 +467,7 @@ export function createApp() {
   app.post('/api/products', async (c) => {
     const user = c.get('user')
     const input = parseBody(productInputSchema, await c.req.json())
+    await assertCategory(user.companyId, input.categoryId)
     try {
       const product = await prisma.product.create({
         data: { ...productRecord(input), companyId: user.companyId },
@@ -468,6 +487,7 @@ export function createApp() {
     const existing = await prisma.product.findFirst({ where: { id, companyId: user.companyId } })
     if (!existing) throw new AppError(404, 'Product not found.')
     const input = parseBody(productInputSchema, await c.req.json())
+    await assertCategory(user.companyId, input.categoryId)
     try {
       const product = await prisma.product.update({
         where: { id },
@@ -836,6 +856,75 @@ export function createApp() {
     return c.json(await cancelTransfer(user.companyId, Number(c.req.param('id'))))
   })
 
+  app.get('/api/categories', async (c) => {
+    const user = c.get('user')
+    const rows = await prisma.productCategory.findMany({
+      where: { companyId: user.companyId },
+      orderBy: { name: 'asc' },
+    })
+    return c.json(rows)
+  })
+
+  app.get('/api/pos/sessions', async (c) => {
+    const user = c.get('user')
+    return c.json(await listSessions(user.companyId, c.req.query('state')))
+  })
+
+  app.post('/api/pos/sessions', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(posSessionOpenSchema, await c.req.json())
+    return c.json(await openPosSession(user.companyId, user.id, input), 201)
+  })
+
+  app.get('/api/pos/sessions/:id', async (c) => {
+    const user = c.get('user')
+    return c.json(await getSession(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/pos/sessions/:id/close', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(posSessionCloseSchema, await c.req.json())
+    return c.json(await closePosSession(user, Number(c.req.param('id')), input))
+  })
+
+  app.get('/api/pos/catalog', async (c) => {
+    const user = c.get('user')
+    const warehouseId = Number(c.req.query('warehouseId'))
+    if (!Number.isInteger(warehouseId) || warehouseId <= 0) throw new AppError(400, 'Choose a shop.')
+    return c.json(await posCatalog(user.companyId, warehouseId))
+  })
+
+  app.get('/api/pos/orders', async (c) => {
+    const user = c.get('user')
+    const warehouseId = Number(c.req.query('warehouseId'))
+    return c.json(await listPosOrders(user.companyId, Number.isInteger(warehouseId) && warehouseId > 0 ? warehouseId : undefined))
+  })
+
+  app.post('/api/pos/orders', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(posOrderSchema, await c.req.json())
+    return c.json(await createPosOrder(user.companyId, user.id, input), 201)
+  })
+
+  app.get('/api/pos/orders/:id', async (c) => {
+    const user = c.get('user')
+    return c.json(await getPosOrder(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/pos/orders/:id/refund', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(posRefundSchema, await c.req.json())
+    return c.json(await refundPosOrder(user, Number(c.req.param('id')), input))
+  })
+
+  app.get('/api/pos/report', async (c) => {
+    const user = c.get('user')
+    const warehouseId = Number(c.req.query('warehouseId'))
+    if (!Number.isInteger(warehouseId) || warehouseId <= 0) throw new AppError(400, 'Choose a shop.')
+    const date = c.req.query('date') || new Date().toISOString().slice(0, 10)
+    return c.json(await posReport(user.companyId, warehouseId, date))
+  })
+
   return app
 }
 
@@ -850,13 +939,23 @@ function productRecord(input: {
   tracking: 'none' | 'lot' | 'serial'
   description: string | null
   active: boolean
+  barcode: string | null
+  categoryId: number | null
 }) {
   return {
     ...input,
     sku: input.sku.toUpperCase(),
     kind: input.type === 'service' ? 'finished' : input.kind,
     tracking: input.type === 'service' ? 'none' : input.tracking,
+    barcode: input.type === 'service' ? null : input.barcode,
+    categoryId: input.type === 'service' ? null : input.categoryId,
   }
+}
+
+async function assertCategory(companyId: number, categoryId: number | null) {
+  if (!categoryId) return
+  const category = await prisma.productCategory.findFirst({ where: { id: categoryId, companyId } })
+  if (!category) throw new AppError(400, 'Choose a category.')
 }
 
 async function assertContactLinks(

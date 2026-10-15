@@ -77,6 +77,45 @@ export function transferStateLabel(state: string, t: Translate) {
   }
 }
 
+export function posSessionLabel(state: string, t: Translate) {
+  switch (state) {
+    case 'open':
+      return t('pos.stateOpen')
+    case 'closed':
+      return t('pos.stateClosed')
+    default:
+      return state
+  }
+}
+
+export function posOrderLabel(state: string, t: Translate) {
+  switch (state) {
+    case 'paid':
+      return t('pos.statePaid')
+    case 'partial':
+      return t('pos.statePartial')
+    case 'refunded':
+      return t('pos.stateRefunded')
+    default:
+      return state
+  }
+}
+
+export function payMethodLabel(method: string, t: Translate) {
+  switch (method) {
+    case 'cash':
+      return t('pos.methodCash')
+    case 'card':
+      return t('pos.methodCard')
+    case 'wechat':
+      return t('pos.methodWechat')
+    case 'alipay':
+      return t('pos.methodAlipay')
+    default:
+      return method
+  }
+}
+
 export function moveStateLabel(state: string, t: Translate) {
   switch (state) {
     case 'draft':

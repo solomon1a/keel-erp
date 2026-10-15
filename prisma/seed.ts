@@ -207,6 +207,13 @@ export async function seedDatabase(client: PrismaClient = prisma) {
     },
   })
 
+  const stationery = await client.productCategory.create({
+    data: { name: '文具', companyId: company.id },
+  })
+  const home = await client.productCategory.create({
+    data: { name: '家居', companyId: company.id },
+  })
+
   const notebook = await client.product.create({
     data: {
       name: 'Field notebook',
@@ -216,6 +223,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       listPrice: 18,
       costPrice: 6,
       purchasable: false,
+      barcode: '6901000000018',
+      categoryId: stationery.id,
       description: 'Lined, 160 pages, stitched binding.',
       companyId: company.id,
     },
@@ -229,6 +238,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       listPrice: 86,
       costPrice: 42,
       purchasable: false,
+      barcode: '6901000000025',
+      categoryId: home.id,
       description: 'Charcoal throw, washed wool.',
       companyId: company.id,
     },
@@ -255,6 +266,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       listPrice: 24,
       costPrice: 9,
       purchasable: true,
+      barcode: '6901000000032',
+      categoryId: home.id,
       description: 'Natural canvas, one interior pocket.',
       companyId: company.id,
     },
@@ -315,6 +328,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   await client.sequence.create({ data: { name: 'purchase.order', next: 1 } })
   await client.sequence.create({ data: { name: 'manufacturing.order', next: 1 } })
   await client.sequence.create({ data: { name: 'stock.transfer', next: 1 } })
+  await client.sequence.create({ data: { name: 'pos.session', next: 1 } })
+  await client.sequence.create({ data: { name: 'pos.order', next: 1 } })
   await client.salesOrder.create({
     data: {
       name: 'SO0001',
@@ -448,6 +463,90 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       lines: {
         create: [{ productId: notebook.id, quantity: 2 }],
       },
+    },
+  })
+
+  const customers = await client.stockLocation.findFirstOrThrow({
+    where: { companyId: company.id, type: 'customer' },
+  })
+  const shopStock = [
+    { product: notebook, quantity: 8 },
+    { product: blanket, quantity: 4 },
+    { product: tote, quantity: 3 },
+  ]
+  for (const row of shopStock) {
+    await client.stockQuant.create({
+      data: { productId: row.product.id, locationId: shop.id, quantity: row.quantity },
+    })
+    await client.stockMove.create({
+      data: {
+        productId: row.product.id,
+        locationFromId: supplier.id,
+        locationToId: shop.id,
+        quantity: row.quantity,
+        state: 'done',
+        reference: 'Shop opening',
+        date: new Date('2026-04-01T02:00:00.000Z'),
+      },
+    })
+  }
+
+  const register = await client.posSession.create({
+    data: {
+      name: 'SES0001',
+      state: 'open',
+      warehouseId: shenzhen.id,
+      companyId: company.id,
+      openingCash: 200,
+      openedById: maya.id,
+      openedAt: new Date(Date.now() - 60 * 60 * 1000),
+    },
+  })
+  const soldAt = new Date()
+  const sale = await client.posOrder.create({
+    data: {
+      name: 'POS0001',
+      state: 'paid',
+      sessionId: register.id,
+      companyId: company.id,
+      warehouseId: shenzhen.id,
+      customerId: null,
+      amountUntaxed: 18,
+      amountTax: 2.34,
+      amountTotal: 20.34,
+      createdById: maya.id,
+      createdAt: soldAt,
+      lines: {
+        create: [{
+          productId: notebook.id,
+          description: notebook.name,
+          quantity: 1,
+          unitPrice: 18,
+          discount: 0,
+          taxRate: 13,
+          subtotal: 18,
+          taxAmount: 2.34,
+        }],
+      },
+      payments: {
+        create: [{ method: 'cash', direction: 'payment', amount: 20.34, tendered: 50, change: 29.66 }],
+      },
+    },
+  })
+  await client.stockQuant.update({
+    where: { productId_locationId: { productId: notebook.id, locationId: shop.id } },
+    data: { quantity: 7 },
+  })
+  await client.stockMove.create({
+    data: {
+      productId: notebook.id,
+      locationFromId: shop.id,
+      locationToId: customers.id,
+      quantity: 1,
+      state: 'done',
+      reference: sale.name,
+      posOrderId: sale.id,
+      date: soldAt,
     },
   })
 }

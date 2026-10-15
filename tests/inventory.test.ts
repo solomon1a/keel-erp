@@ -99,7 +99,7 @@ describe('inventory', () => {
       levels: Array<{ sku: string; locationName: string; onHand: number; value: number }>
     }
     expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === '主库')?.onHand).toBe(39)
-    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === '店面')?.onHand).toBe(1)
+    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === '店面')?.onHand).toBe(8)
 
     const counted = await call('/api/stock/adjust', maya, {
       method: 'POST',

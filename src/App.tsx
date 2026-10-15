@@ -27,6 +27,12 @@ import { OrderDetailPage } from './pages/order-detail-page.tsx'
 import { OrderFormPage } from './pages/order-form-page.tsx'
 import { OrdersPage } from './pages/orders-page.tsx'
 import { PasswordPage } from './pages/password-page.tsx'
+import { PosOrderPage } from './pages/pos-order-page.tsx'
+import { PosOrdersPage } from './pages/pos-orders-page.tsx'
+import { PosReceiptPage } from './pages/pos-receipt-page.tsx'
+import { PosReportPage } from './pages/pos-report-page.tsx'
+import { PosScreenPage } from './pages/pos-screen-page.tsx'
+import { PosSessionsPage } from './pages/pos-sessions-page.tsx'
 import { SettingsPage } from './pages/settings-page.tsx'
 import { PrintPage } from './pages/print-page.tsx'
 import { ProductFormPage } from './pages/product-form-page.tsx'
@@ -51,6 +57,7 @@ export default function App() {
           <Route path="/purchases/:id/print" element={<PurchasePrintPage />} />
           <Route path="/manufacturing/:id/print" element={<ManufacturingPrintPage />} />
           <Route path="/boms/:id/print" element={<BomPrintPage />} />
+          <Route path="/pos/orders/:id/print" element={<PosReceiptPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<DeskPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
@@ -77,6 +84,11 @@ export default function App() {
             <Route path="/boms/:id" element={<BomDetailPage />} />
             <Route path="/boms/:id/edit" element={<BomFormPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/pos" element={<PosSessionsPage />} />
+            <Route path="/pos/sessions/:id" element={<PosScreenPage />} />
+            <Route path="/pos/orders" element={<PosOrdersPage />} />
+            <Route path="/pos/orders/:id" element={<PosOrderPage />} />
+            <Route path="/pos/report" element={<PosReportPage />} />
             <Route path="/inventory/moves" element={<MovesPage />} />
             <Route path="/inventory/replenish" element={<ReplenishPage />} />
             <Route path="/inventory/transfers" element={<TransfersPage />} />
