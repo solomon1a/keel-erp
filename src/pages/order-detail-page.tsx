@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { Notice } from '../components/field.tsx'
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
@@ -14,6 +14,7 @@ import type { SalesOrder } from '../lib/types.ts'
 
 export function OrderDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const money = useMoney()
@@ -33,6 +34,12 @@ export function OrderDetailPage() {
       await queryClient.invalidateQueries({ queryKey: ['products'] })
     },
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('order.stepFailed')),
+  })
+
+  const invoice = useMutation({
+    mutationFn: () => api<{ id: number }>(`/api/invoices/from/sales/${id}`, { method: 'POST' }),
+    onSuccess: (created) => navigate(`/accounting/${created.id}`),
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('acct.failed')),
   })
 
   if (order.isLoading) return <p className="text-sm text-muted-foreground">{t('order.loading')}</p>
@@ -76,6 +83,9 @@ export function OrderDetailPage() {
           <Button variant="destructive" disabled={act.isPending} onClick={() => act.mutate('cancel')}>{t('order.cancel')}</Button>
         ) : null}
         <Link to={`/orders/${row.id}/print`} target="_blank"><Button variant="outline">{t('order.print')}</Button></Link>
+        {row.state === 'sale' || row.state === 'done' ? (
+          <Button variant="secondary" disabled={invoice.isPending} onClick={() => invoice.mutate()}>{t('acct.create')}</Button>
+        ) : null}
       </div>
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full min-w-[720px] text-left text-sm">

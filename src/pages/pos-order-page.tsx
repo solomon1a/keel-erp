@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Notice } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -14,6 +14,7 @@ import type { PosOrder, User } from '../lib/types.ts'
 
 export function PosOrderPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { t } = useI18n()
   const money = useMoney()
   const shortDate = useShortDate()
@@ -58,6 +59,12 @@ export function PosOrderPage() {
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('pos.failed')),
   })
 
+  const invoice = useMutation({
+    mutationFn: () => api<{ id: number }>(`/api/invoices/from/pos/${id}`, { method: 'POST' }),
+    onSuccess: (created) => navigate(`/accounting/${created.id}`),
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('acct.failed')),
+  })
+
   if (order.isLoading) return <p className="text-sm text-muted-foreground">{t('pos.loading')}</p>
   if (order.isError) return <p className="text-sm text-destructive">{order.error.message}</p>
   const row = order.data
@@ -78,6 +85,7 @@ export function PosOrderPage() {
       </div>
       <div className="flex flex-wrap gap-2">
         <Link to={`/pos/orders/${row.id}/print`} target="_blank"><Button variant="outline">{t('pos.receipt')}</Button></Link>
+        <Button variant="secondary" disabled={invoice.isPending} onClick={() => invoice.mutate()}>{t('acct.create')}</Button>
         <Link to={`/pos/sessions/${row.sessionId}`}><Button variant="outline">{row.session?.name ?? t('pos.session')}</Button></Link>
       </div>
       <div className="overflow-x-auto rounded-lg border border-border bg-card">

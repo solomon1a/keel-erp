@@ -14,6 +14,7 @@ const links = [
   ['/products', 'nav.products'],
   ['/orders', 'nav.orders'],
   ['/shop', 'nav.shop'],
+  ['/accounting', 'nav.accounting'],
   ['/pos', 'nav.pos'],
   ['/purchases', 'nav.purchases'],
   ['/manufacturing', 'nav.manufacturing'],

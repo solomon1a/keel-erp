@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Shell } from './components/shell.tsx'
 import { LocaleProvider } from './i18n/locale.tsx'
+import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/manufacturing/:id/print" element={<ManufacturingPrintPage />} />
           <Route path="/boms/:id/print" element={<BomPrintPage />} />
           <Route path="/pos/orders/:id/print" element={<PosReceiptPage />} />
+          <Route path="/accounting/:id/print" element={<InvoicePrintPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<DeskPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
@@ -73,6 +75,10 @@ export default function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/new" element={<ProductFormPage />} />
             <Route path="/products/:id" element={<ProductFormPage />} />
+            <Route path="/accounting" element={<AccountingPage />} />
+            <Route path="/accounting/ledger" element={<LedgerPage />} />
+            <Route path="/accounting/reports" element={<ReportsPage />} />
+            <Route path="/accounting/:id" element={<InvoicePage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />

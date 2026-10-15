@@ -294,3 +294,21 @@ export const shopCheckoutSchema = z.object({
 
 export type ShopAccountInput = z.infer<typeof shopAccountSchema>
 export type ShopCheckoutInput = z.infer<typeof shopCheckoutSchema>
+
+export const fapiaoTypes = ['special', 'general', 'electronic'] as const
+
+export const fapiaoSchema = z.object({
+  buyerName: optionalText,
+  buyerTaxId: optionalText,
+  buyerAddress: optionalText,
+  fapiaoNumber: optionalText,
+  fapiaoType: z.enum(fapiaoTypes).nullable(),
+})
+
+export const invoicePaySchema = z.object({
+  amount: z.number().positive('Payment amount must be greater than zero'),
+  method: z.enum(['bank', 'cash', 'wechat', 'alipay', 'card']),
+})
+
+export type FapiaoInput = z.infer<typeof fapiaoSchema>
+export type InvoicePayInput = z.infer<typeof invoicePaySchema>

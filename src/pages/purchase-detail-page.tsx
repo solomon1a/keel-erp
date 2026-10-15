@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Notice } from '../components/field.tsx'
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Badge } from '../components/ui/badge.tsx'
@@ -15,6 +15,7 @@ import type { PurchaseOrder, User } from '../lib/types.ts'
 
 export function PurchaseDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const money = useMoney()
@@ -56,6 +57,12 @@ export function PurchaseDetailPage() {
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('purchase.stepFailed')),
   })
 
+  const invoice = useMutation({
+    mutationFn: () => api<{ id: number }>(`/api/invoices/from/purchase/${id}`, { method: 'POST' }),
+    onSuccess: (created) => navigate(`/accounting/${created.id}`),
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('acct.failed')),
+  })
+
   if (order.isLoading) return <p className="text-sm text-muted-foreground">{t('purchase.loading')}</p>
   if (order.isError) return <p className="text-sm text-destructive">{order.error.message}</p>
   const row = order.data
@@ -92,6 +99,9 @@ export function PurchaseDetailPage() {
           <Button variant="destructive" disabled={act.isPending} onClick={() => act.mutate('cancel')}>{t('purchase.cancel')}</Button>
         ) : null}
         <Link to={`/purchases/${row.id}/print`} target="_blank"><Button variant="outline">{t('purchase.print')}</Button></Link>
+        {row.state === 'purchase' || row.state === 'done' ? (
+          <Button variant="secondary" disabled={invoice.isPending} onClick={() => invoice.mutate()}>{t('acct.createBill')}</Button>
+        ) : null}
       </div>
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full min-w-[680px] text-left text-sm">

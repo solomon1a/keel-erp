@@ -1,3 +1,4 @@
+import { enAccount, zhAccount } from './account-messages.ts'
 import { enShop, zhShop } from './shop-messages.ts'
 
 const enBase = {
@@ -1240,8 +1241,8 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'country.MX': '墨西哥',
 }
 
-const en = { ...enBase, ...enShop }
-const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop }
+const en = { ...enBase, ...enShop, ...enAccount }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount }
 
 export const messages = { en, zh }
 

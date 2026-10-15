@@ -55,7 +55,10 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   const shanghai = await client.warehouse.create({
     data: { name: '上海仓', code: 'SH', isDefault: true, companyId: company.id },
   })
-  await client.company.update({ where: { id: company.id }, data: { onlineWarehouseId: shanghai.id } })
+  await client.company.update({
+    where: { id: company.id },
+    data: { onlineWarehouseId: shanghai.id, taxId: '91310000KEEL00001X', address: '上海市江北路 88 号' },
+  })
   const shenzhen = await client.warehouse.create({
     data: { name: '深圳门店', code: 'SZ', isDefault: false, companyId: company.id },
   })
@@ -564,6 +567,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       isCustomer: true,
       street: '江北路 18 号',
       city: '上海',
+      taxId: '91310000LINX000018',
       countryId: china.id,
       companyId: company.id,
       createdById: maya.id,
@@ -623,6 +627,88 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       reference: webSale.name,
       orderId: webSale.id,
       date: new Date('2026-04-12T08:00:00.000Z'),
+    },
+  })
+
+  const books = [
+    ['1001', '库存现金', 'asset'],
+    ['1002', '银行存款', 'asset'],
+    ['1122', '应收账款', 'asset'],
+    ['1405', '库存商品', 'asset'],
+    ['2202', '应付账款', 'liability'],
+    ['222101', '应交税费-销项税额', 'liability'],
+    ['222102', '应交税费-进项税额', 'liability'],
+    ['6001', '主营业务收入', 'income'],
+    ['6401', '主营业务成本', 'expense'],
+  ] as const
+  await client.account.createMany({
+    data: books.map(([code, name, type]) => ({ code, name, type, companyId: company.id })),
+  })
+  const accountRows = await client.account.findMany({ where: { companyId: company.id } })
+  const accountByCode = new Map(accountRows.map((row) => [row.code, row]))
+  await client.journal.createMany({
+    data: [
+      { code: 'SAL', name: '销售', companyId: company.id },
+      { code: 'PUR', name: '采购', companyId: company.id },
+      { code: 'BNK', name: '银行', companyId: company.id },
+      { code: 'GEN', name: '杂项', companyId: company.id },
+    ],
+  })
+  const salesJournal = await client.journal.findFirstOrThrow({ where: { companyId: company.id, code: 'SAL' } })
+  await client.sequence.createMany({
+    data: [
+      { name: `account.out.${company.id}`, next: 1 },
+      { name: `account.in.${company.id}`, next: 0 },
+      { name: `account.out_refund.${company.id}`, next: 0 },
+      { name: `account.in_refund.${company.id}`, next: 0 },
+      { name: `account.entry.${company.id}`, next: 1 },
+    ],
+  })
+  const shopInvoice = await client.invoice.create({
+    data: {
+      name: 'INV0001',
+      moveType: 'out_invoice',
+      state: 'posted',
+      partnerId: lin.id,
+      companyId: company.id,
+      invoiceDate: new Date('2026-04-12T08:00:00.000Z'),
+      salesOrderId: webSale.id,
+      amountUntaxed: 86,
+      amountTax: 11.18,
+      amountTotal: 97.18,
+      residual: 97.18,
+      buyerName: '林晓',
+      buyerTaxId: '91310000LINX000018',
+      buyerAddress: '上海市江北路 18 号',
+      fapiaoType: 'electronic',
+      fapiaoNumber: '26312000000000000001',
+      fapiaoStatus: 'ready',
+      lines: {
+        create: [{
+          description: blanket.name,
+          quantity: 1,
+          unitPrice: 86,
+          taxRate: 13,
+          subtotal: 86,
+          taxAmount: 11.18,
+        }],
+      },
+    },
+  })
+  await client.journalEntry.create({
+    data: {
+      name: 'JE0001',
+      journalId: salesJournal.id,
+      invoiceId: shopInvoice.id,
+      date: new Date('2026-04-12T08:00:00.000Z'),
+      companyId: company.id,
+      lines: {
+        create: [
+          { accountId: accountByCode.get('1122')!.id, partnerId: lin.id, label: 'INV0001', debit: 97.18, credit: 0 },
+          { accountId: accountByCode.get('6001')!.id, partnerId: lin.id, label: 'INV0001', debit: 0, credit: 86 },
+          { accountId: accountByCode.get('222101')!.id, partnerId: lin.id, label: 'INV0001', debit: 0, credit: 11.18 },
+        ],
+      },
     },
   })
 }

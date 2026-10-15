@@ -31,6 +31,13 @@ model Company {
   posSessions   PosSession[]
   posOrders     PosOrder[]
   shopCustomers ShopCustomer[]
+  accounts      Account[]
+  journals      Journal[]
+  invoices      Invoice[]
+  entries       JournalEntry[]
+  /// Seller taxpayer ID printed on invoices. Not a Golden Tax registration.
+  taxId         String?
+  address       String?
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -90,6 +97,8 @@ model Contact {
   city        String?
   state       String?
   postalCode  String?
+  /// Buyer taxpayer identification number for a fapiao-ready invoice.
+  taxId       String?
   notes       String?
   parentId    Int?
   parent      Contact?     @relation("ContactHierarchy", fields: [parentId], references: [id])
@@ -102,6 +111,7 @@ model Contact {
   purchaseOrders PurchaseOrder[]
   posOrders      PosOrder[]
   shopCustomers  ShopCustomer[]
+  invoices       Invoice[]
   createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
   createdById Int?
@@ -221,6 +231,7 @@ model SalesOrder {
   amountTotal   Float
   lines         SalesOrderLine[]
   moves         StockMove[]
+  invoices      Invoice[]
   warehouseId   Int?
   warehouse     Warehouse?       @relation(fields: [warehouseId], references: [id])
   /// `desk` or `shop`.
@@ -270,6 +281,7 @@ model PurchaseOrder {
   amountTotal   Float
   lines         PurchaseOrderLine[]
   moves         StockMove[]
+  invoices      Invoice[]
   warehouseId   Int?
   warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
   createdById   Int?
@@ -532,6 +544,7 @@ model PosOrder {
   lines          PosOrderLine[]
   payments       PosPayment[]
   moves          StockMove[]
+  invoices       Invoice[]
   createdById    Int
   createdBy      User           @relation("PosOrderCreatedBy", fields: [createdById], references: [id])
   createdAt      DateTime       @default(now())
@@ -570,4 +583,121 @@ model PosPayment {
   tendered  Float?
   change    Float?
   createdAt DateTime @default(now())
+}
+
+model Account {
+  id        Int           @id @default(autoincrement())
+  code      String
+  name      String
+  /// asset, liability, equity, income, expense
+  type      String
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id])
+  items     JournalItem[]
+
+  @@unique([companyId, code])
+}
+
+model Journal {
+  id        Int            @id @default(autoincrement())
+  code      String
+  name      String
+  companyId Int
+  company   Company        @relation(fields: [companyId], references: [id])
+  entries   JournalEntry[]
+
+  @@unique([companyId, code])
+}
+
+model Invoice {
+  id              Int              @id @default(autoincrement())
+  name            String
+  /// out_invoice, out_refund, in_invoice, in_refund
+  moveType        String
+  /// draft, posted, paid, cancel
+  state           String
+  partnerId       Int
+  partner         Contact          @relation(fields: [partnerId], references: [id])
+  companyId       Int
+  company         Company          @relation(fields: [companyId], references: [id])
+  invoiceDate     DateTime
+  salesOrderId    Int?
+  salesOrder      SalesOrder?      @relation(fields: [salesOrderId], references: [id])
+  purchaseOrderId Int?
+  purchaseOrder   PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
+  posOrderId      Int?
+  posOrder        PosOrder?        @relation(fields: [posOrderId], references: [id])
+  amountUntaxed   Float
+  amountTax       Float
+  amountTotal     Float
+  residual        Float
+  buyerName       String?
+  buyerTaxId      String?
+  buyerAddress    String?
+  fapiaoNumber    String?
+  /// special, general, or electronic
+  fapiaoType      String?
+  /// none or ready. Never submitted to a Golden Tax platform.
+  fapiaoStatus    String           @default("none")
+  lines           InvoiceLine[]
+  payments        InvoicePayment[]
+  entries         JournalEntry[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+  @@index([companyId, moveType])
+}
+
+model InvoiceLine {
+  id          Int      @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float
+  unitPrice   Float
+  taxRate     Float
+  subtotal    Float
+  taxAmount   Float
+}
+
+model InvoicePayment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount    Float
+  /// bank, cash, wechat, alipay, card
+  method    String
+  paidAt    DateTime @default(now())
+}
+
+model JournalEntry {
+  id        Int           @id @default(autoincrement())
+  name      String
+  journalId Int
+  journal   Journal       @relation(fields: [journalId], references: [id])
+  invoiceId Int?
+  invoice   Invoice?      @relation(fields: [invoiceId], references: [id])
+  date      DateTime
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id])
+  lines     JournalItem[]
+
+  @@unique([companyId, name])
+  @@index([companyId, date])
+}
+
+model JournalItem {
+  id        Int          @id @default(autoincrement())
+  entryId   Int
+  entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  accountId Int
+  account   Account      @relation(fields: [accountId], references: [id])
+  partnerId Int?
+  label     String
+  debit     Float        @default(0)
+  credit    Float        @default(0)
+
+  @@index([accountId])
 }
