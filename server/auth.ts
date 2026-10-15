@@ -18,7 +18,7 @@ export type SessionUser = {
   email: string
   role: Role
   companyId: number
-  company: { id: number; name: string; city: string }
+  company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number }
 }
 
 export type AppEnv = {
@@ -33,7 +33,7 @@ const userSelect = {
   email: true,
   role: true,
   companyId: true,
-  company: { select: { id: true, name: true, city: true } },
+  company: { select: { id: true, name: true, city: true, currency: true, defaultTaxRate: true } },
 } as const
 
 export function hashPassword(password: string) {
@@ -47,7 +47,7 @@ export async function passwordMatches(password: string, passwordHash: string | n
 
 export function requireAdmin(user: SessionUser) {
   if (user.role !== 'admin') {
-    throw new AppError(403, 'Only an admin can manage people.')
+    throw new AppError(403, 'Only an admin can do that.')
   }
 }
 
@@ -61,7 +61,7 @@ function toSessionUser(row: {
   email: string
   role: string
   companyId: number
-  company: { id: number; name: string; city: string }
+  company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number }
 }): SessionUser {
   const role = parseRole(row.role)
   if (!role) throw new AppError(500, 'This account has an unknown role.')

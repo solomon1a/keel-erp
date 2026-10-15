@@ -2,14 +2,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
+import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
+import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import type { User } from '../lib/types.ts'
 
 export function SignInPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -34,7 +37,7 @@ export function SignInPage() {
       queryClient.setQueryData(['me'], user)
       navigate('/')
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Sign-in failed.')
+      setError(caught instanceof ApiError ? caught.message : t('signIn.failed'))
     } finally {
       setPending(false)
     }
@@ -42,16 +45,17 @@ export function SignInPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-      <p className="text-sm font-semibold tracking-[0.18em] text-accent uppercase">Northline Goods</p>
-      <h1 className="mt-2 font-serif text-5xl tracking-tight">Sign in</h1>
-      <p className="mt-3 text-muted-foreground">
-        Use the email and password for your desk account. The session stays in a cookie on this browser.
-      </p>
-      {me.isLoading ? <p className="mt-8 text-sm text-muted-foreground">Checking the desk…</p> : null}
+      <div className="mb-8 flex justify-end">
+        <LanguageSwitcher />
+      </div>
+      <p className="text-sm font-semibold tracking-[0.18em] text-accent uppercase">{t('signIn.kicker')}</p>
+      <h1 className="mt-2 font-serif text-5xl tracking-tight">{t('signIn.title')}</h1>
+      <p className="mt-3 text-muted-foreground">{t('signIn.lead')}</p>
+      {me.isLoading ? <p className="mt-8 text-sm text-muted-foreground">{t('signIn.checking')}</p> : null}
       {me.isLoading ? null : (
         <form className="mt-8 grid gap-4" onSubmit={onSubmit}>
           {error ? <Notice message={error} /> : null}
-          <Field label="Email">
+          <Field label={t('signIn.email')}>
             <Input
               type="email"
               autoComplete="username"
@@ -61,7 +65,7 @@ export function SignInPage() {
               autoFocus
             />
           </Field>
-          <Field label="Password">
+          <Field label={t('signIn.password')}>
             <Input
               type="password"
               autoComplete="current-password"
@@ -71,7 +75,7 @@ export function SignInPage() {
             />
           </Field>
           <Button type="submit" disabled={pending}>
-            {pending ? 'Signing in…' : 'Sign in'}
+            {pending ? t('signIn.pending') : t('signIn.submit')}
           </Button>
         </form>
       )}

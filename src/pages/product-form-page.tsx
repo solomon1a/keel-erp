@@ -5,6 +5,7 @@ import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { Textarea } from '../components/ui/textarea.tsx'
+import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import type { Product } from '../lib/types.ts'
 
@@ -13,6 +14,7 @@ export function ProductFormPage() {
   const isNew = !id
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useI18n()
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     name: '',
@@ -58,10 +60,10 @@ export function ProductFormPage() {
       await queryClient.invalidateQueries({ queryKey: ['products'] })
       navigate(`/products/${saved.id}`)
     },
-    onError: (reason) => setError(reason instanceof ApiError ? reason.message : 'Could not save the product.'),
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('product.saveFailed')),
   })
 
-  if (product.isLoading) return <p className="text-sm text-muted-foreground">Loading the product…</p>
+  if (product.isLoading) return <p className="text-sm text-muted-foreground">{t('product.loading')}</p>
   if (product.isError) return <p className="text-sm text-destructive">{product.error.message}</p>
 
   return (
@@ -74,37 +76,37 @@ export function ProductFormPage() {
       }}
     >
       <div>
-        <h1 className="font-serif text-4xl tracking-tight">{isNew ? 'New product' : form.name}</h1>
-        <p className="mt-1 text-muted-foreground">The list price fills new quotation lines. You can still change the price on an order.</p>
+        <h1 className="font-serif text-4xl tracking-tight">{isNew ? t('product.newTitle') : form.name}</h1>
+        <p className="mt-1 text-muted-foreground">{t('product.lead')}</p>
       </div>
       {error ? <Notice message={error} /> : null}
-      <Field label="Name">
+      <Field label={t('common.name')}>
         <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
       </Field>
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="SKU">
+        <Field label={t('product.sku')}>
           <Input value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} required />
         </Field>
-        <Field label="Type">
+        <Field label={t('product.type')}>
           <select className="h-10 rounded-md border border-border bg-card px-3" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
-            <option value="product">Goods</option>
-            <option value="service">Service</option>
+            <option value="product">{t('products.goods')}</option>
+            <option value="service">{t('products.service')}</option>
           </select>
         </Field>
-        <Field label="List price">
+        <Field label={t('product.price')}>
           <Input type="number" min="0" step="0.01" value={form.listPrice} onChange={(event) => setForm({ ...form, listPrice: event.target.value })} />
         </Field>
         <label className="mt-7 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />
-          Offered on new orders
+          {t('product.active')}
         </label>
       </div>
-      <Field label="Description">
+      <Field label={t('product.description')}>
         <Textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       </Field>
       <div className="flex gap-2">
-        <Button type="submit" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save product'}</Button>
-        <Link to="/products"><Button variant="outline">Back</Button></Link>
+        <Button type="submit" disabled={save.isPending}>{save.isPending ? t('common.saving') : t('product.save')}</Button>
+        <Link to="/products"><Button variant="outline">{t('common.back')}</Button></Link>
       </div>
     </form>
   )

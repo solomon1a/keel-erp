@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { parseRole } from '../shared/roles.ts'
 import {
   changePasswordSchema,
+  companySettingsSchema,
   contactInputSchema,
   createUserSchema,
   loginSchema,
@@ -49,8 +50,8 @@ const orderInclude = {
   moves: {
     include: {
       product: { select: { name: true, sku: true } },
-      locationFrom: { select: { name: true } },
-      locationTo: { select: { name: true } },
+      locationFrom: { select: { name: true, type: true } },
+      locationTo: { select: { name: true, type: true } },
     },
     orderBy: { id: 'asc' as const },
   },
@@ -190,6 +191,38 @@ export function createApp() {
 
   app.get('/api/taxes', async (c) => {
     return c.json(await prisma.tax.findMany({ orderBy: { name: 'asc' } }))
+  })
+
+  app.get('/api/settings', (c) => {
+    const user = c.get('user')
+    return c.json({
+      name: user.company.name,
+      city: user.company.city,
+      currency: user.company.currency,
+      defaultTaxRate: user.company.defaultTaxRate,
+    })
+  })
+
+  app.patch('/api/settings', async (c) => {
+    const user = c.get('user')
+    requireAdmin(user)
+    const input = parseBody(companySettingsSchema, await c.req.json())
+    const company = await prisma.company.update({
+      where: { id: user.companyId },
+      data: {
+        name: input.name,
+        currency: input.currency,
+        defaultTaxRate: input.defaultTaxRate,
+      },
+      select: { name: true, city: true, currency: true, defaultTaxRate: true },
+    })
+    const current = await prisma.tax.findFirst({ where: { isDefault: true } })
+    if (current) {
+      await prisma.tax.update({ where: { id: current.id }, data: { rate: input.defaultTaxRate } })
+    } else {
+      await prisma.tax.create({ data: { name: '增值税', rate: input.defaultTaxRate, isDefault: true } })
+    }
+    return c.json(company)
   })
 
   app.get('/api/desk', async (c) => {
@@ -461,8 +494,8 @@ export function createApp() {
         where: { product: { companyId: user.companyId } },
         include: {
           product: { select: { name: true, sku: true } },
-          locationFrom: { select: { name: true } },
-          locationTo: { select: { name: true } },
+          locationFrom: { select: { name: true, type: true } },
+          locationTo: { select: { name: true, type: true } },
         },
         orderBy: { id: 'desc' },
         take: 20,

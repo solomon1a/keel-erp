@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
+import { orderStateLabel } from '../i18n/labels.ts'
+import { useI18n } from '../i18n/locale.tsx'
 import { api } from '../lib/api.ts'
-import { money, orderStateLabel, shortDate } from '../lib/format.ts'
+import { useMoney, useShortDate } from '../lib/format.ts'
 import type { SalesOrder } from '../lib/types.ts'
 
 type Desk = {
@@ -15,8 +17,11 @@ type Desk = {
 }
 
 export function DeskPage() {
+  const { t } = useI18n()
+  const money = useMoney()
+  const shortDate = useShortDate()
   const desk = useQuery({ queryKey: ['desk'], queryFn: () => api<Desk>('/api/desk') })
-  if (desk.isLoading) return <p className="text-sm text-muted-foreground">Opening the desk…</p>
+  if (desk.isLoading) return <p className="text-sm text-muted-foreground">{t('desk.loading')}</p>
   if (desk.isError) return <p className="text-sm text-destructive">{desk.error.message}</p>
   const data = desk.data
   if (!data) return null
@@ -24,27 +29,25 @@ export function DeskPage() {
   return (
     <div className="grid gap-8">
       <div>
-        <h1 className="font-serif text-4xl tracking-tight">Today on the floor</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          Open quotations, thin stock, and the people you sell to. Confirm an order only when the shelf can cover it.
-        </p>
+        <h1 className="font-serif text-4xl tracking-tight">{t('desk.title')}</h1>
+        <p className="mt-2 max-w-2xl text-muted-foreground">{t('desk.lead')}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="Contacts" value={String(data.contactCount)} />
-        <Stat label="Active products" value={String(data.productCount)} />
-        <Stat label="Open orders" value={String(data.openOrders)} />
+        <Stat label={t('desk.contacts')} value={String(data.contactCount)} />
+        <Stat label={t('desk.products')} value={String(data.productCount)} />
+        <Stat label={t('desk.openOrders')} value={String(data.openOrders)} />
       </div>
       <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
         <section className="rounded-lg border border-border bg-card">
           <header className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="font-serif text-2xl">Recent orders</h2>
+            <h2 className="font-serif text-2xl">{t('desk.recent')}</h2>
             <Link className="text-sm font-semibold text-primary" to="/orders">
-              All orders
+              {t('desk.allOrders')}
             </Link>
           </header>
           {data.recentOrders.length === 0 ? (
             <div className="p-4">
-              <EmptyState title="No orders yet" body="Write a quotation when a customer is ready." />
+              <EmptyState title={t('desk.emptyTitle')} body={t('desk.emptyBody')} />
             </div>
           ) : (
             <ul>
@@ -58,7 +61,7 @@ export function DeskPage() {
                       </span>
                     </span>
                     <span className="flex items-center gap-3">
-                      <Badge tone={order.state}>{orderStateLabel[order.state] ?? order.state}</Badge>
+                      <Badge tone={order.state}>{orderStateLabel(order.state, t)}</Badge>
                       <span className="text-sm font-semibold">{money(order.amountTotal)}</span>
                     </span>
                   </Link>
@@ -68,10 +71,10 @@ export function DeskPage() {
           )}
         </section>
         <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-serif text-2xl">Low stock</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Goods with fewer than five on the main shelf.</p>
+          <h2 className="font-serif text-2xl">{t('desk.low')}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t('desk.lowLead')}</p>
           {data.lowStock.length === 0 ? (
-            <p className="mt-4 text-sm">The shelf is comfortable.</p>
+            <p className="mt-4 text-sm">{t('desk.comfortable')}</p>
           ) : (
             <ul className="mt-4 grid gap-3">
               {data.lowStock.map((item) => (
@@ -79,7 +82,7 @@ export function DeskPage() {
                   <Link className="font-medium hover:underline" to={`/products/${item.id}`}>
                     {item.name}
                   </Link>
-                  <span className="text-sm text-destructive">{item.onHand} on hand</span>
+                  <span className="text-sm text-destructive">{t('desk.onHand', { count: item.onHand })}</span>
                 </li>
               ))}
             </ul>

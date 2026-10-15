@@ -1,23 +1,40 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { useI18n, type Translate } from '../i18n/locale.tsx'
+import type { MessageKey } from '../i18n/messages.ts'
 import { api } from '../lib/api.ts'
 import type { User } from '../lib/types.ts'
 import { cn } from '../lib/utils.ts'
-import { roleLabel } from '../../shared/roles.ts'
+import { LanguageSwitcher } from './language-switcher.tsx'
 import { Button } from './ui/button.tsx'
 
 const links = [
-  ['/', 'Desk'],
-  ['/contacts', 'Contacts'],
-  ['/products', 'Products'],
-  ['/orders', 'Orders'],
-  ['/inventory', 'Stock'],
-  ['/account/password', 'Password'],
-] as const
+  ['/', 'nav.desk'],
+  ['/contacts', 'nav.contacts'],
+  ['/products', 'nav.products'],
+  ['/orders', 'nav.orders'],
+  ['/inventory', 'nav.stock'],
+  ['/settings', 'nav.settings'],
+  ['/account/password', 'nav.password'],
+] as const satisfies ReadonlyArray<readonly [string, MessageKey]>
+
+function roleText(role: User['role'], t: Translate) {
+  switch (role) {
+    case 'admin':
+      return t('role.admin')
+    case 'user':
+      return t('role.user')
+    default: {
+      const unexpected: never = role
+      return unexpected
+    }
+  }
+}
 
 export function Shell() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useI18n()
   const me = useQuery({
     queryKey: ['me'],
     queryFn: () => api<User>('/api/session/me'),
@@ -25,11 +42,11 @@ export function Shell() {
   })
 
   if (me.isLoading) {
-    return <p className="px-6 py-16 text-sm text-muted-foreground">Checking the desk…</p>
+    return <p className="px-6 py-16 text-sm text-muted-foreground">{t('shell.checking')}</p>
   }
   if (!me.data) return <Navigate to="/sign-in" replace />
 
-  const nav = me.data.role === 'admin' ? [...links, ['/admin/users', 'People'] as const] : links
+  const nav = me.data.role === 'admin' ? [...links, ['/admin/users', 'nav.people'] as const] : links
 
   return (
     <div className="mx-auto grid min-h-screen max-w-7xl md:grid-cols-[220px_1fr]">
@@ -49,29 +66,32 @@ export function Shell() {
                 )
               }
             >
-              {label}
+              {t(label)}
             </NavLink>
           ))}
         </nav>
       </aside>
       <div className="min-w-0">
-        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-8">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-8">
           <p className="text-sm">
             <span className="font-semibold">{me.data.name}</span>
-            <span className="text-muted-foreground"> · {roleLabel(me.data.role)}</span>
+            <span className="text-muted-foreground"> · {roleText(me.data.role, t)}</span>
           </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              void api('/api/session/logout', { method: 'POST' }).finally(() => {
-                queryClient.removeQueries({ queryKey: ['me'] })
-                navigate('/sign-in')
-              })
-            }}
-          >
-            Sign out
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                void api('/api/session/logout', { method: 'POST' }).finally(() => {
+                  queryClient.removeQueries({ queryKey: ['me'] })
+                  navigate('/sign-in')
+                })
+              }}
+            >
+              {t('shell.signOut')}
+            </Button>
+          </div>
         </header>
         <main className="px-4 py-6 md:px-8 md:py-8">
           <Outlet />

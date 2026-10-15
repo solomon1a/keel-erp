@@ -10,7 +10,7 @@ export const demoPasswords = {
 
 export async function seedDatabase(client: PrismaClient = prisma) {
   const company = await client.company.create({
-    data: { name: 'Northline Goods', city: 'Portland' },
+    data: { name: '江北良品', city: '上海', currency: 'CNY', defaultTaxRate: 13 },
   })
 
   const [mayaHash, jonahHash] = await Promise.all([
@@ -38,6 +38,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
 
   const countries = await Promise.all(
     [
+      ['China', 'CN'],
       ['United States', 'US'],
       ['Canada', 'CA'],
       ['United Kingdom', 'GB'],
@@ -46,9 +47,9 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       ['Mexico', 'MX'],
     ].map(([name, code]) => client.country.create({ data: { name, code } })),
   )
-  const us = countries[0]
+  const china = countries[0]
 
-  await client.tax.create({ data: { name: 'State sales tax', rate: 8.5 } })
+  await client.tax.create({ data: { name: '增值税', rate: 13, isDefault: true } })
 
   await client.stockLocation.createMany({
     data: [
@@ -76,7 +77,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       city: 'Portland',
       state: 'OR',
       postalCode: '97204',
-      countryId: us.id,
+      countryId: china.id,
       companyId: company.id,
       notes: 'Buys field kits for their shop floor.',
       createdById: maya.id,
@@ -93,7 +94,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       parentId: cedar.id,
       city: 'Portland',
       state: 'OR',
-      countryId: us.id,
+      countryId: china.id,
       companyId: company.id,
       createdById: maya.id,
       updatedById: maya.id,
@@ -110,7 +111,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       city: 'Portland',
       state: 'OR',
       postalCode: '97204',
-      countryId: us.id,
+      countryId: china.id,
       companyId: company.id,
       createdById: maya.id,
       updatedById: maya.id,
@@ -125,7 +126,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       isCustomer: true,
       city: 'Seattle',
       state: 'WA',
-      countryId: us.id,
+      countryId: china.id,
       companyId: company.id,
       notes: 'Orders one-off blankets for client gifts.',
       createdById: maya.id,
@@ -141,7 +142,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       isSupplier: true,
       city: 'Seattle',
       state: 'WA',
-      countryId: us.id,
+      countryId: china.id,
       companyId: company.id,
       createdById: maya.id,
       updatedById: maya.id,
@@ -155,7 +156,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       isEmployee: true,
       city: 'Portland',
       state: 'OR',
-      countryId: us.id,
+      countryId: china.id,
       companyId: company.id,
       createdById: maya.id,
       updatedById: maya.id,
@@ -236,8 +237,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
       dateOrder: new Date('2026-04-08T16:30:00.000Z'),
       validityDate: new Date('2026-05-08T00:00:00.000Z'),
       amountUntaxed: 190,
-      amountTax: 16.15,
-      amountTotal: 206.15,
+      amountTax: 24.7,
+      amountTotal: 214.7,
       createdById: maya.id,
       lines: {
         create: [
@@ -249,7 +250,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
             discount: 0,
             taxId: tax.id,
             subtotal: 172,
-            taxAmount: 14.62,
+            taxAmount: 22.36,
           },
           {
             productId: notebook.id,
@@ -259,7 +260,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
             discount: 0,
             taxId: tax.id,
             subtotal: 18,
-            taxAmount: 1.53,
+            taxAmount: 2.34,
           },
         ],
       },

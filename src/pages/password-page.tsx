@@ -2,9 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
+import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 
 export function PasswordPage() {
+  const { t } = useI18n()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -16,7 +18,7 @@ export function PasswordPage() {
     event.preventDefault()
     setSaved(false)
     if (newPassword !== confirmPassword) {
-      setError('New password does not match.')
+      setError(t('password.mismatch'))
       return
     }
     setError('')
@@ -31,7 +33,7 @@ export function PasswordPage() {
       setConfirmPassword('')
       setSaved(true)
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not change the password.')
+      setError(caught instanceof ApiError ? caught.message : t('password.failed'))
     } finally {
       setPending(false)
     }
@@ -40,15 +42,13 @@ export function PasswordPage() {
   return (
     <div className="mx-auto grid max-w-lg gap-6">
       <div>
-        <h1 className="font-serif text-4xl tracking-tight">Change password</h1>
-        <p className="mt-2 text-muted-foreground">
-          Use at least 8 characters. Other browsers signed in as you will need the new password.
-        </p>
+        <h1 className="font-serif text-4xl tracking-tight">{t('password.title')}</h1>
+        <p className="mt-2 text-muted-foreground">{t('password.lead')}</p>
       </div>
       <form className="grid gap-4 rounded-lg border border-border bg-card p-4" onSubmit={onSubmit}>
         {error ? <Notice message={error} /> : null}
-        {saved ? <p className="text-sm">Password updated. This browser stays signed in.</p> : null}
-        <Field label="Current password">
+        {saved ? <p className="text-sm">{t('password.saved')}</p> : null}
+        <Field label={t('password.current')}>
           <Input
             type="password"
             autoComplete="current-password"
@@ -57,7 +57,7 @@ export function PasswordPage() {
             required
           />
         </Field>
-        <Field label="New password">
+        <Field label={t('password.new')}>
           <Input
             type="password"
             autoComplete="new-password"
@@ -67,7 +67,7 @@ export function PasswordPage() {
             minLength={8}
           />
         </Field>
-        <Field label="Confirm new password">
+        <Field label={t('password.confirm')}>
           <Input
             type="password"
             autoComplete="new-password"
@@ -78,7 +78,7 @@ export function PasswordPage() {
           />
         </Field>
         <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Update password'}
+          {pending ? t('common.saving') : t('password.submit')}
         </Button>
       </form>
     </div>

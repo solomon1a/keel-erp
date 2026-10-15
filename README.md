@@ -2,7 +2,7 @@
 
 Keel is a small operations desk for one company: contacts, quotations, and the stock room. It is a clean-room start on the plan in [docs/odoo-analysis/BUILD_OUR_OWN.md](docs/odoo-analysis/BUILD_OUR_OWN.md), not a copy of Odoo.
 
-Northline Goods is loaded the first time the database is empty, so you can click through a real quotation instead of an empty screen.
+江北良品 is loaded the first time the database is empty: Shanghai, CNY, and 13% VAT, so you can click through a real quotation instead of an empty screen.
 
 ## Run it
 
@@ -33,7 +33,9 @@ npm test
 
 - Contacts: companies and people, search, customer / supplier / employee flags, address, notes, and who created the record.
 - Products: goods and services, SKU, list price, archive flag.
-- Quotations: lines, discount, tax, totals. Mark sent, confirm, cancel.
+- Quotations: lines, discount, a configurable tax rate, and totals that show untaxed amount, tax, and the price including tax. Mark sent, confirm, cancel. This is not a fapiao.
+- Company settings: name, one currency code (CNY by default), and the default tax rate. Another currency can be stored later; the desk still uses one code.
+- English and Simplified Chinese on the desk. The **中文** / **EN** switch is remembered in a browser cookie.
 - Confirming checks the shelf. Short stock is refused with the product name and the quantity on hand.
 - Validating a delivery moves goods from main stock to customers and closes the order. A service-only order can be fulfilled without a stock move.
 - Stock: on-hand counts, receipts (positive adjustment), write-offs (negative), and recent moves.
@@ -42,7 +44,7 @@ npm test
 
 ## What this slice leaves out
 
-Email delivery, a generated PDF file, accounting, CRM, purchasing, and more than one warehouse. Roles are stored and checked for the people screen; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
+Email delivery, a generated PDF file, fapiao and the rest of accounting, CRM, purchasing, more than one currency at once, and more than one warehouse. Roles are stored and checked for the people screen; later modules can read the same `admin` or `user` value. The database is SQLite (`prisma/dev.db`) so the app runs without Postgres. The schema is Prisma, so a later Postgres URL is a configuration change, not a rewrite.
 
 ## REA
 

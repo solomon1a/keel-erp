@@ -5,7 +5,7 @@ export type User = {
   name: string
   email: string
   role: Role
-  company: { id: number; name: string; city: string }
+  company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number }
 }
 
 export type DeskUser = {
@@ -17,7 +17,7 @@ export type DeskUser = {
 }
 
 export type Country = { id: number; name: string; code: string }
-export type Tax = { id: number; name: string; rate: number }
+export type Tax = { id: number; name: string; rate: number; isDefault: boolean }
 
 export type Contact = {
   id: number
@@ -78,8 +78,8 @@ export type StockMove = {
   reference: string
   date: string
   product: { name: string; sku: string }
-  locationFrom: { name: string }
-  locationTo: { name: string }
+  locationFrom: { name: string; type: string }
+  locationTo: { name: string; type: string }
 }
 
 export type SalesOrder = {

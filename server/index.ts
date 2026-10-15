@@ -9,7 +9,7 @@ const hostname = '0.0.0.0'
 const companies = await prisma.company.count()
 if (companies === 0) {
   await seedDatabase()
-  console.log('Seeded Northline Goods.')
+  console.log('Seeded 江北良品.')
 }
 
 serve({ fetch: createApp().fetch, port, hostname }, () => {

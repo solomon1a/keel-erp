@@ -31,6 +31,14 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 })
 
+export const currencyCodes = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'] as const
+
+export const companySettingsSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  currency: z.enum(currencyCodes),
+  defaultTaxRate: z.number().min(0, 'Tax rate cannot be negative').max(100, 'Tax rate cannot exceed 100'),
+})
+
 const optionalText = z
   .string()
   .trim()
@@ -98,6 +106,7 @@ export type LoginInput = z.infer<typeof loginSchema>
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 export type CreateUserInput = z.infer<typeof createUserSchema>
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
+export type CompanySettingsInput = z.infer<typeof companySettingsSchema>
 export type ContactInput = z.infer<typeof contactInputSchema>
 export type ProductInput = z.infer<typeof productInputSchema>
 export type OrderInput = z.infer<typeof orderInputSchema>

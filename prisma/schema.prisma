@@ -8,9 +8,12 @@ datasource db {
 }
 
 model Company {
-  id        Int             @id @default(autoincrement())
-  name      String
-  city      String
+  id             Int             @id @default(autoincrement())
+  name           String
+  city           String
+  /// ISO 4217 code. One currency on the company until a later multi-currency slice.
+  currency       String          @default("CNY")
+  defaultTaxRate Float           @default(13)
   users     User[]
   contacts  Contact[]
   products  Product[]
@@ -86,10 +89,11 @@ model Contact {
 }
 
 model Tax {
-  id    Int              @id @default(autoincrement())
-  name  String
-  rate  Float
-  lines SalesOrderLine[]
+  id        Int              @id @default(autoincrement())
+  name      String
+  rate      Float
+  isDefault Boolean          @default(false)
+  lines     SalesOrderLine[]
 }
 
 model Product {

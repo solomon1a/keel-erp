@@ -2,11 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
+import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { lineAmounts, sumLines } from '../domain/money.ts'
+import { singleTaxRate } from '../i18n/labels.ts'
+import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
-import { dateInput, money } from '../lib/format.ts'
+import { dateInput } from '../lib/format.ts'
 import type { Contact, Product, SalesOrder, Tax } from '../lib/types.ts'
 
 type DraftLine = {
@@ -17,13 +20,14 @@ type DraftLine = {
   taxId: string
 }
 
-const blankLine = (): DraftLine => ({ productId: '', quantity: '1', unitPrice: '0', discount: '0', taxId: '' })
+const blankLine = (taxId = ''): DraftLine => ({ productId: '', quantity: '1', unitPrice: '0', discount: '0', taxId })
 
 export function OrderFormPage() {
   const { id } = useParams()
   const isNew = !id
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t } = useI18n()
   const [customerId, setCustomerId] = useState('')
   const [validityDate, setValidityDate] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([blankLine()])
@@ -41,6 +45,8 @@ export function OrderFormPage() {
     enabled: !isNew,
   })
 
+  const defaultTaxId = taxes.data?.find((tax) => tax.isDefault)?.id ?? taxes.data?.[0]?.id
+
   useEffect(() => {
     if (!order.data) return
     setCustomerId(String(order.data.customerId))
@@ -56,6 +62,14 @@ export function OrderFormPage() {
     )
   }, [order.data])
 
+  useEffect(() => {
+    if (!defaultTaxId) return
+    setLines((current) => {
+      if (current.some((line) => line.taxId)) return current
+      return current.map((line) => ({ ...line, taxId: String(defaultTaxId) }))
+    })
+  }, [defaultTaxId])
+
   const preview = useMemo(() => {
     const priced = lines.map((line) => {
       const tax = taxes.data?.find((item) => item.id === Number(line.taxId))
@@ -68,6 +82,10 @@ export function OrderFormPage() {
     })
     return sumLines(priced)
   }, [lines, taxes.data])
+
+  const previewRate = singleTaxRate(
+    lines.map((line) => taxes.data?.find((item) => item.id === Number(line.taxId))?.rate ?? null),
+  )
 
   const save = useMutation({
     mutationFn: () =>
@@ -89,13 +107,17 @@ export function OrderFormPage() {
       await queryClient.invalidateQueries({ queryKey: ['orders'] })
       navigate(`/orders/${saved.id}`)
     },
-    onError: (reason) => setError(reason instanceof ApiError ? reason.message : 'Could not save the quotation.'),
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('quote.saveFailed')),
   })
 
-  if (order.isLoading) return <p className="text-sm text-muted-foreground">Loading the quotation…</p>
+  if (order.isLoading) return <p className="text-sm text-muted-foreground">{t('quote.loading')}</p>
   if (order.isError) return <p className="text-sm text-destructive">{order.error.message}</p>
   if (order.data && !['draft', 'sent'].includes(order.data.state)) {
-    return <p className="text-sm">This order is locked. <Link className="underline" to={`/orders/${id}`}>Go back to it.</Link></p>
+    return (
+      <p className="text-sm">
+        {t('quote.locked')} <Link className="underline" to={`/orders/${id}`}>{t('quote.back')}</Link>
+      </p>
+    )
   }
 
   const offered = products.data?.filter((product) => product.active) ?? []
@@ -110,20 +132,20 @@ export function OrderFormPage() {
       }}
     >
       <div>
-        <h1 className="font-serif text-4xl tracking-tight">{isNew ? 'New quotation' : order.data?.name}</h1>
-        <p className="mt-1 text-muted-foreground">Prices start from the catalog. Tax is calculated when you save.</p>
+        <h1 className="font-serif text-4xl tracking-tight">{isNew ? t('quote.new') : order.data?.name}</h1>
+        <p className="mt-1 text-muted-foreground">{t('quote.lead')}</p>
       </div>
       {error ? <Notice message={error} /> : null}
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Customer">
+        <Field label={t('quote.customer')}>
           <select className="h-10 rounded-md border border-border bg-card px-3" value={customerId} onChange={(event) => setCustomerId(event.target.value)} required>
-            <option value="">Choose a customer</option>
+            <option value="">{t('quote.chooseCustomer')}</option>
             {customers.data?.map((customer) => (
               <option key={customer.id} value={customer.id}>{customer.name}</option>
             ))}
           </select>
         </Field>
-        <Field label="Valid until">
+        <Field label={t('quote.valid')}>
           <Input type="date" value={validityDate} onChange={(event) => setValidityDate(event.target.value)} />
         </Field>
       </div>
@@ -131,11 +153,11 @@ export function OrderFormPage() {
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">
             <tr>
-              <th className="px-3 py-3 font-medium">Product</th>
-              <th className="px-3 py-3 font-medium">Qty</th>
-              <th className="px-3 py-3 font-medium">Price</th>
-              <th className="px-3 py-3 font-medium">Discount %</th>
-              <th className="px-3 py-3 font-medium">Tax</th>
+              <th className="px-3 py-3 font-medium">{t('quote.product')}</th>
+              <th className="px-3 py-3 font-medium">{t('order.colQty')}</th>
+              <th className="px-3 py-3 font-medium">{t('order.colPrice')}</th>
+              <th className="px-3 py-3 font-medium">{t('quote.discount')}</th>
+              <th className="px-3 py-3 font-medium">{t('quote.tax')}</th>
               <th className="px-3 py-3 font-medium"></th>
             </tr>
           </thead>
@@ -153,12 +175,12 @@ export function OrderFormPage() {
                         ...line,
                         productId: event.target.value,
                         unitPrice: product ? String(product.listPrice) : line.unitPrice,
-                        taxId: line.taxId || (taxes.data?.[0] ? String(taxes.data[0].id) : ''),
+                        taxId: line.taxId || (defaultTaxId ? String(defaultTaxId) : ''),
                       }
                       setLines(next)
                     }}
                   >
-                    <option value="">Choose</option>
+                    <option value="">{t('common.choose')}</option>
                     {offered.map((product) => (
                       <option key={product.id} value={product.id}>{product.name}</option>
                     ))}
@@ -169,36 +191,37 @@ export function OrderFormPage() {
                 <td className="px-3 py-2"><Input type="number" min="0" max="100" step="0.01" value={line.discount} onChange={(event) => updateLine(index, { discount: event.target.value })} /></td>
                 <td className="px-3 py-2">
                   <select className="h-10 w-full rounded-md border border-border bg-background px-2" value={line.taxId} onChange={(event) => updateLine(index, { taxId: event.target.value })}>
-                    <option value="">No tax</option>
+                    <option value="">{t('order.noTax')}</option>
                     {taxes.data?.map((tax) => (
                       <option key={tax.id} value={tax.id}>{tax.name} ({tax.rate}%)</option>
                     ))}
                   </select>
                 </td>
                 <td className="px-3 py-2">
-                  <Button variant="ghost" size="sm" onClick={() => setLines(lines.filter((_, lineIndex) => lineIndex !== index))}>Remove</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setLines(lines.filter((_, lineIndex) => lineIndex !== index))}>{t('common.remove')}</Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="outline" onClick={() => setLines([...lines, blankLine()])}>Add line</Button>
-        <p className="text-sm">
-          Untaxed {money(preview.amountUntaxed)} · Tax {money(preview.amountTax)} · <span className="font-semibold">Total {money(preview.amountTotal)}</span>
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <Button variant="outline" onClick={() => setLines([...lines, blankLine(defaultTaxId ? String(defaultTaxId) : '')])}>{t('quote.addLine')}</Button>
+        <MoneyTotals untaxed={preview.amountUntaxed} tax={preview.amountTax} total={preview.amountTotal} rate={previewRate} />
       </div>
+      <FapiaoNote />
       <div className="flex gap-2">
-        <Button type="submit" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save quotation'}</Button>
-        <Link to={isNew ? '/orders' : `/orders/${id}`}><Button variant="outline">Cancel</Button></Link>
+        <Button type="submit" disabled={save.isPending}>{save.isPending ? t('common.saving') : t('quote.save')}</Button>
+        <Link to={isNew ? '/orders' : `/orders/${id}`}><Button variant="outline">{t('common.cancel')}</Button></Link>
       </div>
     </form>
   )
 
   function updateLine(index: number, patch: Partial<DraftLine>) {
     const next = [...lines]
-    next[index] = { ...next[index], ...patch }
+    const current = next[index]
+    if (!current) return
+    next[index] = { ...current, ...patch }
     setLines(next)
   }
 }

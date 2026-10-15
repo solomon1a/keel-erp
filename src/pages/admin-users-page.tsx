@@ -3,13 +3,28 @@ import { useState, type FormEvent } from 'react'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
+import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import type { DeskUser, User } from '../lib/types.ts'
-import { roleLabel, type Role } from '../../shared/roles.ts'
+import type { Role } from '../../shared/roles.ts'
 
 const selectClass = 'h-10 w-full rounded-md border border-border bg-card px-3 text-sm'
 
+function roleText(role: Role, t: Translate) {
+  switch (role) {
+    case 'admin':
+      return t('role.admin')
+    case 'user':
+      return t('role.user')
+    default: {
+      const unexpected: never = role
+      return unexpected
+    }
+  }
+}
+
 export function AdminUsersPage() {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me'), retry: false })
   const users = useQuery({
@@ -24,9 +39,9 @@ export function AdminUsersPage() {
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
 
-  if (me.isLoading) return <p className="text-sm text-muted-foreground">Checking the desk…</p>
+  if (me.isLoading) return <p className="text-sm text-muted-foreground">{t('people.checking')}</p>
   if (me.data?.role !== 'admin') {
-    return <Notice message="Only an admin can manage people." />
+    return <Notice message={t('people.forbidden')} />
   }
 
   async function createUser(event: FormEvent) {
@@ -40,10 +55,10 @@ export function AdminUsersPage() {
         body: JSON.stringify(form),
       })
       setForm({ name: '', email: '', password: '', role: 'user' })
-      setNotice(`${created.name} can sign in with that email.`)
+      setNotice(t('people.created', { name: created.name }))
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] })
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not add that person.')
+      setError(caught instanceof ApiError ? caught.message : t('people.createFailed'))
     } finally {
       setPending(false)
     }
@@ -54,7 +69,7 @@ export function AdminUsersPage() {
     setError('')
     setNotice('')
     if (password.length < 8) {
-      setError('Use at least 8 characters for the new password.')
+      setError(t('people.short'))
       return
     }
     setPending(true)
@@ -64,9 +79,9 @@ export function AdminUsersPage() {
         body: JSON.stringify({ password }),
       })
       setResets((current) => ({ ...current, [user.id]: '' }))
-      setNotice(`Password reset for ${user.name}. Their other sessions are signed out.`)
+      setNotice(t('people.resetDone', { name: user.name }))
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not reset that password.')
+      setError(caught instanceof ApiError ? caught.message : t('people.resetFailed'))
     } finally {
       setPending(false)
     }
@@ -75,14 +90,12 @@ export function AdminUsersPage() {
   return (
     <div className="grid gap-8">
       <div>
-        <h1 className="font-serif text-4xl tracking-tight">People</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          Admins can add desk accounts and set a new password. Everyone else can change only their own.
-        </p>
+        <h1 className="font-serif text-4xl tracking-tight">{t('people.title')}</h1>
+        <p className="mt-2 max-w-2xl text-muted-foreground">{t('people.lead')}</p>
       </div>
       {error ? <Notice message={error} /> : null}
       {notice ? <p className="text-sm">{notice}</p> : null}
-      {users.isLoading ? <p className="text-sm text-muted-foreground">Loading people…</p> : null}
+      {users.isLoading ? <p className="text-sm text-muted-foreground">{t('people.loading')}</p> : null}
       {users.isError ? <Notice message={users.error.message} /> : null}
       <div className="grid gap-3">
         {users.data?.map((user) => (
@@ -90,10 +103,10 @@ export function AdminUsersPage() {
             <div>
               <p className="font-serif text-2xl">{user.name}</p>
               <p className="text-sm text-muted-foreground">
-                {user.email} · {roleLabel(user.role)}
+                {user.email} · {roleText(user.role, t)}
               </p>
             </div>
-            <Field label="New password">
+            <Field label={t('people.newPassword')}>
               <Input
                 type="password"
                 autoComplete="new-password"
@@ -102,17 +115,17 @@ export function AdminUsersPage() {
               />
             </Field>
             <Button type="button" variant="secondary" disabled={pending} onClick={() => resetPassword(user)}>
-              Reset
+              {t('people.reset')}
             </Button>
           </article>
         ))}
       </div>
       <form className="grid max-w-lg gap-4 rounded-lg border border-border bg-card p-4" onSubmit={createUser}>
-        <h2 className="font-serif text-2xl">Add a person</h2>
-        <Field label="Name">
+        <h2 className="font-serif text-2xl">{t('people.add')}</h2>
+        <Field label={t('common.name')}>
           <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
         </Field>
-        <Field label="Email">
+        <Field label={t('common.email')}>
           <Input
             type="email"
             autoComplete="off"
@@ -121,7 +134,7 @@ export function AdminUsersPage() {
             required
           />
         </Field>
-        <Field label="Password" hint="At least 8 characters. Share it with them once.">
+        <Field label={t('people.password')} hint={t('people.passwordHint')}>
           <Input
             type="password"
             autoComplete="new-password"
@@ -131,7 +144,7 @@ export function AdminUsersPage() {
             minLength={8}
           />
         </Field>
-        <Field label="Role">
+        <Field label={t('people.role')}>
           <select
             className={selectClass}
             value={form.role}
@@ -140,12 +153,12 @@ export function AdminUsersPage() {
               if (role === 'admin' || role === 'user') setForm({ ...form, role })
             }}
           >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
+            <option value="user">{t('role.user')}</option>
+            <option value="admin">{t('role.admin')}</option>
           </select>
         </Field>
         <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Create account'}
+          {pending ? t('common.saving') : t('people.create')}
         </Button>
       </form>
     </div>

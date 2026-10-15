@@ -15,6 +15,11 @@ export function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
+export function appliedRate(subtotal: number, taxAmount: number): number | null {
+  if (subtotal === 0) return null
+  return roundMoney((taxAmount / subtotal) * 100)
+}
+
 export function lineAmounts(input: LineMoneyInput): LineMoney {
   const net = input.quantity * input.unitPrice * (1 - input.discount / 100)
   const subtotal = roundMoney(net)

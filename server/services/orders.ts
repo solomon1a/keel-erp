@@ -17,8 +17,8 @@ const orderInclude = {
   moves: {
     include: {
       product: { select: { name: true, sku: true } },
-      locationFrom: { select: { name: true } },
-      locationTo: { select: { name: true } },
+      locationFrom: { select: { name: true, type: true } },
+      locationTo: { select: { name: true, type: true } },
     },
     orderBy: { id: 'asc' as const },
   },
@@ -278,8 +278,8 @@ export async function adjustStock(companyId: number, productId: number, quantity
       },
       include: {
         product: { select: { name: true, sku: true } },
-        locationFrom: { select: { name: true } },
-        locationTo: { select: { name: true } },
+        locationFrom: { select: { name: true, type: true } },
+        locationTo: { select: { name: true, type: true } },
       },
     })
   })
