@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { AuthFrame } from '../components/auth-frame.tsx'
 import { Field, Notice } from '../components/field.tsx'
-import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { useI18n, type Locale } from '../i18n/locale.tsx'
@@ -70,27 +70,18 @@ export function StartPage() {
   }
 
   return (
-    <div className="mx-auto grid min-h-screen max-w-5xl items-start gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:py-16">
-      <div>
-        <div className="mb-8 flex justify-end lg:justify-start">
-          <LanguageSwitcher />
-        </div>
-        <p className="text-sm font-semibold tracking-[0.18em] text-accent uppercase">{t('start.kicker')}</p>
-        <h1 className="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">{t('start.title')}</h1>
-        <p className="mt-3 max-w-xl text-muted-foreground">{t('start.lead')}</p>
-        <p className="mt-6 text-sm">
-          <Link className="font-semibold text-primary" to="/sign-in">{t('start.signIn')}</Link>
-        </p>
-      </div>
-      {me.isLoading ? <p className="text-sm text-muted-foreground">{t('signIn.checking')}</p> : (
-        <form className="grid gap-4 rounded-lg border border-border bg-card p-5" onSubmit={onSubmit}>
+    <AuthFrame mode="start">
+      <h1 className="text-[28px] font-bold tracking-tight">{t('start.title')}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t('start.lead')}</p>
+      {me.isLoading ? <p className="mt-8 text-sm text-muted-foreground">{t('signIn.checking')}</p> : (
+        <form className="mt-6 grid gap-4" onSubmit={onSubmit}>
           {error ? <Notice message={error} /> : null}
           <Field label={t('start.company')}>
             <Input value={companyName} onChange={(event) => setCompanyName(event.target.value)} required autoFocus />
           </Field>
           <Field label={t('start.country')}>
             <select
-              className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
+              className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm outline-none focus:border-primary focus:ring-[3px] focus:ring-[var(--kl-color-semantic-focus-ring)]"
               value={country}
               onChange={(event) => setCountry(event.target.value as (typeof countries)[number])}
             >
@@ -121,11 +112,11 @@ export function StartPage() {
               <span className="mt-0.5 block text-muted-foreground">{t('start.sampleHint')}</span>
             </span>
           </label>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" size="lg" className="w-full" disabled={pending}>
             {pending ? t('start.pending') : t('start.submit')}
           </Button>
         </form>
       )}
-    </div>
+    </AuthFrame>
   )
 }

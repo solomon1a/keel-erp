@@ -3,20 +3,20 @@ import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '../../lib/utils.ts'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+  'inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--kl-color-semantic-focus-ring)]',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        outline: 'border border-border bg-card hover:bg-secondary',
-        ghost: 'hover:bg-secondary',
-        destructive: 'bg-destructive text-white hover:bg-destructive/90',
+        default: 'bg-primary text-white hover:bg-[var(--kl-color-primary-600)]',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-[var(--kl-color-neutral-100)]',
+        outline: 'border border-border bg-card text-foreground hover:bg-secondary',
+        ghost: 'text-foreground hover:bg-secondary',
+        destructive: 'bg-[#C42B2B] text-white hover:bg-[#a82424]',
       },
       size: {
-        default: 'h-10 px-4',
-        sm: 'h-8 px-3 text-xs',
-        lg: 'h-11 px-5',
+        default: 'h-[34px] px-3',
+        sm: 'h-7 px-2.5 text-xs',
+        lg: 'h-[42px] px-4 text-sm',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

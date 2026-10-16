@@ -2,6 +2,7 @@ import { keepPreviousData, QueryClient, QueryClientProvider } from '@tanstack/re
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Shell } from './components/shell.tsx'
 import { ToastProvider } from './components/toast.tsx'
+import { ThemeProvider } from './brand/theme.tsx'
 import { LocaleProvider } from './i18n/locale.tsx'
 import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
@@ -69,6 +70,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LocaleProvider>
+      <ThemeProvider>
       <ToastProvider>
       <BrowserRouter>
         <Routes>
@@ -148,6 +150,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
       </ToastProvider>
+      </ThemeProvider>
       </LocaleProvider>
     </QueryClientProvider>
   )

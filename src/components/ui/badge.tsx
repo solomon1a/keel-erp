@@ -1,29 +1,30 @@
 import { cn } from '../../lib/utils.ts'
 
 const tones: Record<string, string> = {
-  draft: 'bg-secondary text-foreground',
-  sent: 'bg-accent/25 text-foreground',
-  ready: 'bg-accent/25 text-foreground',
-  open: 'bg-accent/25 text-foreground',
-  closed: 'bg-foreground text-background',
-  paid: 'bg-primary text-primary-foreground',
-  partial: 'bg-accent/25 text-foreground',
-  refunded: 'bg-destructive/15 text-destructive',
-  sale: 'bg-primary text-primary-foreground',
-  purchase: 'bg-primary text-primary-foreground',
-  confirmed: 'bg-primary text-primary-foreground',
-  progress: 'bg-accent/25 text-foreground',
-  done: 'bg-foreground text-background',
-  cancel: 'bg-destructive/15 text-destructive',
-  product: 'bg-primary/10 text-primary',
-  service: 'bg-accent/20 text-foreground',
-  neutral: 'bg-secondary text-foreground',
+  draft: '',
+  sent: 'keel-badge-warning',
+  ready: 'keel-badge-warning',
+  open: 'keel-badge-warning',
+  closed: '',
+  paid: 'keel-badge-success',
+  partial: 'keel-badge-warning',
+  refunded: 'keel-badge-danger',
+  sale: 'keel-badge-success',
+  purchase: 'keel-badge-success',
+  confirmed: 'keel-badge-success',
+  progress: 'keel-badge-info',
+  done: 'keel-badge-success',
+  cancel: 'keel-badge-danger',
+  product: 'keel-badge-success',
+  service: 'keel-badge-info',
+  neutral: '',
+  approved: 'keel-badge-success',
+  submitted: 'keel-badge-warning',
+  refused: 'keel-badge-danger',
+  posted: 'keel-badge-success',
+  waiting: 'keel-badge-warning',
 }
 
 export function Badge({ tone = 'neutral', children }: { tone?: string; children: string }) {
-  return (
-    <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold', tones[tone] ?? tones.neutral)}>
-      {children}
-    </span>
-  )
+  return <span className={cn('keel-badge', tones[tone] ?? '')}>{children}</span>
 }

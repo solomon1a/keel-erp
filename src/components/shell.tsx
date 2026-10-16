@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, LayoutGrid } from 'lucide-react'
+import { ChevronDown, LogOut, Menu, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { KeelMark } from '../brand/mark.tsx'
+import { menuIconId, moduleAccent, moduleIconId, ModuleIcon } from '../brand/module-icon.tsx'
+import { ThemeToggle } from '../brand/theme.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api } from '../lib/api.ts'
 import { useMoney } from '../lib/format.ts'
@@ -22,6 +25,15 @@ type Desk = {
   staff: number
   lowStock: unknown[]
   productCount: number
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const first = parts[0]
+  if (!first) return '·'
+  const last = parts.length > 1 ? parts[parts.length - 1] : undefined
+  if (!last) return first.slice(0, 2).toUpperCase()
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()
 }
 
 function roleText(role: User['role'], t: Translate) {
@@ -48,6 +60,12 @@ function MenuItems({ mod, pathname, search, onNavigate }: { mod: AppModule; path
   )
 }
 
+function MenuGlyph({ label }: { label: string }) {
+  const icon = menuIconId(label)
+  if (!icon) return null
+  return <ModuleIcon id={icon} className="size-4 text-current" />
+}
+
 function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuEntry; pathname: string; search: string; onNavigate: () => void; label: string }) {
   const { t } = useI18n()
   if (entry.children) {
@@ -57,15 +75,16 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
         <button
           type="button"
           className={cn(
-            'flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium',
-            open ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary',
+            'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap',
+            open ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
           )}
         >
+          <MenuGlyph label={entry.label} />
           {label}
           <ChevronDown className="size-3.5 opacity-70" />
         </button>
-        <div className="invisible absolute left-0 top-full z-30 hidden min-w-44 pt-1 group-hover:visible group-hover:block group-focus-within:visible group-focus-within:block">
-          <div className="rounded-md border border-border bg-card p-1 shadow-md">
+        <div className="invisible absolute left-0 top-full z-30 hidden min-w-48 pt-1 group-hover:visible group-hover:block group-focus-within:visible group-focus-within:block">
+          <div className="rounded-lg border border-border bg-card p-1 shadow-md">
             {entry.children.map((child) => (
               <NavLink
                 key={child.to}
@@ -73,11 +92,12 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
                 onClick={onNavigate}
                 className={() =>
                   cn(
-                    'block rounded-md px-3 py-2 text-sm',
-                    linkActive(child.to, pathname, search) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary',
+                    'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
+                    linkActive(child.to, pathname, search) ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                   )
                 }
               >
+                <MenuGlyph label={child.label} />
                 {t(child.label)}
               </NavLink>
             ))}
@@ -92,8 +112,14 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
     <NavLink
       to={entry.to}
       onClick={onNavigate}
-      className={() => cn('rounded-md px-3 py-2 text-sm font-medium', active ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary')}
+      className={() =>
+        cn(
+          'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap',
+          active ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+        )
+      }
     >
+      <MenuGlyph label={entry.label} />
       {label}
     </NavLink>
   )
@@ -111,11 +137,12 @@ function MobileMenu({ mod, pathname, search, onNavigate }: { mod: AppModule; pat
           onClick={onNavigate}
           className={() =>
             cn(
-              'rounded-md px-3 py-2 text-sm font-medium',
-              linkActive(link.to, pathname, search) ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary',
+              'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium',
+              linkActive(link.to, pathname, search) ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
             )
           }
         >
+          <MenuGlyph label={link.label} />
           {t(link.label)}
         </NavLink>
       ))}
@@ -139,8 +166,8 @@ function ModulePulse({ mod }: { mod: AppModule }) {
   })
   if (rows.length === 0) return null
   return (
-    <section className="mb-6 rounded-lg border border-border bg-card p-4">
-      <h2 className="mb-3 font-serif text-xl">{t('chart.title')}</h2>
+    <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <h2 className="mb-3 font-semibold">{t('chart.title')}</h2>
       <BarChart rows={rows} />
     </section>
   )
@@ -228,40 +255,53 @@ export function Shell() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border bg-card/80">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
-          <div className="flex min-w-0 items-center gap-2">
-            {mod ? (
-              <Button className="md:hidden" variant="outline" size="sm" onClick={() => setMenuOpen((open) => !open)}>
-                {menuOpen ? t('shell.close') : t('shell.menu')}
-              </Button>
-            ) : null}
-            <Link to="/" className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold hover:bg-secondary">
-              <LayoutGrid className="size-4" />
-              {t('shell.apps')}
-            </Link>
-            {mod ? (
-              <span className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-                <mod.icon className="size-4 shrink-0 text-primary" />
-                <span className="truncate">{t(mod.label)}</span>
-              </span>
-            ) : (
-              <span className="truncate text-sm text-muted-foreground">{me.data.company.name}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <p className="hidden text-sm sm:block">
-              <span className="font-semibold">{me.data.name}</span>
-              <span className="text-muted-foreground"> · {roleText(me.data.role, t)}</span>
-            </p>
+      <header className="sticky top-0 z-20 border-b border-border bg-card">
+        <div className="flex h-[52px] items-center gap-2 px-3 md:gap-3 md:px-4">
+          {mod ? (
+            <Button className="md:hidden" variant="ghost" size="sm" aria-label={menuOpen ? t('shell.close') : t('shell.menu')} onClick={() => setMenuOpen((open) => !open)}>
+              <Menu className="size-4" />
+            </Button>
+          ) : null}
+          <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-md" aria-label={t('shell.apps')}>
+            <KeelMark className="size-7" />
+            <span className="hidden font-semibold tracking-tight sm:inline">Keel</span>
+          </Link>
+          <span className="hidden h-5 w-px shrink-0 bg-border sm:block" aria-hidden />
+          {mod ? (
+            <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+              <ModuleIcon id={moduleIconId(mod.id)} className="size-4" style={{ color: moduleAccent(mod.id) }} />
+              <span className="hidden truncate sm:inline">{t(mod.label)}</span>
+            </span>
+          ) : (
+            <span className="hidden min-w-0 truncate text-sm text-muted-foreground md:inline">{me.data.company.name}</span>
+          )}
+          {mod ? (
+            <nav className="ml-1 hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex">
+              <MenuItems mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => setMenuOpen(false)} />
+            </nav>
+          ) : <span className="flex-1" />}
+          <div className="ml-auto flex shrink-0 items-center gap-1">
             <LanguageSwitcher />
-            <Link className="hidden rounded-md px-2 py-1 text-sm hover:bg-secondary md:inline" to="/settings">{t('menu.company')}</Link>
+            <ThemeToggle />
             {me.data.role === 'admin' ? (
-              <Link className="hidden rounded-md px-2 py-1 text-sm hover:bg-secondary md:inline" to="/admin/users">{t('menu.people')}</Link>
+              <Link className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden" to="/admin/users" aria-label={t('menu.people')}>
+                <Users className="size-4" />
+              </Link>
             ) : null}
+            {me.data.role === 'admin' ? (
+              <Link className="hidden rounded-md px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground md:inline" to="/admin/users">{t('menu.people')}</Link>
+            ) : null}
+            <Link
+              to="/settings"
+              title={`${me.data.name} · ${roleText(me.data.role, t)}`}
+              className="grid size-[30px] place-items-center rounded-full bg-[var(--kl-color-brass-100)] text-[11px] font-semibold text-[var(--kl-color-brass-700)]"
+            >
+              {initials(me.data.name)}
+            </Link>
             <Button
               variant="ghost"
               size="sm"
+              aria-label={t('shell.signOut')}
               onClick={() => {
                 void api('/api/session/logout', { method: 'POST' }).finally(() => {
                   queryClient.clear()
@@ -269,22 +309,18 @@ export function Shell() {
                 })
               }}
             >
-              {t('shell.signOut')}
+              <LogOut className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">{t('shell.signOut')}</span>
             </Button>
           </div>
         </div>
-        {mod ? (
-          <div className="mx-auto hidden max-w-7xl items-center gap-1 px-4 pb-3 md:flex md:px-6">
-            <MenuItems mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => setMenuOpen(false)} />
-          </div>
-        ) : null}
         {mod && menuOpen ? (
           <MobileMenu mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => setMenuOpen(false)} />
         ) : null}
       </header>
       <main className="keel-page mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         {mod ? (
-          <nav className="mb-4 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+          <nav className="mb-3 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
             <Link className="hover:text-foreground hover:underline" to="/">{t('shell.apps')}</Link>
             <span>/</span>
             <Link className="hover:text-foreground hover:underline" to={mod.home}>{t(mod.label)}</Link>

@@ -45,7 +45,7 @@ export function PurchasesPage() {
       </div>
       <div className="flex flex-wrap gap-2">
         {filters.map(([value, label]) => (
-          <Button key={value} size="sm" variant={state === value ? 'default' : 'outline'} onClick={() => setState(value)}>
+          <Button key={value} size="sm" variant={state === value ? 'secondary' : 'outline'} onClick={() => setState(value)}>
             {t(label)}
           </Button>
         ))}

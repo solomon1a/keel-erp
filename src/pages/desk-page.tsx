@@ -131,12 +131,12 @@ export function DeskPage() {
 function Stat({ label, value, hint, to }: { label: string; value: string; hint?: string; to?: string }) {
   const body = (
     <>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="font-serif text-3xl">{value}</p>
+      <p className="text-[13px] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-[22px] font-bold tracking-tight tabular-nums">{value}</p>
       {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
     </>
   )
-  const className = 'rounded-lg border border-border bg-card px-4 py-3 hover:bg-secondary/40'
+  const className = 'rounded-lg border border-border bg-card px-4 py-3 shadow-sm hover:bg-secondary/40'
   if (!to) return <div className={className}>{body}</div>
   return (
     <Link className={className} to={to}>

@@ -44,7 +44,7 @@ export function htmlLang(locale: Locale): string {
     case 'en':
       return 'en'
     case 'zh':
-      return 'zh-Hans'
+      return 'zh-CN'
     default: {
       const unexpected: never = locale
       return unexpected
