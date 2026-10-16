@@ -1,3 +1,4 @@
+import { workspaceFor } from '../lib/workspaces.ts'
 import { useQuery } from '@tanstack/react-query'
 import { moduleAccent, moduleIconId } from '../brand/module-icon.tsx'
 import { LauncherTile } from '../components/launcher-tile.tsx'
@@ -30,7 +31,7 @@ export function AppsPage() {
       </div>
       <div className="mx-auto grid max-w-[920px] grid-cols-3 justify-items-center gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-5">
         {modules.map((mod) => (
-          <LauncherTile key={mod.id} to={mod.home} label={t(mod.label)} icon={moduleIconId(mod.id)} accent={moduleAccent(mod.id)} />
+          <LauncherTile key={mod.id} to={workspaceFor(mod.id) ? `/go/${mod.id}` : mod.home} label={t(mod.label)} icon={moduleIconId(mod.id)} accent={moduleAccent(mod.id)} />
         ))}
       </div>
     </div>
