@@ -3,6 +3,8 @@ import type { PrismaClient } from '@prisma/client'
 async function deleteCompany(client: PrismaClient, companyId: number) {
   await client.$transaction(async (tx) => {
     await tx.company.update({ where: { id: companyId }, data: { onlineWarehouseId: null } })
+    await tx.deskRecord.deleteMany({ where: { companyId } })
+    await tx.moduleSetting.deleteMany({ where: { companyId } })
     await tx.payslipLine.deleteMany({ where: { payslip: { run: { companyId } } } })
     await tx.payslip.deleteMany({ where: { run: { companyId } } })
     await tx.payrollRun.deleteMany({ where: { companyId } })

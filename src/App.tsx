@@ -5,11 +5,14 @@ import { ToastProvider } from './components/toast.tsx'
 import { ThemeProvider } from './brand/theme.tsx'
 import { LocaleProvider } from './i18n/locale.tsx'
 import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
+import { AccessPage } from './pages/access-page.tsx'
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
 import { AppsPage } from './pages/apps-page.tsx'
+import { DeskFormPage, DeskScreenPage } from './pages/desk-screen.tsx'
+import { ModuleHubPage } from './pages/module-hub.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
 import { WebsitePage } from './pages/website-page.tsx'
 import { EmployeePage, HrPage } from './pages/hr.tsx'
@@ -19,6 +22,9 @@ import { BomFormPage } from './pages/bom-form-page.tsx'
 import { BomPrintPage } from './pages/bom-print-page.tsx'
 import { BomsPage } from './pages/boms-page.tsx'
 import { InventoryPage } from './pages/inventory-page.tsx'
+import { RoutesPage } from './pages/routes-page.tsx'
+import { StatementsPage } from './pages/statements-page.tsx'
+import { ValuationPage } from './pages/valuation-page.tsx'
 import { MovesPage } from './pages/moves-page.tsx'
 import { ReplenishPage } from './pages/replenish-page.tsx'
 import { TransferDetailPage } from './pages/transfer-detail-page.tsx'
@@ -90,7 +96,11 @@ export default function App() {
           <Route path="/accounting/:id/print" element={<InvoicePrintPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<AppsPage />} />
+            <Route path="/go/:moduleId/:segment?" element={<ModuleHubPage />} />
             <Route path="/desk" element={<DeskPage />} />
+            <Route path="/app/:module/:screen/new" element={<DeskFormPage />} />
+            <Route path="/app/:module/:screen/:id" element={<DeskFormPage />} />
+            <Route path="/app/:module/:screen" element={<DeskScreenPage />} />
             <Route path="/website" element={<WebsitePage />} />
             <Route path="/contacts" element={<ContactsPage />} />
             <Route path="/contacts/new" element={<ContactFormPage />} />
@@ -145,6 +155,10 @@ export default function App() {
             <Route path="/account/password" element={<PasswordPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/settings/access" element={<AccessPage />} />
+            <Route path="/accounting/statements" element={<StatementsPage />} />
+            <Route path="/inventory/valuation" element={<ValuationPage />} />
+            <Route path="/inventory/routes" element={<RoutesPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -21,7 +20,14 @@ const filters = [
 
 export function ManufacturingPage() {
   const { t } = useI18n()
-  const [state, setState] = useState('all')
+  const [params, setParams] = useSearchParams()
+  const state = params.get('state') ?? 'all'
+  const setState = (value: string) => {
+    const next = new URLSearchParams(params)
+    if (value === 'all') next.delete('state')
+    else next.set('state', value)
+    setParams(next, { replace: true })
+  }
   const orders = useQuery({
     queryKey: ['manufacturing', state],
     queryFn: () => api<ManufacturingOrder[]>(`/api/manufacturing?state=${state}`),

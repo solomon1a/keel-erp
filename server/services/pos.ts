@@ -4,6 +4,7 @@ import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import type { SessionUser } from '../auth.ts'
 import { applyQuant, companyLocations, onHand, roundQty, warehouseStockLocation } from './stock.ts'
+import { valueDoneMove } from './valuation.ts'
 
 const orderInclude = {
   customer: { select: { id: true, name: true } },
@@ -284,7 +285,7 @@ export async function createPosOrder(companyId: number, userId: number, input: P
     for (const [productId, need] of needed) {
       await applyQuant(tx, productId, location.id, -need.quantity)
       await applyQuant(tx, productId, customer.id, need.quantity)
-      await tx.stockMove.create({
+      const move = await tx.stockMove.create({
         data: {
           productId,
           locationFromId: location.id,
@@ -296,6 +297,7 @@ export async function createPosOrder(companyId: number, userId: number, input: P
           date: new Date(),
         },
       })
+      await valueDoneMove(tx, companyId, move.id)
     }
     return tx.posOrder.findFirstOrThrow({ where: { id: order.id }, include: orderInclude })
   })
@@ -357,7 +359,7 @@ export async function refundPosOrder(user: SessionUser, orderId: number, input: 
       })
       await applyQuant(tx, refund.line.productId, customer.id, -refund.quantity)
       await applyQuant(tx, refund.line.productId, location.id, refund.quantity)
-      await tx.stockMove.create({
+      const move = await tx.stockMove.create({
         data: {
           productId: refund.line.productId,
           locationFromId: customer.id,
@@ -369,6 +371,7 @@ export async function refundPosOrder(user: SessionUser, orderId: number, input: 
           date: new Date(),
         },
       })
+      await valueDoneMove(tx, order.companyId, move.id)
     }
     await tx.posPayment.createMany({
       data: input.payments.map((payment) => ({

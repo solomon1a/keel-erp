@@ -250,6 +250,7 @@ export const posRefundSchema = z.object({
 export const transferInputSchema = z.object({
   locationFromId: z.number().int().positive('Choose a source location'),
   locationToId: z.number().int().positive('Choose a destination location'),
+  routeId: z.number().int().positive().optional(),
   lines: z.array(transferLineSchema).min(1, 'Add at least one line'),
 })
 
@@ -400,3 +401,30 @@ export const expenseSchema = z.object({
 export type SalaryInput = z.infer<typeof salarySchema>
 export type PayrollRunInput = z.infer<typeof payrollRunSchema>
 export type ExpenseInput = z.infer<typeof expenseSchema>
+
+export const deskRecordSchema = z.object({
+  module: z.string().trim().min(1).max(40),
+  screen: z.string().trim().min(1).max(40),
+  name: z.string().trim().min(1, 'Enter a name').max(160),
+  state: z.string().trim().max(40).optional(),
+  partner: z.string().trim().max(160).optional(),
+  owner: z.string().trim().max(160).optional(),
+  bucket: z.string().trim().max(80).optional(),
+  amount: z.number().finite().optional(),
+  notes: z.string().trim().max(2000).optional(),
+  recordDate: z.string().trim().max(40).optional(),
+})
+
+export const deskRecordPatchSchema = deskRecordSchema.omit({ module: true, screen: true })
+
+export const moduleSettingsSchema = z.object({
+  module: z.string().trim().min(1).max(40),
+  values: z.array(z.object({
+    key: z.string().trim().min(1).max(40),
+    value: z.string().trim().max(200),
+  })).max(40),
+})
+
+export type DeskRecordInput = z.infer<typeof deskRecordSchema>
+export type DeskRecordPatch = z.infer<typeof deskRecordPatchSchema>
+export type ModuleSettingsInput = z.infer<typeof moduleSettingsSchema>

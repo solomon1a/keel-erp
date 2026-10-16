@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -25,7 +24,14 @@ export function PurchasesPage() {
   const money = useMoney()
   const shortDate = useShortDate()
   const navigate = useNavigate()
-  const [state, setState] = useState('all')
+  const [params, setParams] = useSearchParams()
+  const state = params.get('state') ?? 'all'
+  const setState = (value: string) => {
+    const next = new URLSearchParams(params)
+    if (value === 'all') next.delete('state')
+    else next.set('state', value)
+    setParams(next, { replace: true })
+  }
   const orders = useQuery({
     queryKey: ['purchases', state],
     queryFn: () => api<PurchaseOrder[]>(`/api/purchases?state=${state}`),

@@ -13,6 +13,8 @@ type TransferDetail = {
   id: number
   name: string
   state: string
+  step: string | null
+  route: { name: string; steps: string } | null
   locationFrom: { name: string; type: string; warehouse: { name: string } | null }
   locationTo: { name: string; type: string; warehouse: { name: string } | null }
   lines: Array<{ id: number; quantity: number; lotName: string | null; product: { name: string; sku: string } }>
@@ -63,12 +65,17 @@ export function TransferDetailPage() {
           </p>
         </div>
         <Badge tone={row.state}>{transferStateLabel(row.state, t)}</Badge>
+        {row.step ? <span className="text-sm text-muted-foreground">{t('tr.step')}: {row.step}</span> : null}
       </div>
       {error ? <Notice message={error} /> : null}
       <div className="flex flex-wrap gap-2">
         {row.state === 'draft' ? <Link to={`/inventory/transfers/${row.id}/edit`}><Button variant="outline">{t('tr.edit')}</Button></Link> : null}
         {row.state === 'draft' ? <Button disabled={act.isPending} onClick={() => act.mutate('ready')}>{t('tr.ready')}</Button> : null}
-        {row.state === 'ready' ? <Button disabled={act.isPending} onClick={() => act.mutate('done')}>{t('tr.done')}</Button> : null}
+        {row.state === 'ready' ? (
+          <Button disabled={act.isPending} onClick={() => act.mutate('done')}>
+            {row.route && row.step && row.route.steps.split(',').at(-1) !== row.step ? t('tr.next') : t('tr.done')}
+          </Button>
+        ) : null}
         {row.state !== 'done' && row.state !== 'cancel' ? (
           <Button variant="destructive" disabled={act.isPending} onClick={() => act.mutate('cancel')}>{t('tr.cancel')}</Button>
         ) : null}

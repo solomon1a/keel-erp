@@ -6,10 +6,11 @@ import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { useI18n, type Locale } from '../i18n/locale.tsx'
+import { signupCountries } from '../../shared/schemas.ts'
 import { api, ApiError } from '../lib/api.ts'
 import type { User } from '../lib/types.ts'
 
-const countries = ['CN', 'GB', 'US', 'OTHER'] as const
+const countries = signupCountries
 
 type SignedUp = User & { locale: Locale }
 

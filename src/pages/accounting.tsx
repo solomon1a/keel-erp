@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { BarChart } from '../components/bar-chart.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -84,7 +85,14 @@ export function AccountingPage() {
   const { t } = useI18n()
   const money = useMoney()
   const shortDate = useShortDate()
-  const [moveType, setMoveType] = useState('')
+  const [params, setParams] = useSearchParams()
+  const moveType = params.get('moveType') ?? ''
+  const setMoveType = (value: string) => {
+    const next = new URLSearchParams(params)
+    if (!value) next.delete('moveType')
+    else next.set('moveType', value)
+    setParams(next, { replace: true })
+  }
   const invoices = useQuery({
     queryKey: ['invoices', moveType],
     queryFn: () => api<Invoice[]>(`/api/invoices${moveType ? `?moveType=${moveType}` : ''}`),
@@ -306,35 +314,59 @@ export function LedgerPage() {
 export function ReportsPage() {
   const { t } = useI18n()
   const money = useMoney()
+  const [params] = useSearchParams()
+  const view = params.get('view')
   const pnl = useQuery({ queryKey: ['pnl'], queryFn: () => api<{ income: number; expense: number; profit: number; accounts: Array<{ code: string; name: string; amount: number }> }>('/api/reports/pnl') })
   const balance = useQuery({ queryKey: ['balance'], queryFn: () => api<{ assets: number; liabilities: number; equity: number; accounts: Array<{ code: string; name: string; amount: number }> }>('/api/reports/balance') })
   const vat = useQuery({ queryKey: ['vat'], queryFn: () => api<{ output: number; input: number; payable: number }>('/api/reports/vat') })
   if (pnl.isLoading || balance.isLoading || vat.isLoading) return <p className="text-sm text-muted-foreground">{t('acct.loading')}</p>
+  const heading = view === 'balance' ? t('acct.balance') : view === 'vat' ? t('acct.vat') : view === 'pnl' ? t('acct.pnl') : t('acct.reports')
+  const showPnl = !view || view === 'pnl'
+  const showBalance = !view || view === 'balance'
+  const showVat = !view || view === 'vat'
   return (
     <div className="grid gap-8">
-      <h1 className="font-serif text-4xl tracking-tight">{t('acct.reports')}</h1>
-      <section className="grid gap-2">
-        <h2 className="font-serif text-2xl">{t('acct.pnl')}</h2>
-        <p>{t('acct.income')} {money(pnl.data?.income ?? 0)}</p>
-        <p>{t('acct.expense')} {money(pnl.data?.expense ?? 0)}</p>
-        <p className="font-semibold">{t('acct.profit')} {money(pnl.data?.profit ?? 0)}</p>
-      </section>
-      <section className="grid gap-2">
-        <h2 className="font-serif text-2xl">{t('acct.balance')}</h2>
-        <p>{t('acct.assets')} {money(balance.data?.assets ?? 0)}</p>
-        <p>{t('acct.liabilities')} {money(balance.data?.liabilities ?? 0)}</p>
-        <p>{t('acct.equity')} {money(balance.data?.equity ?? 0)}</p>
-        <ul className="text-sm text-muted-foreground">
-          {balance.data?.accounts.map((row) => <li key={row.code}>{row.code} {row.name} {money(row.amount)}</li>)}
-        </ul>
-      </section>
-      <section className="grid gap-2">
-        <h2 className="font-serif text-2xl">{t('acct.vat')}</h2>
-        <p>{t('acct.output')} {money(vat.data?.output ?? 0)}</p>
-        <p>{t('acct.input')} {money(vat.data?.input ?? 0)}</p>
-        <p className="font-semibold">{t('acct.payable')} {money(vat.data?.payable ?? 0)}</p>
-        <p className="text-sm text-muted-foreground">{t('acct.notSubmitted')}</p>
-      </section>
+      <h1 className="font-serif text-4xl tracking-tight">{heading}</h1>
+      {showPnl ? (
+        <section className="grid gap-3">
+          <h2 className="font-serif text-2xl">{t('acct.pnl')}</h2>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <BarChart rows={[
+              { label: t('acct.income'), value: pnl.data?.income ?? 0, display: money(pnl.data?.income ?? 0) },
+              { label: t('acct.expense'), value: pnl.data?.expense ?? 0, display: money(pnl.data?.expense ?? 0) },
+              { label: t('acct.profit'), value: pnl.data?.profit ?? 0, display: money(pnl.data?.profit ?? 0) },
+            ]} />
+          </div>
+        </section>
+      ) : null}
+      {showBalance ? (
+        <section className="grid gap-3">
+          <h2 className="font-serif text-2xl">{t('acct.balance')}</h2>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <BarChart rows={[
+              { label: t('acct.assets'), value: balance.data?.assets ?? 0, display: money(balance.data?.assets ?? 0) },
+              { label: t('acct.liabilities'), value: balance.data?.liabilities ?? 0, display: money(balance.data?.liabilities ?? 0) },
+              { label: t('acct.equity'), value: balance.data?.equity ?? 0, display: money(balance.data?.equity ?? 0) },
+            ]} />
+          </div>
+          <ul className="text-sm text-muted-foreground">
+            {balance.data?.accounts.map((row) => <li key={row.code}>{row.code} {row.name} {money(row.amount)}</li>)}
+          </ul>
+        </section>
+      ) : null}
+      {showVat ? (
+        <section className="grid gap-3">
+          <h2 className="font-serif text-2xl">{t('acct.vat')}</h2>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <BarChart rows={[
+              { label: t('acct.output'), value: vat.data?.output ?? 0, display: money(vat.data?.output ?? 0) },
+              { label: t('acct.input'), value: vat.data?.input ?? 0, display: money(vat.data?.input ?? 0) },
+              { label: t('acct.payable'), value: vat.data?.payable ?? 0, display: money(vat.data?.payable ?? 0) },
+            ]} />
+          </div>
+          <p className="text-sm text-muted-foreground">{t('acct.notSubmitted')}</p>
+        </section>
+      ) : null}
     </div>
   )
 }

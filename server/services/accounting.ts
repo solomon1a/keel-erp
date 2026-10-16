@@ -1,6 +1,8 @@
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { assertBooksOpen } from './locks.ts'
+import { guardWorkflow } from './workflow.ts'
 
 const invoiceInclude = {
   partner: { select: { id: true, name: true, email: true, city: true, street: true, taxId: true } },
@@ -311,6 +313,15 @@ export async function postInvoice(companyId: number, invoiceId: number) {
     const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, companyId } })
     if (!invoice) throw new AppError(404, 'Invoice not found.')
     if (invoice.state !== 'draft') throw new AppError(409, 'Only a draft can be posted.')
+    await assertBooksOpen(tx, companyId, invoice.invoiceDate, Math.abs(invoice.amountTax) > 0.001)
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'account.move',
+      recordId: invoice.id,
+      from: invoice.state,
+      to: 'posted',
+      label: invoice.name,
+    })
     const accounts = await accountMap(tx, companyId)
     const journalCode = invoice.moveType.startsWith('in') ? 'PUR' : 'SAL'
     const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: journalCode } })
@@ -338,12 +349,16 @@ export async function postInvoice(companyId: number, invoiceId: number) {
 
 export async function payInvoice(companyId: number, invoiceId: number, amount: number, method: string) {
   await ensureBooks(companyId)
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction((tx) => payInvoiceTx(tx, companyId, invoiceId, amount, method))
+}
+
+export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number, amount: number, method: string) {
     const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, companyId } })
     if (!invoice) throw new AppError(404, 'Invoice not found.')
     if (invoice.state !== 'posted' && invoice.state !== 'paid') {
       throw new AppError(409, 'Post the invoice before recording a payment.')
     }
+    await assertBooksOpen(tx, companyId, new Date(), false)
     const pay = roundMoney(amount)
     if (pay <= 0) throw new AppError(400, 'Payment amount must be greater than zero.')
     if (pay - invoice.residual > 0.001) throw new AppError(400, 'That payment is more than the amount still open.')
@@ -399,12 +414,20 @@ export async function payInvoice(companyId: number, invoiceId: number, amount: n
       data: { invoiceId: invoice.id, amount: pay, method },
     })
     const residual = roundMoney(invoice.residual - pay)
+    const next = residual <= 0.001 ? 'paid' : 'posted'
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'account.move',
+      recordId: invoice.id,
+      from: invoice.state,
+      to: next,
+      label: invoice.name,
+    })
     return tx.invoice.update({
       where: { id: invoice.id },
-      data: { residual, state: residual <= 0.001 ? 'paid' : 'posted' },
+      data: { residual, state: next },
       include: invoiceInclude,
     })
-  })
 }
 
 export async function creditInvoice(companyId: number, invoiceId: number) {
@@ -444,12 +467,23 @@ export async function creditInvoice(companyId: number, invoiceId: number) {
 }
 
 export async function cancelInvoice(companyId: number, invoiceId: number) {
-  const invoice = await getInvoice(companyId, invoiceId)
-  if (invoice.state !== 'draft') throw new AppError(409, 'Only a draft can be cancelled.')
-  return prisma.invoice.update({
-    where: { id: invoice.id },
-    data: { state: 'cancel', residual: 0 },
-    include: invoiceInclude,
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, companyId } })
+    if (!invoice) throw new AppError(404, 'Invoice not found.')
+    if (invoice.state !== 'draft') throw new AppError(409, 'Only a draft can be cancelled.')
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'account.move',
+      recordId: invoice.id,
+      from: invoice.state,
+      to: 'cancel',
+      label: invoice.name,
+    })
+    return tx.invoice.update({
+      where: { id: invoice.id },
+      data: { state: 'cancel', residual: 0 },
+      include: invoiceInclude,
+    })
   })
 }
 

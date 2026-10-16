@@ -3,6 +3,8 @@ import type { OrderInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
+import { valueDoneMove } from './valuation.ts'
+import { guardWorkflow } from './workflow.ts'
 
 const editableStates = new Set(['draft', 'sent'])
 
@@ -145,10 +147,20 @@ export async function markOrderSent(companyId: number, orderId: number) {
   if (order.state !== 'draft') {
     throw new AppError(409, 'Only a draft quotation can be marked sent.')
   }
-  return prisma.salesOrder.update({
+  return prisma.$transaction(async (tx) => {
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'sale.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'sent',
+      label: order.name,
+    })
+    return tx.salesOrder.update({
     where: { id: orderId },
     data: { state: 'sent' },
     include: orderInclude,
+  })
   })
 }
 
@@ -204,6 +216,14 @@ export async function confirmOrder(companyId: number, orderId: number) {
       })
     }
 
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'sale.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'sale',
+      label: order.name,
+    })
     return tx.salesOrder.update({
       where: { id: order.id },
       data: { state: 'sale' },
@@ -222,12 +242,21 @@ export async function deliverOrder(companyId: number, orderId: number) {
     if (order.state !== 'sale') {
       throw new AppError(409, 'Confirm the quotation before delivering it.')
     }
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'sale.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'done',
+      label: order.name,
+    })
 
     const pending = order.moves.filter((move) => move.state === 'draft')
     for (const move of pending) {
       await applyQuant(tx, move.productId, move.locationFromId, -move.quantity)
       await applyQuant(tx, move.productId, move.locationToId, move.quantity)
-      await tx.stockMove.update({ where: { id: move.id }, data: { state: 'done', date: new Date() } })
+      const done = await tx.stockMove.update({ where: { id: move.id }, data: { state: 'done', date: new Date() } })
+      await valueDoneMove(tx, companyId, done.id)
     }
 
     return tx.salesOrder.update({
@@ -246,6 +275,14 @@ export async function cancelOrder(companyId: number, orderId: number) {
       throw new AppError(409, 'A delivered order stays on the books. It cannot be cancelled.')
     }
     if (order.state === 'cancel') return tx.salesOrder.findFirstOrThrow({ where: { id: orderId }, include: orderInclude })
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'sale.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'cancel',
+      label: order.name,
+    })
     await tx.stockMove.updateMany({
       where: { orderId, state: 'draft' },
       data: { state: 'cancel' },
@@ -286,7 +323,7 @@ export async function adjustStock(
     const quantity = Math.abs(delta)
     await applyQuant(tx, product.id, from.id, -quantity)
     await applyQuant(tx, product.id, to.id, quantity)
-    return tx.stockMove.create({
+    const move = await tx.stockMove.create({
       data: {
         productId: product.id,
         locationFromId: from.id,
@@ -303,5 +340,7 @@ export async function adjustStock(
         locationTo: { select: { name: true, type: true } },
       },
     })
+    await valueDoneMove(tx, companyId, move.id)
+    return move
   })
 }

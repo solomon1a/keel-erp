@@ -41,9 +41,20 @@ model Company {
   salaryStructures SalaryStructure[]
   payrollRuns   PayrollRun[]
   expenses      ExpenseClaim[]
+  deskRecords   DeskRecord[]
+  moduleSettings ModuleSetting[]
   /// Seller taxpayer ID printed on invoices. Not a Golden Tax registration.
   taxId         String?
   address       String?
+  /// No journal, payment, or stock valuation is posted on or before this date.
+  lockDate      DateTime?
+  taxLockDate   DateTime?
+  accessGroups  AccessGroup[]
+  savedFilters  SavedFilter[]
+  chatter       ChatterMessage[]
+  statements    BankStatement[]
+  valuations    ValuationLayer[]
+  routes        StockRoute[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -70,6 +81,9 @@ model User {
   closedSessions       PosSession[]        @relation("PosClosedBy")
   posOrders            PosOrder[]          @relation("PosOrderCreatedBy")
   leads                Lead[]
+  memberships          GroupMember[]
+  savedFilters         SavedFilter[]
+  chatter              ChatterMessage[]
   createdAt            DateTime            @default(now())
 }
 
@@ -149,6 +163,8 @@ model Product {
   kind         String              @default("finished")
   listPrice    Float
   costPrice    Float               @default(0)
+  /// `fifo` or `avco`. Receipts and issues post a valuation layer.
+  costMethod   String              @default("avco")
   purchasable  Boolean             @default(false)
   /// `none`, `lot`, or `serial`. The number is recorded on the stock move.
   tracking     String              @default("none")
@@ -173,6 +189,7 @@ model Product {
   /// Shown on the public shop. Raw materials stay off unless someone publishes them.
   websitePublished Boolean          @default(false)
   posLines     PosOrderLine[]
+  valuations   ValuationLayer[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
@@ -452,6 +469,10 @@ model StockTransfer {
   moves          StockMove[]
   createdById    Int?
   createdBy      User?               @relation("TransferCreatedBy", fields: [createdById], references: [id])
+  routeId        Int?
+  route          StockRoute?         @relation(fields: [routeId], references: [id])
+  /// Current step on a multi-step route. Empty when the transfer has no route.
+  step           String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -650,6 +671,7 @@ model Invoice {
   lines           InvoiceLine[]
   payments        InvoicePayment[]
   entries         JournalEntry[]
+  matches         ReconcileMatch[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -693,6 +715,7 @@ model JournalEntry {
   lines     JournalItem[]
   payrollRun PayrollRun?
   expenseClaim ExpenseClaim?
+  valuations   ValuationLayer[]
 
   @@unique([companyId, name])
   @@index([companyId, date])
@@ -863,6 +886,38 @@ model PayslipLine {
   amount    Float
 }
 
+model DeskRecord {
+  id         Int      @id @default(autoincrement())
+  companyId  Int
+  company    Company  @relation(fields: [companyId], references: [id])
+  module     String
+  screen     String
+  name       String
+  state      String   @default("draft")
+  partner    String   @default("")
+  owner      String   @default("")
+  bucket     String   @default("")
+  amount     Float    @default(0)
+  notes      String   @default("")
+  recordDate DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([companyId, module, screen, name])
+  @@index([companyId, module, screen])
+}
+
+model ModuleSetting {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  module    String
+  key       String
+  value     String
+
+  @@unique([companyId, module, key])
+}
+
 model ExpenseClaim {
   id          Int           @id @default(autoincrement())
   name        String
@@ -884,4 +939,153 @@ model ExpenseClaim {
 
   @@unique([companyId, name])
   @@index([companyId, state])
+}
+
+model AccessGroup {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id])
+  key       String
+  name      String
+  members   GroupMember[]
+  grants    ModelAccess[]
+  rules     RecordRule[]
+
+  @@unique([companyId, key])
+}
+
+model GroupMember {
+  id      Int         @id @default(autoincrement())
+  groupId Int
+  group   AccessGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId  Int
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model ModelAccess {
+  id        Int         @id @default(autoincrement())
+  groupId   Int
+  group     AccessGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  model     String
+  canRead   Boolean     @default(false)
+  canWrite  Boolean     @default(false)
+  canCreate Boolean     @default(false)
+  canDelete Boolean     @default(false)
+
+  @@unique([groupId, model])
+}
+
+model RecordRule {
+  id      Int         @id @default(autoincrement())
+  groupId Int
+  group   AccessGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  model   String
+  name    String
+  field   String
+  op      String
+  value   String
+
+  @@index([groupId, model])
+}
+
+model SavedFilter {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  model     String
+  name      String
+  query     String   @default("")
+  groupBy   String   @default("none")
+  state     String   @default("all")
+
+  @@unique([userId, model, name])
+  @@index([companyId])
+}
+
+model ChatterMessage {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  model     String
+  recordId  Int
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  kind      String
+  summary   String
+  createdAt DateTime @default(now())
+
+  @@index([companyId, model, recordId])
+}
+
+model BankStatement {
+  id            Int                 @id @default(autoincrement())
+  companyId     Int
+  company       Company             @relation(fields: [companyId], references: [id])
+  name          String
+  statementDate DateTime
+  lines         BankStatementLine[]
+
+  @@unique([companyId, name])
+}
+
+model BankStatementLine {
+  id          Int              @id @default(autoincrement())
+  statementId Int
+  statement   BankStatement    @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  companyId   Int
+  lineDate    DateTime
+  label       String
+  amount      Float
+  reconciled  Float            @default(0)
+  matches     ReconcileMatch[]
+
+  @@index([companyId])
+}
+
+model ReconcileMatch {
+  id        Int               @id @default(autoincrement())
+  lineId    Int
+  line      BankStatementLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  invoiceId Int
+  invoice   Invoice           @relation(fields: [invoiceId], references: [id])
+  companyId Int
+  amount    Float
+
+  @@index([companyId, invoiceId])
+}
+
+model ValuationLayer {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id])
+  productId Int
+  product   Product       @relation(fields: [productId], references: [id])
+  moveId    Int?
+  quantity  Float
+  remaining Float
+  unitCost  Float
+  value     Float
+  method    String
+  entryId   Int?
+  entry     JournalEntry? @relation(fields: [entryId], references: [id])
+  createdAt DateTime      @default(now())
+
+  @@index([companyId, productId])
+}
+
+model StockRoute {
+  id        Int             @id @default(autoincrement())
+  companyId Int
+  company   Company         @relation(fields: [companyId], references: [id])
+  name      String
+  kind      String
+  steps     String
+  transfers StockTransfer[]
+
+  @@unique([companyId, name])
 }

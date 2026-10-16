@@ -3,6 +3,8 @@ import type { PurchaseInput, ReceivePurchaseInput } from '../../shared/schemas.t
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
+import { valueDoneMove } from './valuation.ts'
+import { guardWorkflow } from './workflow.ts'
 
 const editableStates = new Set(['draft', 'sent'])
 
@@ -135,10 +137,20 @@ export async function markPurchaseSent(companyId: number, orderId: number) {
   if (order.state !== 'draft') {
     throw new AppError(409, 'Only a draft RFQ can be marked sent.')
   }
-  return prisma.purchaseOrder.update({
-    where: { id: orderId },
-    data: { state: 'sent' },
-    include: purchaseInclude,
+  return prisma.$transaction(async (tx) => {
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'purchase.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'sent',
+      label: order.name,
+    })
+    return tx.purchaseOrder.update({
+      where: { id: orderId },
+      data: { state: 'sent' },
+      include: purchaseInclude,
+    })
   })
 }
 
@@ -174,6 +186,14 @@ export async function confirmPurchase(companyId: number, orderId: number) {
       })
     }
 
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'purchase.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'purchase',
+      label: order.name,
+    })
     return tx.purchaseOrder.update({
       where: { id: order.id },
       data: { state: 'purchase' },
@@ -195,6 +215,14 @@ export async function receivePurchase(companyId: number, orderId: number, input:
 
     const pending = order.moves.filter((move) => move.state === 'draft')
     if (pending.length === 0) {
+      await guardWorkflow(tx, {
+        companyId,
+        model: 'purchase.order',
+        recordId: order.id,
+        from: order.state,
+        to: 'done',
+        label: order.name,
+      })
       return tx.purchaseOrder.update({
         where: { id: order.id },
         data: { state: 'done' },
@@ -217,10 +245,11 @@ export async function receivePurchase(companyId: number, orderId: number, input:
       }
       await applyQuant(tx, move.productId, move.locationFromId, -quantity)
       await applyQuant(tx, move.productId, move.locationToId, quantity)
-      await tx.stockMove.update({
+      const done = await tx.stockMove.update({
         where: { id: move.id },
         data: { state: 'done', quantity, date: new Date() },
       })
+      await valueDoneMove(tx, companyId, done.id)
       const remainder = roundQty(move.quantity - quantity)
       if (remainder > 0.0001) {
         await tx.stockMove.create({
@@ -241,9 +270,18 @@ export async function receivePurchase(companyId: number, orderId: number, input:
     const stillOpen = await tx.stockMove.count({
       where: { purchaseOrderId: order.id, state: 'draft' },
     })
+    const next = stillOpen === 0 ? 'done' : 'purchase'
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'purchase.order',
+      recordId: order.id,
+      from: order.state,
+      to: next,
+      label: order.name,
+    })
     return tx.purchaseOrder.update({
       where: { id: order.id },
-      data: { state: stillOpen === 0 ? 'done' : 'purchase' },
+      data: { state: next },
       include: purchaseInclude,
     })
   })
@@ -265,6 +303,14 @@ export async function cancelPurchase(companyId: number, orderId: number) {
     if (order.state === 'cancel') {
       return tx.purchaseOrder.findFirstOrThrow({ where: { id: orderId }, include: purchaseInclude })
     }
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'purchase.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'cancel',
+      label: order.name,
+    })
     await tx.stockMove.updateMany({
       where: { purchaseOrderId: orderId, state: 'draft' },
       data: { state: 'cancel' },

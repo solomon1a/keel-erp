@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -92,6 +93,7 @@ export function AdminUsersPage() {
       <div>
         <h1 className="font-serif text-4xl tracking-tight">{t('people.title')}</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">{t('people.lead')}</p>
+        <Link className="mt-3 inline-block text-sm font-medium text-primary hover:underline" to="/settings/access">{t('access.title')}</Link>
       </div>
       {error ? <Notice message={error} /> : null}
       {notice ? <p className="text-sm">{notice}</p> : null}

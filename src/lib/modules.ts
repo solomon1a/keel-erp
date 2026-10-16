@@ -1,9 +1,10 @@
 import type { MessageKey } from '../i18n/messages.ts'
+import { moduleMenus } from './module-menus.ts'
 
-export type MenuLink = { label: MessageKey; to: string }
+export type MenuLink = { label: string; to: string }
 
 export type MenuEntry = {
-  label: MessageKey
+  label: string
   to?: string
   children?: MenuLink[]
 }
@@ -18,12 +19,6 @@ export type AppModule = {
   match: string[]
 }
 
-const peopleMenu: MenuEntry[] = [
-  { label: 'menu.employees', to: '/hr' },
-  { label: 'menu.payroll', to: '/hr/payroll' },
-  { label: 'menu.expenses', to: '/hr/expenses' },
-]
-
 export const appModules: AppModule[] = [
   {
     id: 'dashboard',
@@ -31,8 +26,8 @@ export const appModules: AppModule[] = [
     description: 'mod.dashboard.desc',
     home: '/desk',
     group: 'overview',
-    match: ['/desk'],
-    menu: [{ label: 'mod.dashboard', to: '/desk' }],
+    match: ['/desk', '/app/dashboard'],
+    menu: moduleMenus.dashboard ?? [],
   },
   {
     id: 'sales',
@@ -40,18 +35,8 @@ export const appModules: AppModule[] = [
     description: 'mod.sales.desc',
     home: '/orders',
     group: 'sell',
-    match: ['/orders', '/products'],
-    menu: [
-      {
-        label: 'menu.orders',
-        children: [
-          { label: 'menu.orders', to: '/orders' },
-          { label: 'menu.quotations', to: '/orders?state=draft' },
-        ],
-      },
-      { label: 'menu.customers', to: '/contacts' },
-      { label: 'menu.products', to: '/products' },
-    ],
+    match: ['/orders', '/products', '/app/sales'],
+    menu: moduleMenus.sales ?? [],
   },
   {
     id: 'crm',
@@ -59,8 +44,8 @@ export const appModules: AppModule[] = [
     description: 'mod.crm.desc',
     home: '/crm',
     group: 'sell',
-    match: ['/crm'],
-    menu: [{ label: 'menu.pipeline', to: '/crm' }],
+    match: ['/crm', '/app/crm'],
+    menu: moduleMenus.crm ?? [],
   },
   {
     id: 'pos',
@@ -68,12 +53,8 @@ export const appModules: AppModule[] = [
     description: 'mod.pos.desc',
     home: '/pos',
     group: 'sell',
-    match: ['/pos'],
-    menu: [
-      { label: 'menu.sessions', to: '/pos' },
-      { label: 'menu.posOrders', to: '/pos/orders' },
-      { label: 'menu.daily', to: '/pos/report' },
-    ],
+    match: ['/pos', '/app/pos'],
+    menu: moduleMenus.pos ?? [],
   },
   {
     id: 'website',
@@ -81,11 +62,8 @@ export const appModules: AppModule[] = [
     description: 'mod.website.desc',
     home: '/website',
     group: 'sell',
-    match: ['/website'],
-    menu: [
-      { label: 'menu.websiteHome', to: '/website' },
-      { label: 'menu.storefront', to: '/shop' },
-    ],
+    match: ['/website', '/app/website'],
+    menu: moduleMenus.website ?? [],
   },
   {
     id: 'purchase',
@@ -93,11 +71,8 @@ export const appModules: AppModule[] = [
     description: 'mod.purchase.desc',
     home: '/purchases',
     group: 'supply',
-    match: ['/purchases', '/vendors'],
-    menu: [
-      { label: 'menu.rfq', to: '/purchases' },
-      { label: 'menu.vendors', to: '/vendors' },
-    ],
+    match: ['/purchases', '/vendors', '/app/purchase'],
+    menu: moduleMenus.purchase ?? [],
   },
   {
     id: 'inventory',
@@ -105,19 +80,8 @@ export const appModules: AppModule[] = [
     description: 'mod.inventory.desc',
     home: '/inventory',
     group: 'supply',
-    match: ['/inventory'],
-    menu: [
-      {
-        label: 'menu.operations',
-        children: [
-          { label: 'menu.onHand', to: '/inventory' },
-          { label: 'menu.transfers', to: '/inventory/transfers' },
-          { label: 'menu.replenish', to: '/inventory/replenish' },
-        ],
-      },
-      { label: 'menu.warehouses', to: '/inventory/warehouses' },
-      { label: 'menu.reporting', to: '/inventory/moves' },
-    ],
+    match: ['/inventory', '/app/inventory'],
+    menu: moduleMenus.inventory ?? [],
   },
   {
     id: 'manufacturing',
@@ -125,11 +89,8 @@ export const appModules: AppModule[] = [
     description: 'mod.manufacturing.desc',
     home: '/manufacturing',
     group: 'supply',
-    match: ['/manufacturing', '/boms'],
-    menu: [
-      { label: 'menu.mo', to: '/manufacturing' },
-      { label: 'menu.boms', to: '/boms' },
-    ],
+    match: ['/manufacturing', '/boms', '/app/manufacturing'],
+    menu: moduleMenus.manufacturing ?? [],
   },
   {
     id: 'accounting',
@@ -137,12 +98,8 @@ export const appModules: AppModule[] = [
     description: 'mod.accounting.desc',
     home: '/accounting',
     group: 'finance',
-    match: ['/accounting'],
-    menu: [
-      { label: 'menu.invoices', to: '/accounting' },
-      { label: 'menu.ledger', to: '/accounting/ledger' },
-      { label: 'menu.reports', to: '/accounting/reports' },
-    ],
+    match: ['/accounting', '/app/accounting'],
+    menu: moduleMenus.accounting ?? [],
   },
   {
     id: 'hr',
@@ -150,8 +107,26 @@ export const appModules: AppModule[] = [
     description: 'mod.hr.desc',
     home: '/hr',
     group: 'people',
-    match: ['/hr'],
-    menu: peopleMenu,
+    match: ['/hr', '/app/hr'],
+    menu: moduleMenus.hr ?? [],
+  },
+  {
+    id: 'attendance',
+    label: 'mod.attendance',
+    description: 'mod.attendance.desc',
+    home: '/app/attendance/check-in',
+    group: 'people',
+    match: ['/app/attendance'],
+    menu: moduleMenus.attendance ?? [],
+  },
+  {
+    id: 'wastage',
+    label: 'mod.wastage',
+    description: 'mod.wastage.desc',
+    home: '/app/wastage/records',
+    group: 'supply',
+    match: ['/app/wastage'],
+    menu: moduleMenus.wastage ?? [],
   },
   {
     id: 'contacts',
@@ -159,8 +134,8 @@ export const appModules: AppModule[] = [
     description: 'mod.contacts.desc',
     home: '/contacts',
     group: 'sell',
-    match: ['/contacts'],
-    menu: [{ label: 'mod.contacts', to: '/contacts' }],
+    match: ['/contacts', '/app/contacts'],
+    menu: moduleMenus.contacts ?? [],
   },
   {
     id: 'payroll',
@@ -168,8 +143,8 @@ export const appModules: AppModule[] = [
     description: 'mod.payroll.desc',
     home: '/hr/payroll',
     group: 'people',
-    match: ['/hr/payroll'],
-    menu: peopleMenu,
+    match: ['/hr/payroll', '/app/payroll'],
+    menu: moduleMenus.payroll ?? [],
   },
   {
     id: 'expenses',
@@ -177,8 +152,53 @@ export const appModules: AppModule[] = [
     description: 'mod.expenses.desc',
     home: '/hr/expenses',
     group: 'people',
-    match: ['/hr/expenses'],
-    menu: peopleMenu,
+    match: ['/hr/expenses', '/app/expenses'],
+    menu: moduleMenus.expenses ?? [],
+  },
+  {
+    id: 'assets',
+    label: 'mod.assets',
+    description: 'mod.assets.desc',
+    home: '/app/assets/register',
+    group: 'finance',
+    match: ['/app/assets'],
+    menu: moduleMenus.assets ?? [],
+  },
+  {
+    id: 'projects',
+    label: 'mod.projects',
+    description: 'mod.projects.desc',
+    home: '/app/projects/projects',
+    group: 'supply',
+    match: ['/app/projects'],
+    menu: moduleMenus.projects ?? [],
+  },
+  {
+    id: 'quality',
+    label: 'mod.quality',
+    description: 'mod.quality.desc',
+    home: '/app/quality/inspections',
+    group: 'supply',
+    match: ['/app/quality'],
+    menu: moduleMenus.quality ?? [],
+  },
+  {
+    id: 'subcontracting',
+    label: 'mod.subcontracting',
+    description: 'mod.subcontracting.desc',
+    home: '/app/subcontracting/orders',
+    group: 'supply',
+    match: ['/app/subcontracting'],
+    menu: moduleMenus.subcontracting ?? [],
+  },
+  {
+    id: 'helpdesk',
+    label: 'mod.helpdesk',
+    description: 'mod.helpdesk.desc',
+    home: '/app/helpdesk/tickets',
+    group: 'sell',
+    match: ['/app/helpdesk'],
+    menu: moduleMenus.helpdesk ?? [],
   },
 ]
 
@@ -190,13 +210,25 @@ const launcherOrder = [
   'purchase',
   'inventory',
   'manufacturing',
+  'wastage',
+  'quality',
+  'subcontracting',
   'pos',
   'website',
   'accounting',
+  'assets',
   'expenses',
   'hr',
+  'attendance',
   'payroll',
+  'projects',
+  'helpdesk',
 ]
+
+for (const mod of appModules) {
+  mod.home = `/go/${mod.id}`
+  if (!mod.match.includes(mod.home)) mod.match.push(mod.home)
+}
 
 export function launcherModules() {
   return [...appModules].sort((a, b) => launcherOrder.indexOf(a.id) - launcherOrder.indexOf(b.id))
@@ -220,20 +252,35 @@ export function moduleForPath(pathname: string) {
 export function linkActive(to: string, pathname: string, search: string) {
   const [path, query] = to.split('?')
   if (!path) return false
+  const current = new URLSearchParams(search)
   if (query) {
-    const wanted = new URLSearchParams(query).get('state')
-    return pathname === path && new URLSearchParams(search).get('state') === wanted
+    if (pathname !== path) return false
+    const wanted = new URLSearchParams(query)
+    for (const [key, value] of wanted) {
+      if (current.get(key) !== value) return false
+    }
+    return true
   }
-  if (path === '/orders') return pathname === '/orders' && !new URLSearchParams(search).get('state')
+  if (path === '/orders') return pathname === '/orders' && !current.get('state')
+  if (path === '/purchases') return pathname === '/purchases' && !current.get('state')
   if (path === '/hr') return pathname === '/hr' || /^\/hr\/\d+/.test(pathname)
   if (path === '/inventory') return pathname === '/inventory'
   if (path === '/pos') return pathname === '/pos' || pathname.startsWith('/pos/sessions')
-  if (path === '/accounting') return pathname === '/accounting' || /^\/accounting\/\d+/.test(pathname)
+  if (path === '/accounting') return (pathname === '/accounting' && !current.get('moveType')) || /^\/accounting\/\d+/.test(pathname)
+  if (path === '/accounting/reports') return pathname === '/accounting/reports' && !current.get('view')
   if (path === '/crm') return pathname === '/crm' || /^\/crm\/\d+/.test(pathname)
   return pathname === path || pathname.startsWith(`${path}/`)
 }
 
 export function sectionForPath(mod: AppModule, pathname: string, search: string): MenuLink | null {
+  if (pathname === `/go/${mod.id}`) return null
+  if (pathname.startsWith(`/go/${mod.id}/`)) {
+    const segment = decodeURIComponent(pathname.slice(`/go/${mod.id}/`.length).split('/')[0] ?? '')
+    const entry = mod.menu.find((item) => item.label === segment)
+    if (!entry) return null
+    const label = entry.label === 'menu.reporting' ? 'hub.reports' : entry.label
+    return { label, to: pathname }
+  }
   const links = mod.menu.flatMap((entry) => entry.children ?? (entry.to ? [{ label: entry.label, to: entry.to }] : []))
   return links.find((link) => linkActive(link.to, pathname, search)) ?? links[0] ?? null
 }

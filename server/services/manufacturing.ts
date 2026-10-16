@@ -3,6 +3,8 @@ import type { BomInput, ManufacturingInput, ProduceInput } from '../../shared/sc
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
+import { valueDoneMove } from './valuation.ts'
+import { guardWorkflow } from './workflow.ts'
 
 const orderInclude = {
   product: { select: { id: true, name: true, sku: true, kind: true, costPrice: true } },
@@ -304,6 +306,14 @@ export async function confirmManufacturing(companyId: number, orderId: number) {
       order.lines.map((line) => ({ productId: line.productId, name: line.product.name, quantity: line.quantity })),
     )
     if (shortages.length > 0) refuseShortages(shortages)
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'mrp.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'confirmed',
+      label: order.name,
+    })
     return tx.manufacturingOrder.update({
       where: { id: order.id },
       data: { state: 'confirmed' },
@@ -316,10 +326,20 @@ export async function startManufacturing(companyId: number, orderId: number) {
   const order = await prisma.manufacturingOrder.findFirst({ where: { id: orderId, companyId } })
   if (!order) throw new AppError(404, 'Manufacturing order not found.')
   if (order.state !== 'confirmed') throw new AppError(409, 'Confirm the order before starting it.')
-  const updated = await prisma.manufacturingOrder.update({
+  const updated = await prisma.$transaction(async (tx) => {
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'mrp.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'progress',
+      label: order.name,
+    })
+    return tx.manufacturingOrder.update({
     where: { id: orderId },
     data: { state: 'progress' },
     include: orderInclude,
+  })
   })
   return attachOnHand(companyId, updated)
 }
@@ -355,7 +375,7 @@ export async function produceManufacturing(companyId: number, orderId: number, i
       if (take.quantity <= 0) continue
       await applyQuant(tx, take.productId, source.location.id, -take.quantity)
       await applyQuant(tx, take.productId, locations.production.id, take.quantity)
-      await tx.stockMove.create({
+      const consumed = await tx.stockMove.create({
         data: {
           productId: take.productId,
           locationFromId: source.location.id,
@@ -367,6 +387,7 @@ export async function produceManufacturing(companyId: number, orderId: number, i
           date: new Date(),
         },
       })
+      await valueDoneMove(tx, companyId, consumed.id)
       await tx.manufacturingComponent.update({
         where: { id: take.id },
         data: { consumed: { increment: take.quantity } },
@@ -374,7 +395,7 @@ export async function produceManufacturing(companyId: number, orderId: number, i
     }
     await applyQuant(tx, order.productId, locations.production.id, -producing)
     await applyQuant(tx, order.productId, destination.location.id, producing)
-    await tx.stockMove.create({
+    const finished = await tx.stockMove.create({
       data: {
         productId: order.productId,
         locationFromId: locations.production.id,
@@ -386,11 +407,21 @@ export async function produceManufacturing(companyId: number, orderId: number, i
         date: new Date(),
       },
     })
+    await valueDoneMove(tx, companyId, finished.id)
+    const next = finishes ? 'done' : 'progress'
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'mrp.order',
+      recordId: order.id,
+      from: order.state,
+      to: next,
+      label: order.name,
+    })
     return tx.manufacturingOrder.update({
       where: { id: order.id },
       data: {
         quantityDone: roundQty(order.quantityDone + producing),
-        state: finishes ? 'done' : 'progress',
+        state: next,
       },
       include: orderInclude,
     })
@@ -410,6 +441,14 @@ export async function cancelManufacturing(companyId: number, orderId: number) {
     if (order.state === 'cancel') {
       return tx.manufacturingOrder.findFirstOrThrow({ where: { id: orderId }, include: orderInclude })
     }
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'mrp.order',
+      recordId: order.id,
+      from: order.state,
+      to: 'cancel',
+      label: order.name,
+    })
     return tx.manufacturingOrder.update({
       where: { id: orderId },
       data: { state: 'cancel' },
