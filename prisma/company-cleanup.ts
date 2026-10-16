@@ -63,7 +63,7 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
       },
     })
     await tx.company.delete({ where: { id: companyId } })
-  })
+  }, { maxWait: 20000, timeout: 120000 })
 }
 
 export async function removeStrayCompanies(client: PrismaClient) {
