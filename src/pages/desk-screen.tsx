@@ -106,6 +106,28 @@ function stateText(state: string, t: Translate) {
       return t('desk.state.to_bill')
     case 'billed':
       return t('desk.state.billed')
+    case 'screening':
+      return t('desk.state.screening')
+    case 'interview':
+      return t('desk.state.interview')
+    case 'offer':
+      return t('desk.state.offer')
+    case 'hired':
+      return t('desk.state.hired')
+    case 'probation':
+      return t('desk.state.probation')
+    case 'overtime':
+      return t('desk.state.overtime')
+    case 'awarded':
+      return t('desk.state.awarded')
+    case 'dept_sales':
+      return t('desk.state.dept_sales')
+    case 'dept_workshop':
+      return t('desk.state.dept_workshop')
+    case 'dept_shop':
+      return t('desk.state.dept_shop')
+    case 'dept_office':
+      return t('desk.state.dept_office')
     default:
       return state
   }

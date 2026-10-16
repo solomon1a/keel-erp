@@ -1,3 +1,5 @@
+import { priorityScreens } from './priority-screens.ts'
+
 export type DeskKind = 'list' | 'report' | 'settings' | 'accounts'
 
 export type DeskSeed = {
@@ -558,6 +560,7 @@ export const deskScreens: DeskScreen[] = [
     { name: 'Billing', state: 'active', recordDate: day('2026-01-01') },
   ], false),
 
+  ...priorityScreens,
 ]
 
 export function findDeskScreen(module: string, screen: string) {

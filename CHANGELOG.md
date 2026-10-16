@@ -1,5 +1,9 @@
 # Changelog
 
+## HR, attendance, finance, procurement, and wastage
+
+HR opens on a dashboard, the roster, departments, designations, an org chart, contracts, jobs, an applicant pipeline, onboarding, appraisals, leave types, leave requests, and approvals. Attendance is its own app: check-in, shifts, rosters, a monthly sheet, late, absent, overtime, a leave calendar, and reports. Finance keeps the invoices, bills, payments, journal, and chart, and adds bank and cash, budgets, cost centres, a cash-flow report, expenses, and a dashboard. Procurement keeps requests and orders, and adds requisitions, quotation comparison, approvals, goods receipt, vendor bills, and vendor scores. Wastage records scrap from the shelf and the shop floor, with a reason, a quantity, a cost, and an approval, plus reports by product, reason, and month. Each company in the seed has these rows. Each app still opens on a tile grid.
+
 ## App sections
 
 Opening an app from the launcher shows that app’s sections as the same icon tiles. Sales opens on quotations, orders, customers, products, pricelists, reporting, and settings. Accounting opens on invoices, bills, payments, journal entries, the chart of accounts, reporting, and settings. A section that holds several pages, such as reports or the rest of configuration, opens another tile grid. The breadcrumb and the top menu still jump straight to a page.

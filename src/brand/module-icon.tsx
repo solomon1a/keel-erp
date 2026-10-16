@@ -26,6 +26,8 @@ const iconNames = [
   'quality',
   'subcontracting',
   'helpdesk',
+  'attendance',
+  'wastage',
 ] as const
 
 export type ModuleIconId = (typeof iconNames)[number]
@@ -69,6 +71,8 @@ const menuIcons: Record<string, ModuleIconId> = {
   'mod.quality': 'quality',
   'mod.subcontracting': 'subcontracting',
   'mod.helpdesk': 'helpdesk',
+  'mod.attendance': 'attendance',
+  'mod.wastage': 'wastage',
 }
 
 const accents: Record<string, string> = {
@@ -90,6 +94,8 @@ const accents: Record<string, string> = {
   quality: 'var(--kl-color-module-quality)',
   subcontracting: 'var(--kl-color-module-subcontracting)',
   helpdesk: 'var(--kl-color-module-helpdesk)',
+  attendance: 'var(--kl-color-module-attendance)',
+  wastage: 'var(--kl-color-module-wastage)',
 }
 
 export function moduleIconId(moduleId: string): ModuleIconId {

@@ -54,5 +54,21 @@ describe('desk screens', () => {
     const amiraCodes = (await call('/api/accounts', amira)).body as unknown as Array<{ code: string; id: number }>
     const mayaCodes = accounts.body as unknown as Array<{ id: number }>
     expect(amiraCodes.every((row) => !mayaCodes.some((mayaRow) => mayaRow.id === row.id))).toBe(true)
+
+    const names = async (cookie: string, module: string, screen: string) => {
+      const response = await call(`/api/desk-records?module=${module}&screen=${screen}`, cookie)
+      expect(response.status).toBe(200)
+      return (response.body as unknown as Array<{ name: string }>).map((row) => row.name)
+    }
+    expect(await names(maya, 'hr', 'applicants')).toContain('Chen Wei')
+    expect(await names(amira, 'hr', 'applicants')).toContain('Chen Wei')
+    expect(await names(maya, 'attendance', 'check-in')).toContain('Lin Xiao · 16 Apr')
+    expect(await names(amira, 'attendance', 'sheet')).toContain('Amira Shah · April')
+    expect(await names(maya, 'wastage', 'records')).toContain('WS111 dye spill')
+    expect(await names(amira, 'purchase', 'requisitions')).toContain('RQ1046 dye lot')
+    expect(await names(maya, 'accounting', 'bank')).toContain('Operating account')
+    const jordan = await signIn('jordan@hudsonyard.example', demoPasswords.jordan)
+    expect(await names(jordan, 'attendance', 'sheet')).toContain('Jordan Hale · April')
+    expect(await names(jordan, 'wastage', 'records')).toContain('WS108 failed totes')
   })
 })

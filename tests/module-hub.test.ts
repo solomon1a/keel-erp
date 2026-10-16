@@ -50,6 +50,72 @@ describe('module hubs', () => {
     ]))
   })
 
+  it('opens HR, attendance, finance, procurement, and wastage on their sections', () => {
+    expect(labels('hr')).toEqual(expect.arrayContaining([
+      'desk.s.hr.dashboard',
+      'menu.employees',
+      'desk.s.hr.departments',
+      'desk.s.hr.designations',
+      'desk.s.hr.org',
+      'desk.s.hr.contracts',
+      'desk.s.hr.jobs',
+      'desk.s.hr.applicants',
+      'desk.s.hr.onboarding',
+      'desk.s.hr.appraisals',
+      'desk.s.hr.leave-types',
+      'desk.s.hr.leave',
+      'desk.s.hr.approvals',
+      'hub.reports',
+      'hub.settings',
+    ]))
+    expect(labels('attendance')).toEqual(expect.arrayContaining([
+      'desk.s.attendance.check-in',
+      'desk.s.attendance.shifts',
+      'desk.s.attendance.rosters',
+      'desk.s.attendance.sheet',
+      'desk.s.attendance.late',
+      'desk.s.attendance.absent',
+      'desk.s.attendance.overtime',
+      'desk.s.attendance.calendar',
+      'hub.reports',
+    ]))
+    expect(labels('accounting')).toEqual(expect.arrayContaining([
+      'desk.s.accounting.dashboard',
+      'desk.s.accounting.bank',
+      'desk.s.accounting.budgets',
+      'desk.s.accounting.cost-centres',
+      'menu.expenses',
+      'hub.reports',
+    ]))
+    expect(segmentTiles(appModules.find((item) => item.id === 'accounting')!, 'menu.reporting')?.tiles.map((tile) => tile.label)).toEqual(expect.arrayContaining([
+      'acct.pnl',
+      'acct.balance',
+      'desk.s.accounting.cash-flow',
+      'desk.s.accounting.aged-receivable',
+      'desk.s.accounting.aged-payable',
+      'acct.vat',
+    ]))
+    expect(labels('purchase')).toEqual(expect.arrayContaining([
+      'desk.s.purchase.requisitions',
+      'menu.rfq',
+      'desk.s.purchase.comparison',
+      'menu.orders',
+      'desk.s.purchase.approvals',
+      'desk.s.purchase.receipts',
+      'desk.s.purchase.bills',
+      'desk.s.purchase.evaluation',
+      'hub.reports',
+    ]))
+    expect(labels('wastage')).toEqual(expect.arrayContaining([
+      'desk.s.wastage.dashboard',
+      'desk.s.wastage.records',
+      'desk.s.wastage.inventory',
+      'desk.s.wastage.manufacturing',
+      'hub.reports',
+      'hub.settings',
+    ]))
+  })
+
   it('gives every app a hub and keeps compliance off the launcher', () => {
     expect(appModules.some((mod) => mod.id === 'compliance')).toBe(false)
     for (const mod of appModules) {
