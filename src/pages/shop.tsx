@@ -45,6 +45,7 @@ type ShopOrder = {
   paymentMethod: string | null
   paymentState: string | null
   customer: { name: string }
+  company: { currency: string }
   warehouse: { name: string } | null
   lines: Array<{ id: number; description: string; quantity: number; unitPrice: number; subtotal: number; taxAmount: number }>
 }
@@ -336,11 +337,11 @@ export function ShopThanksPage() {
           {row.lines.map((line) => (
             <li key={line.id} className="flex justify-between gap-3 border-b border-border py-2 text-sm">
               <span>{line.description} × {line.quantity}</span>
-              <span>{formatMoney(line.subtotal + line.taxAmount, 'CNY', locale)}</span>
+              <span>{formatMoney(line.subtotal + line.taxAmount, row.company.currency, locale)}</span>
             </li>
           ))}
         </ul>
-        <p className="font-semibold">{t('shop.total')} {formatMoney(row.amountTotal, 'CNY', locale)}</p>
+        <p className="font-semibold">{t('shop.total')} {formatMoney(row.amountTotal, row.company.currency, locale)}</p>
         <Link className="text-sm font-semibold text-primary" to="/shop">{t('shop.back')}</Link>
       </div>
     </ShopFrame>
@@ -401,7 +402,7 @@ export function ShopAccountPage() {
                   ) : (
                     <span className="font-semibold">{order.name}</span>
                   )}
-                  <span className="ml-3 text-sm">{formatMoney(order.amountTotal, 'CNY', locale)}</span>
+                  <span className="ml-3 text-sm">{formatMoney(order.amountTotal, order.company.currency, locale)}</span>
                 </li>
               ))}
             </ul>

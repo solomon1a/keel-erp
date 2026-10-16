@@ -41,7 +41,7 @@ export function DeskPage() {
         <h1 className="font-serif text-4xl tracking-tight">{t('desk.title')}</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">{t('desk.lead')}</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4">
         <Stat label={t('desk.openOrders')} value={String(data.openOrders)} to="/orders" />
         <Stat label={t('desk.pipeline')} value={money(data.pipelineValue)} hint={t('desk.pipelineCount', { count: data.pipelineCount })} to="/crm" />
         <Stat label={t('desk.receivable')} value={money(data.receivable)} to="/accounting" />

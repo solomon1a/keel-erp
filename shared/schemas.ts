@@ -31,7 +31,7 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 })
 
-export const currencyCodes = ['CNY', 'USD', 'EUR', 'HKD', 'JPY'] as const
+export const currencyCodes = ['CNY', 'USD', 'EUR', 'GBP', 'HKD', 'JPY'] as const
 
 export const companySettingsSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),

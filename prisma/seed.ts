@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../server/auth.ts'
+import { seedRegionalCompanies } from './seed-regions.ts'
 
 const prisma = new PrismaClient()
 
@@ -7,9 +8,21 @@ export const demoPasswords = {
   maya: 'keel-maya-desk',
   jonah: 'keel-jonah-desk',
   lin: 'keel-lin-shop',
+  amira: 'keel-amira-desk',
+  jordan: 'keel-jordan-desk',
+  priya: 'keel-priya-shop',
+  sam: 'keel-sam-shop',
 } as const
 
 export async function seedDatabase(client: PrismaClient = prisma) {
+  await seedJiangbei(client)
+  await seedRegionalCompanies(client)
+}
+
+async function seedJiangbei(client: PrismaClient) {
+  const already = await client.company.findFirst({ where: { name: '江北良品' } })
+  if (already) return
+
   const company = await client.company.create({
     data: { name: '江北良品', city: '上海', currency: 'CNY', defaultTaxRate: 13 },
   })
@@ -37,20 +50,28 @@ export async function seedDatabase(client: PrismaClient = prisma) {
     },
   })
 
-  const countries = await Promise.all(
-    [
-      ['China', 'CN'],
-      ['United States', 'US'],
-      ['Canada', 'CA'],
-      ['United Kingdom', 'GB'],
-      ['Germany', 'DE'],
-      ['Japan', 'JP'],
-      ['Mexico', 'MX'],
-    ].map(([name, code]) => client.country.create({ data: { name, code } })),
-  )
+  const countries = []
+  for (const [name, code] of [
+    ['China', 'CN'],
+    ['United States', 'US'],
+    ['Canada', 'CA'],
+    ['United Kingdom', 'GB'],
+    ['Germany', 'DE'],
+    ['Japan', 'JP'],
+    ['Mexico', 'MX'],
+  ] as const) {
+    countries.push(
+      await client.country.upsert({
+        where: { code },
+        update: { name },
+        create: { name, code },
+      }),
+    )
+  }
   const china = countries[0]
 
-  await client.tax.create({ data: { name: '增值税', rate: 13, isDefault: true } })
+  const existingVat = await client.tax.findFirst({ where: { name: '增值税' } })
+  if (!existingVat) await client.tax.create({ data: { name: '增值税', rate: 13, isDefault: true } })
 
   const shanghai = await client.warehouse.create({
     data: { name: '上海仓', code: 'SH', isDefault: true, companyId: company.id },
@@ -332,12 +353,16 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   })
 
   const tax = await client.tax.findFirstOrThrow()
-  await client.sequence.create({ data: { name: 'sales.order', next: 2 } })
-  await client.sequence.create({ data: { name: 'purchase.order', next: 1 } })
-  await client.sequence.create({ data: { name: 'manufacturing.order', next: 1 } })
-  await client.sequence.create({ data: { name: 'stock.transfer', next: 1 } })
-  await client.sequence.create({ data: { name: 'pos.session', next: 1 } })
-  await client.sequence.create({ data: { name: 'pos.order', next: 1 } })
+  for (const [name, next] of [
+    ['sales.order', 2],
+    ['purchase.order', 1],
+    ['manufacturing.order', 1],
+    ['stock.transfer', 1],
+    ['pos.session', 1],
+    ['pos.order', 1],
+  ] as const) {
+    await client.sequence.upsert({ where: { name }, update: {}, create: { name, next } })
+  }
   await client.salesOrder.create({
     data: {
       name: 'SO0001',

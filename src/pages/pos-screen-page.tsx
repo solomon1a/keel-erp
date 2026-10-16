@@ -210,7 +210,7 @@ export function PosScreenPage() {
                   disabled={product.onHand <= 0}
                   onClick={() => addProduct(product)}
                 >
-                  <span className="block font-semibold">{product.name}</span>
+                  <span className="block font-semibold break-words">{product.name}</span>
                   <span className="mt-1 block text-sm">{money(product.listPrice)}</span>
                   <span className="block text-xs text-muted-foreground">{t('pos.onHand')} {product.onHand}</span>
                 </button>

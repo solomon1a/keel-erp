@@ -2,7 +2,7 @@
 
 Keel is a small operations desk for one company: contacts, quotations, and the stock room. It is a clean-room start on the plan in [docs/odoo-analysis/BUILD_OUR_OWN.md](docs/odoo-analysis/BUILD_OUR_OWN.md), not a copy of Odoo.
 
-江北良品 is loaded the first time the database is empty: Shanghai, CNY, and 13% VAT, so you can click through a real quotation instead of an empty screen.
+Three demo companies load with the seed. 江北良品 is Shanghai, CNY, and 13% VAT. Harbour & Line is London, GBP, and 20% VAT. Hudson Yard Goods is New York, USD, and 8.875% sales tax. Each person belongs to one company, and amounts on their desk use that currency. Running the seed again skips a company that is already there and adds any of these that are missing.
 
 ## Run it
 
@@ -17,9 +17,21 @@ npm run dev
 
 Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The desk and API listen on every interface (ports 43123 and 43124) so a cloud preview can reach them. Vite proxies `/api` to the API. On Vercel the desk is static and `/api` is the same Hono app, so the session cookie stays on one origin.
 
-Sign in with email and password. The session is an httpOnly cookie, and it is marked Secure on HTTPS. Demo accounts are listed in [RUN_LOCAL.md](RUN_LOCAL.md). Maya Chen is an admin and can add people or reset passwords. Anyone signed in can change their own password.
+Sign in with email and password. The session is an httpOnly cookie, and it is marked Secure on HTTPS. Demo accounts:
 
-To wipe the database in `DATABASE_URL_UNPOOLED` and load the sample company again:
+| Company | Name | Role | Email | Password |
+| --- | --- | --- | --- | --- |
+| 江北良品 | Maya Chen | admin | maya@northline.example | keel-maya-desk |
+| 江北良品 | Jonah Ellis | user | jonah@northline.example | keel-jonah-desk |
+| 江北良品 shop | 林晓 | shop | lin@northline.example | keel-lin-shop |
+| Harbour & Line | Amira Shah | admin | amira@harbourline.example | keel-amira-desk |
+| Harbour & Line shop | Priya Nair | shop | priya@harbourline.example | keel-priya-shop |
+| Hudson Yard Goods | Jordan Hale | admin | jordan@hudsonyard.example | keel-jordan-desk |
+| Hudson Yard Goods shop | Sam Ortiz | shop | sam@hudsonyard.example | keel-sam-shop |
+
+Maya, Amira, and Jordan are admins and can add people or reset passwords inside their own company. Anyone signed in can change their own password. The public shop at `/shop` is 江北良品.
+
+To wipe the database in `DATABASE_URL_UNPOOLED` and load the sample companies again:
 
 ```bash
 npm run db:reset
@@ -36,7 +48,7 @@ npm test
 - Contacts: companies and people, search, customer / supplier / employee flags, address, notes, and who created the record.
 - Products: goods and services, SKU, list price, cost, a purchasable flag, finished goods or raw material, and an optional lot or serial flag.
 - Quotations: lines, discount, a configurable tax rate, and totals that show untaxed amount, tax, and the price including tax. Mark sent, confirm, cancel. This is not a fapiao.
-- Company settings: name, one currency code (CNY by default), and the default tax rate. Another currency can be stored later; the desk still uses one code.
+- Company settings: name, one currency code for that company (CNY, GBP, or USD in the demos), and the default tax rate. Amounts follow the signed-in company.
 - English and Simplified Chinese on the desk. The **中文** / **EN** switch is remembered in a browser cookie.
 - Confirming a sales order checks the warehouse on that order (上海仓 by default). Short stock is refused with the product name and the quantity on hand.
 - Validating a delivery moves goods from that warehouse’s default shelf to customers and closes the order. A service-only order can be fulfilled without a stock move.

@@ -28,7 +28,7 @@ DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx-pooler.ap-southeast-1.aws.neon.t
 DATABASE_URL_UNPOOLED=postgresql://USER:PASSWORD@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
 ```
 
-Marketplace path instead of the Neon console: in the Vercel project, **Storage → Create → Neon** (or **Marketplace → Neon**). The integration writes `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct). Copy `DATABASE_URL_UNPOOLED` into a variable named `DATABASE_URL_UNPOOLED`. If the pooled URL has no `pgbouncer=true`, edit `DATABASE_URL` and add `&pgbouncer=true&connection_limit=1`.
+Marketplace path instead of the Neon console: in the Vercel project, **Storage → Create → Neon** (or **Marketplace → Neon**). The integration writes `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct). Keep both names. If the pooled URL has no `pgbouncer=true`, edit `DATABASE_URL` and add `&pgbouncer=true&connection_limit=1`.
 
 A single non-pooled URL can be pasted into both variables for a first try. Serverless will open more connections that way. Prefer the pooler for `DATABASE_URL`.
 
@@ -44,14 +44,14 @@ Documented by Vercel at [Deploying Origin repositories](https://vercel.com/docs/
 6. Framework preset: **Vite**. Production branch: `main`.
 7. Confirm the build matches `vercel.json` (the dashboard must not replace these):
    - Install command: `npm install` (this runs `postinstall`, which is `prisma generate`)
-   - Build command: `prisma generate && npm run typecheck && vite build`
+   - Build command: `sh scripts/vercel-build.sh` (generate, migrate, typecheck, Vite build, and the API bundle). Set `KEEL_SEED_ON_BUILD=1` only when you want that build to seed. A failed seed is skipped so the build can finish.
    - Output directory: `dist`
 8. Add the environment variables in the next section **before** the first deploy. Apply them to **Production**. Use a second Neon branch for **Preview** if you want pull-request deploys; do not point Preview at the production database unless you are content for both to share the demo data.
 9. Deploy.
 
 You can also install Vercel from the repo’s **Apps** tab on Origin (codebase settings). That connects the same integration: preview deployments on pull requests, production on `main`.
 
-`vercel.json` keeps the SPA fallback on `/index.html`. Requests to `/api` are a Node function (`api/index.ts`) and are matched before that rewrite. The function does not seed and does not run migrations.
+`vercel.json` keeps the SPA fallback on `/index.html`. Requests to `/api` are a Node function (`api/[[...route]].ts`) and are matched before that rewrite. The function does not seed and does not run migrations.
 
 ## 4. Environment variables
 

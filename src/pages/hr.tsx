@@ -180,7 +180,7 @@ export function HrPage() {
           </table>
         </div>
         <form
-          className="grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-6"
+          className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-6"
           onSubmit={(event) => {
             event.preventDefault()
             addEmployee.mutate()

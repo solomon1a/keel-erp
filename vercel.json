@@ -4,14 +4,8 @@
   "buildCommand": "sh scripts/vercel-build.sh",
   "outputDirectory": "dist",
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api"
-    },
-    {
-      "source": "/((?!api/|api$).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api/|api$).*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/**/*.ts": {

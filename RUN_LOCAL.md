@@ -34,7 +34,7 @@ npm run dev
 
 `cp` creates `.env`. That file is gitignored. Edit the URLs if your Postgres user or host is different. `SESSION_SECRET` can stay as the example on your own machine. `npm install` runs `prisma generate`.
 
-`npm run db:reset` clears the schema on `DATABASE_URL_UNPOOLED`, applies `prisma/migrations`, and loads the sample company. Run it again any time you want the demo data back. `npm run dev` applies migrations if they are pending, then starts the API. It seeds only when the company table is empty, so an older database is left as it is until you reset.
+`npm run db:reset` clears the schema on `DATABASE_URL_UNPOOLED`, applies `prisma/migrations`, and loads the sample companies. Run it again any time you want the demo data back. `npm run dev` applies migrations if they are pending, then starts the API. Seeding again skips a company that is already there and adds any demo company that is missing.
 
 `npm run dev` starts the API on port 43124 and the desk on port 43123. The session cookie is not marked Secure on this http address. A production or Vercel process marks it Secure. See [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md) for the hosted demo.
 
@@ -42,16 +42,18 @@ Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
 
 The desk opens in Simplified Chinese. Use **中文** / **EN** on the sign-in page or in the header to switch. The choice is stored in a `keel_lang` cookie in this browser.
 
-Sign in with a demo account. The emails and passwords are unchanged:
+Sign in with a demo account. Each person lands in their own company:
 
-| Name | Role | Email | Password |
-| --- | --- | --- | --- |
-| Maya Chen | admin | maya@northline.example | keel-maya-desk |
-| Jonah Ellis | user | jonah@northline.example | keel-jonah-desk |
+| Name | Company | Role | Email | Password |
+| --- | --- | --- | --- | --- |
+| Maya Chen | 江北良品 | admin | maya@northline.example | keel-maya-desk |
+| Jonah Ellis | 江北良品 | user | jonah@northline.example | keel-jonah-desk |
+| Amira Shah | Harbour & Line | admin | amira@harbourline.example | keel-amira-desk |
+| Jordan Hale | Hudson Yard Goods | admin | jordan@hudsonyard.example | keel-jordan-desk |
 
 The public shop is [http://127.0.0.1:43123/shop](http://127.0.0.1:43123/shop). Field notebook, Wool blanket, and Canvas tote are published. Checkout writes a sales order and takes stock from 上海仓. Payments are recorded as WeChat Pay, Alipay, or card. Shop account: 林晓, `lin@northline.example` / `keel-lin-shop`. SO0002 is her seeded blanket order. **Accounting** shows INV0001 for that order, already posted, with a sample fapiao number that has not been filed. **Pipeline** starts with 陈薇’s tote lead (qualified, a follow-up call) and 赵磊’s restock enquiry. **Staff** lists 销售部 (周宁, present on 14 April, a sick day still waiting) and 生产部 (何工, annual leave 1–3 May already approved). The home page adds those up: ¥3,200 of open leads, ¥97.18 still owed on INV0001, profit ¥86, and one leave request waiting.
 
-The sample company is **江北良品** in Shanghai. Money defaults to CNY (¥). The default tax is 增值税 at 13%. Maya can change the company name, currency code, and default tax rate on **Company**. Quotations and purchase orders show untaxed amount, tax, and the total. That page is not a fapiao; official Chinese VAT invoices are left for a later accounting slice.
+**江北良品** is Shanghai, CNY, and 13% VAT. **Harbour & Line** is London, GBP, and 20% VAT. **Hudson Yard Goods** is New York, USD, and 8.875% sales tax. Amounts follow the company you signed into. An admin can change that company's name, currency code, and default tax rate on **Company**. Quotations and purchase orders show untaxed amount, tax, and the total. That page is not a fapiao; official Chinese VAT invoices are left for a later accounting slice.
 
 **Purchases** drafts an RFQ (PO0001, PO0002, …). Maya and Jonah can create and send one. Only Maya (admin) can confirm it. The order picks a receiving warehouse; the sample uses 上海仓. Confirming opens an incoming receipt into that warehouse’s default shelf. **Receive** can take part of a line; **Receive all** takes the rest. A received order cannot be cancelled. **Print** opens the RFQ or purchase order for the browser print dialog.
 

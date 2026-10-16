@@ -7,6 +7,7 @@ import { applyQuant, companyLocations, onHand, roundQty, warehouseStockLocation 
 
 const orderInclude = {
   customer: { select: { id: true, name: true, email: true, city: true } },
+  company: { select: { currency: true } },
   warehouse: { select: { id: true, name: true, code: true } },
   lines: {
     include: {

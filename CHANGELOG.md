@@ -4,6 +4,12 @@
 
 Public catalog, product page, cart, and checkout. A guest or a shop account can place an order. It becomes a delivered sales order and takes stock from the online warehouse (上海仓 in the sample). WeChat Pay, Alipay, and card are recorded only. Sample account: 林晓, `lin@northline.example` / `keel-lin-shop`. Sample order SO0002 is a WeChat Pay blanket.
 
+## Regions and phones
+
+The seed can run again. 江北良品 stays if it is already there. Harbour & Line (Amira Shah, London, GBP, 20% VAT) and Hudson Yard Goods (Jordan Hale, New York, USD, 8.875% sales tax) are added when they are missing. Each login opens only that company, and money uses its currency. On a narrow screen the desk nav collapses behind a menu, and tables keep scrolling inside the page.
+
+The Vercel build reads `DATABASE_URL_UNPOOLED` for migrations. The API handler is bundled to `server-dist/handler.mjs` because the Node runtime does not load the TypeScript import paths.
+
 ## Desk
 
 The home page now reads across the company: open quotations, pipeline value, customer and vendor balances, shop orders, profit, VAT payable, active staff, and leave still waiting. The sample company shows ¥3,200 in open leads, ¥97.18 still owed on INV0001, and 周宁’s sick day.

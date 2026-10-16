@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+server-dist
 .env
 .vercel
 prisma/*.db
@@ -26,4 +27,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-server-dist/

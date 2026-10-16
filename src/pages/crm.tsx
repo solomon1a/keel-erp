@@ -120,7 +120,7 @@ export function CrmPage() {
         <p className="mt-1 max-w-2xl text-muted-foreground">{t('crm.lead')}</p>
       </div>
       {error ? <Notice message={error} /> : null}
-      <form onSubmit={onCreate} className="grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-6">
+      <form onSubmit={onCreate} className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-6">
         <Field label={t('crm.name')}>
           <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
         </Field>
@@ -144,7 +144,7 @@ export function CrmPage() {
       </form>
       {leads.isLoading ? <p className="text-sm text-muted-foreground">{t('crm.loading')}</p> : null}
       {leads.isError ? <p className="text-sm text-destructive">{leads.error.message}</p> : null}
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {stages.map((stage) => {
           const column = leads.data?.filter((lead) => lead.stage === stage) ?? []
           return (
