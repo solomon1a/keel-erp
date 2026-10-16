@@ -1,5 +1,6 @@
 import { depthScreens } from './depth-screens.ts'
 import { priorityScreens } from './priority-screens.ts'
+import { workspaceScreens } from './workspace-screens.ts'
 
 export type DeskKind = 'list' | 'report' | 'settings' | 'accounts'
 
@@ -563,6 +564,7 @@ export const deskScreens: DeskScreen[] = [
 
   ...priorityScreens,
   ...depthScreens,
+  ...workspaceScreens,
 ]
 
 export function findDeskScreen(module: string, screen: string) {

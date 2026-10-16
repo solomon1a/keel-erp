@@ -1,5 +1,9 @@
 # Changelog
 
+## App workspaces
+
+Opening an app shows a workspace in the style of a manufacturing desk. A sidebar lists that app’s sections. Your Shortcuts holds a twelve-month chart and three figures. Reports & Masters is a grid of cards, and every card opens a list, a form, or a report that already has sample rows. Getting Started tracks a setup checklist for the company in this browser: check a step, open it, or skip the rest. Manufacturing includes production, bills of materials, subcontracting, the planning and shop-floor reports, the BOM update tool, and settings. The same layout is on Sales, CRM, Procurement, Inventory, Wastage, Point of Sale, eCommerce, Contacts, Finance, HR, Attendance, Payroll, Expenses, and the other apps.
+
 ## Groups, books, costing, views, and workflows
 
 Access is no longer a single role string. Each company has Internal, Manager, and Settings groups, a read/write/create/delete grant on each model, and record rules. Settings bypasses those rules. An admin manages people, groups, and grants from Access rights. An internal user can work the lists and cannot delete them.
