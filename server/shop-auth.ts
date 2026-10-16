@@ -103,7 +103,10 @@ export async function registerShopAccount(input: {
 }
 
 export async function loginShopAccount(email: string, password: string) {
-  const customer = await prisma.shopCustomer.findFirst({ where: { email } })
+  const company = await prisma.company.findFirst({ orderBy: { id: 'asc' } })
+  const customer = company
+    ? await prisma.shopCustomer.findFirst({ where: { email, companyId: company.id } })
+    : null
   const matches = await passwordMatches(password, customer?.passwordHash ?? null)
   if (!customer || !matches) throw new AppError(401, 'Email or password is wrong.')
   const token = await openShopSession(customer.id)

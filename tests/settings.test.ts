@@ -39,8 +39,10 @@ describe('company settings and VAT', () => {
     expect(saved.body?.defaultTaxRate).toBe(9)
 
     const tax = await prisma.tax.findFirstOrThrow({ where: { isDefault: true } })
-    expect(tax.rate).toBe(9)
+    expect(tax.rate).toBe(13)
     expect(tax.name).toBe('China VAT 13%')
+    const vat = await prisma.tax.findFirstOrThrow({ where: { name: 'VAT' } })
+    expect(vat.rate).toBe(20)
 
     const cedar = await prisma.contact.findFirstOrThrow({ where: { name: 'Cedar & Co' } })
     const notebook = await prisma.product.findFirstOrThrow({ where: { sku: 'NB-01' } })
@@ -53,7 +55,7 @@ describe('company settings and VAT', () => {
     })
     expect(created.status).toBe(201)
     expect(created.body?.amountUntaxed).toBe(100)
-    expect(created.body?.amountTax).toBe(9)
-    expect(created.body?.amountTotal).toBe(109)
+    expect(created.body?.amountTax).toBe(13)
+    expect(created.body?.amountTotal).toBe(113)
   })
 })

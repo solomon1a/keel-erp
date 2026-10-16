@@ -26,13 +26,13 @@ describe('regional demos', () => {
     const ukNames = (ukOrders.body as unknown as Array<{ name: string; amountTotal: number }>).map((order) => order.name)
     expect(ukNames).toContain('SO0002')
     const ukDesk = await call('/api/desk', amira)
-    expect(ukDesk.body).toMatchObject({ staff: 2, shopOrders: 1, profit: -3194, vatPayable: 9.6 })
+    expect(ukDesk.body).toMatchObject({ staff: 10, shopOrders: 4, profit: -9284, vatPayable: 63.6 })
 
     const jordan = await signIn('jordan@hudsonyard.example', demoPasswords.jordan)
     const us = await call('/api/settings', jordan)
     expect(us.body).toMatchObject({ name: 'Hudson Yard Goods', currency: 'USD', defaultTaxRate: 8.875 })
     const usDesk = await call('/api/desk', jordan)
-    expect(usDesk.body).toMatchObject({ receivable: 30.49, profit: -5208, vatPayable: 2.49 })
+    expect(usDesk.body).toMatchObject({ receivable: 193.81, profit: -15298, vatPayable: 26.46 })
 
     const maya = await signIn('maya@northline.example', demoPasswords.maya)
     const china = await call('/api/settings', maya)

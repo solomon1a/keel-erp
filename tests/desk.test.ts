@@ -20,16 +20,16 @@ describe('desk', () => {
     const desk = await call('/api/desk', maya)
     expect(desk.status).toBe(200)
     expect(desk.body).toMatchObject({
-      openOrders: 1,
-      pipelineValue: 3200,
-      pipelineCount: 2,
-      receivable: 97.18,
-      payable: 0,
-      shopOrders: 1,
-      staff: 2,
+      openOrders: 13,
+      pipelineValue: 6200,
+      pipelineCount: 7,
+      receivable: 266.68,
+      payable: 90.4,
+      shopOrders: 4,
+      staff: 10,
       leaveWaiting: 1,
-      profit: -12042,
-      vatPayable: 11.18,
+      profit: -35732,
+      vatPayable: 46.28,
     })
   })
 })

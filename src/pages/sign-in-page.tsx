@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
 import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -8,6 +8,16 @@ import { Input } from '../components/ui/input.tsx'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import type { User } from '../lib/types.ts'
+
+const demos = [
+  ['Jiangbei Goods Co.', 'Maya Chen', 'maya@northline.example', 'keel-maya-desk'],
+  ['Jiangbei Goods Co.', 'Jonah Ellis', 'jonah@northline.example', 'keel-jonah-desk'],
+  ['Harbour & Line', 'Amira Shah', 'amira@harbourline.example', 'keel-amira-desk'],
+  ['Harbour & Line', 'Priya Nair', 'priya@harbourline.example', 'keel-priya-shop'],
+  ['Hudson Yard Goods', 'Jordan Hale', 'jordan@hudsonyard.example', 'keel-jordan-desk'],
+  ['Hudson Yard Goods', 'Sam Ortiz', 'sam@hudsonyard.example', 'keel-sam-shop'],
+  ['Jiangbei shop', 'Lin Xiao', 'lin@northline.example', 'keel-lin-shop'],
+] as const
 
 export function SignInPage() {
   const navigate = useNavigate()
@@ -77,8 +87,25 @@ export function SignInPage() {
           <Button type="submit" disabled={pending}>
             {pending ? t('signIn.pending') : t('signIn.submit')}
           </Button>
+          <p className="text-sm">
+            <Link className="font-semibold text-primary" to="/start">{t('signIn.start')}</Link>
+          </p>
         </form>
       )}
+      <section className="mt-10">
+        <h2 className="font-serif text-2xl">{t('signIn.demoTitle')}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t('signIn.demoLead')}</p>
+        <ul className="mt-4 grid gap-3">
+          {demos.map(([company, person, emailAddress, passwordValue]) => (
+            <li key={emailAddress} className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
+              <span className="font-semibold">{company}</span>
+              <span className="mt-0.5 block text-muted-foreground">{person}</span>
+              <span className="mt-1 block break-all">{emailAddress}</span>
+              <span className="block text-muted-foreground">{passwordValue}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   )
 }

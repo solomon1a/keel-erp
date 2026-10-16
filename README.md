@@ -1,8 +1,10 @@
 # Keel
 
-Keel is a small operations desk for one company: contacts, quotations, and the stock room. It is a clean-room start on the plan in [docs/odoo-analysis/BUILD_OUR_OWN.md](docs/odoo-analysis/BUILD_OUR_OWN.md), not a copy of Odoo.
+Keel is a multi-tenant operations desk: contacts, quotations, stock, and the books, with one company per business. It is a clean-room start on the plan in [docs/odoo-analysis/BUILD_OUR_OWN.md](docs/odoo-analysis/BUILD_OUR_OWN.md), not a copy of Odoo.
 
-Three demo companies load with the seed. Jiangbei Goods Co. is Shanghai, CNY, and 13% VAT. Harbour & Line is London, GBP, and 20% VAT. Hudson Yard Goods is New York, USD, and 8.875% sales tax. Each person belongs to one company, and amounts on their desk use that currency. Running the seed again keeps those three companies, rewrites Jiangbei records that are still in Chinese, and drops any other company left behind by an earlier partial seed.
+Open `/start` to create a company. The country sets the currency, default tax, and the language of that first session. The person who signs up is the admin and can invite more people. Optional sample data adds a notebook, a customer, a vendor, and a draft quotation. Every staff request is limited to that company.
+
+Three demo companies load with the seed. Jiangbei Goods Co. is Shanghai, CNY, and 13% VAT. Harbour & Line is London, GBP, and 20% VAT. Hudson Yard Goods is New York, USD, and 8.875% sales tax. Each person belongs to one company, and amounts on their desk use that currency. Running the seed again fills in anything those demos are missing, rewrites Jiangbei records that are still in Chinese, and deletes only companies that have no users. A company created from `/start` stays.
 
 ## Run it
 
@@ -49,7 +51,8 @@ npm test
 - Products: goods and services, SKU, list price, cost, a purchasable flag, finished goods or raw material, and an optional lot or serial flag.
 - Quotations: lines, discount, a configurable tax rate, and totals that show untaxed amount, tax, and the price including tax. Mark sent, confirm, cancel. This is not a fapiao.
 - Company settings: name, one currency code for that company (CNY, GBP, or USD in the demos), and the default tax rate. Amounts follow the signed-in company.
-- English and Simplified Chinese on the desk. The **中文** / **EN** switch is remembered in a browser cookie.
+- English and Simplified Chinese on the desk. English is the default. The **中文** / **EN** switch is remembered in a browser cookie.
+- Self-serve signup at `/start`. A new business gets its own company, books, warehouse, and admin. Signup is validated and limited to five attempts an hour from one address.
 - Confirming a sales order checks the warehouse on that order (Shanghai Warehouse by default). Short stock is refused with the product name and the quantity on hand.
 - Validating a delivery moves goods from that warehouse’s default shelf to customers and closes the order. A service-only order can be fulfilled without a stock move.
 - Stock: several warehouses and locations, on-hand and cost valuation per location, counts, internal transfers (draft, ready, done), a move ledger, and reorder rules that suggest a purchase or a manufacturing order.

@@ -40,7 +40,7 @@ npm run dev
 
 Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
 
-The desk opens in Simplified Chinese. Use **中文** / **EN** on the sign-in page or in the header to switch. The choice is stored in a `keel_lang` cookie in this browser.
+The desk opens in English. Use **中文** / **EN** on the sign-in page or in the header to switch. The choice is stored in a `keel_lang` cookie in this browser. A new business can open its own company at `/start`.
 
 Sign in with a demo account. Each person lands in their own company:
 

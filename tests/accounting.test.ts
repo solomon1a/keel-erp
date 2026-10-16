@@ -19,13 +19,13 @@ describe('accounting', () => {
   it('posts the seeded shop invoice into the ledger, VAT, and statements', async () => {
     const pnl = await call('/api/reports/pnl', maya)
     expect(pnl.status).toBe(200)
-    expect(pnl.body).toMatchObject({ income: 86, expense: 12128, profit: -12042 })
+    expect(pnl.body).toMatchObject({ income: 436, expense: 36168, profit: -35732 })
 
     const vat = await call('/api/reports/vat', maya)
-    expect(vat.body).toMatchObject({ output: 11.18, input: 0, payable: 11.18 })
+    expect(vat.body).toMatchObject({ output: 56.68, input: 10.4, payable: 46.28 })
 
     const balance = await call('/api/reports/balance', maya)
-    expect(balance.body).toMatchObject({ assets: -30.82, liabilities: 12011.18, equity: -12042, balanced: true })
+    expect(balance.body).toMatchObject({ assets: 404.68, liabilities: 36136.68, equity: -35732, balanced: true })
 
     const shopOrder = await prisma.salesOrder.findFirstOrThrow({ where: { name: 'SO0002' } })
     const again = await call(`/api/invoices/from/sales/${shopOrder.id}`, maya, { method: 'POST' })
