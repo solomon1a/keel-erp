@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { BarChart } from '../components/bar-chart.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
+import { KanbanBoard, KanbanCard, KanbanColumn, PageHeader, Panel, TableFrame, Toolbar } from '../components/surface.tsx'
 import { useToast } from '../components/toast.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -259,15 +260,9 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
   }, [pageData.rows, group])
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-4xl tracking-tight">{title}</h1>
-          <p className="mt-1 max-w-2xl text-muted-foreground">{lead}</p>
-        </div>
-        <Link to={`/app/${module}/${screen}/new`}><Button>{t('desk.new')}</Button></Link>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="grid gap-5">
+      <PageHeader title={title} lead={lead} actions={<Link to={`/app/${module}/${screen}/new`}><Button>{t('desk.new')}</Button></Link>} />
+      <Toolbar>
         <Input className="w-full sm:w-56" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
         <Button size="sm" variant={state === 'all' ? 'secondary' : 'outline'} onClick={() => setState('all')}>{t('purchases.filterAll')}</Button>
         {spec.states.map((value) => (
@@ -309,32 +304,29 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
         </Select>
         <Input className="w-full sm:w-40" value={filterName} placeholder={t('desk.filterName')} aria-label={t('desk.filterName')} onChange={(event) => setFilterName(event.target.value)} />
         <Button size="sm" variant="outline" disabled={!filterName.trim() || saveFilter.isPending} onClick={() => saveFilter.mutate()}>{t('desk.saveFilter')}</Button>
-      </div>
+      </Toolbar>
       {rows.isLoading ? <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p> : null}
       {rows.isError ? <p className="text-sm text-destructive">{rows.error.message}</p> : null}
       {rows.data && pageData.rows.length === 0 ? (
         <EmptyState title={t('desk.emptyTitle')} body={t('desk.emptyBody')} action={{ to: `/app/${module}/${screen}/new`, label: t('desk.new') }} />
       ) : null}
       {layout === 'kanban' && spec.kanban && pageData.rows.length > 0 ? (
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {(state === 'all' ? spec.states : [state]).map((column) => (
-            <section key={column} className="w-72 shrink-0 rounded-lg border border-border bg-secondary/40 p-2">
-              <h2 className="px-2 py-1 text-sm font-semibold">{stateText(column, t)}</h2>
-              <div className="grid gap-2">
-                {pageData.rows.filter((row) => row.state === column).map((row) => (
-                  <button key={row.id} type="button" className="rounded-lg border border-border bg-card p-3 text-left shadow-sm" onClick={() => navigate(`/app/${module}/${screen}/${row.id}`)}>
-                    <p className="font-semibold">{row.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{row.partner || row.owner || '—'}</p>
-                    <p className="mt-2 text-sm">{money(row.amount)}</p>
-                  </button>
-                ))}
-              </div>
-            </section>
+        <KanbanBoard>
+          {(state === 'all' ? spec.states : [state]).map((column, index) => (
+            <KanbanColumn key={column} title={stateText(column, t)} tint={index % 5}>
+              {pageData.rows.filter((row) => row.state === column).map((row) => (
+                <KanbanCard key={row.id} onClick={() => navigate(`/app/${module}/${screen}/${row.id}`)}>
+                  <p className="font-semibold">{row.name}</p>
+                  <p className="text-sm text-muted-foreground">{row.partner || row.owner || '—'}</p>
+                  <p className="text-sm tabular-nums">{money(row.amount)}</p>
+                </KanbanCard>
+              ))}
+            </KanbanColumn>
           ))}
-        </div>
+        </KanbanBoard>
       ) : null}
       {layout === 'list' && pageData.rows.length > 0 ? groups.map((section) => (
-        <div key={section.key || 'all'} className="overflow-x-auto rounded-lg border border-border bg-card">
+        <TableFrame key={section.key || 'all'}>
           {section.key ? <h2 className="border-b border-border px-4 py-2 text-sm font-semibold">{groupLabel(group, section.key, t)}</h2> : null}
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-border text-muted-foreground">
@@ -360,7 +352,7 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
               ))}
             </tbody>
           </table>
-        </div>
+        </TableFrame>
       )) : null}
       {pageData.total > pageData.pageSize ? (
         <div className="flex items-center gap-2">
@@ -428,14 +420,14 @@ function RecordForm({ module, screen, id, spec, title }: { module: string; scree
   if (!creating && existing.isLoading) return <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p>
   if (!creating && existing.isError) return <p className="text-sm text-destructive">{existing.error.message}</p>
   return (
-    <form className="grid max-w-3xl gap-6" onSubmit={onSubmit}>
-      <div>
-        <Link className="text-sm text-muted-foreground hover:underline" to={`/app/${module}/${screen}`}>{t('desk.back')}</Link>
-        <h1 className="mt-2 font-serif text-4xl tracking-tight">{creating ? t('desk.new') : source.name}</h1>
-        <p className="mt-1 text-muted-foreground">{title}</p>
-      </div>
+    <form className="grid max-w-3xl gap-5" onSubmit={onSubmit}>
+      <PageHeader
+        title={creating ? t('desk.new') : (source.name || title)}
+        lead={title}
+        actions={<Link className="keel-back" to={`/app/${module}/${screen}`}>{t('desk.back')}</Link>}
+      />
       {save.isError ? <Notice message={save.error instanceof ApiError ? save.error.message : t('desk.failed')} /> : null}
-      <div className="grid gap-4 rounded-lg border border-border bg-card p-4 md:grid-cols-2">
+      <Panel className="grid gap-4 md:grid-cols-2">
         <Field label={t('desk.name')}><Input value={source.name ?? ''} onChange={(event) => setDraft({ ...source, name: event.target.value })} required /></Field>
         <Field label={t('desk.state')}>
           <Select value={source.state ?? ''} onChange={(event) => setDraft({ ...source, state: event.target.value })}>
@@ -452,7 +444,7 @@ function RecordForm({ module, screen, id, spec, title }: { module: string; scree
         <div className="md:col-span-2">
           <Field label={t('desk.notes')}><Textarea value={source.notes ?? ''} onChange={(event) => setDraft({ ...source, notes: event.target.value })} /></Field>
         </div>
-      </div>
+      </Panel>
       <div><Button type="submit" disabled={save.isPending}>{t('desk.save')}</Button></div>
       {!creating ? <Chatter model="desk.record" recordId={Number(id)} /> : null}
     </form>
@@ -476,7 +468,7 @@ function Chatter({ model, recordId }: { model: string; recordId: number }) {
     },
   })
   return (
-    <section className="grid gap-3 rounded-lg border border-border bg-card p-4">
+    <Panel className="grid gap-3">
       <h2 className="font-semibold">{t('desk.chatter')}</h2>
       <ul className="grid gap-2 text-sm">
         {(log.data ?? []).map((row) => (
@@ -490,7 +482,7 @@ function Chatter({ model, recordId }: { model: string; recordId: number }) {
         <Textarea value={note} onChange={(event) => setNote(event.target.value)} />
       </Field>
       <div><Button type="button" variant="outline" disabled={!note.trim() || add.isPending} onClick={() => add.mutate()}>{t('desk.addNote')}</Button></div>
-    </section>
+    </Panel>
   )
 }
 
@@ -510,20 +502,17 @@ function ReportView({ module, screen, title, lead }: { module: string; screen: s
     return [...totals.entries()].map(([label, value]) => ({ label, value, display: money(value) }))
   }, [rows.data, money])
   return (
-    <div className="grid gap-6">
-      <div>
-        <h1 className="font-serif text-4xl tracking-tight">{title}</h1>
-        <p className="mt-1 max-w-2xl text-muted-foreground">{lead}</p>
-      </div>
+    <div className="grid gap-5">
+      <PageHeader title={title} lead={lead} />
       {rows.isLoading ? <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p> : null}
       {rows.isError ? <p className="text-sm text-destructive">{rows.error.message}</p> : null}
       {chart.length > 0 ? (
-        <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <Panel>
           <BarChart rows={chart} />
-        </section>
+        </Panel>
       ) : null}
       {rows.data && rows.data.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <TableFrame>
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-border text-muted-foreground">
               <tr>
@@ -542,7 +531,7 @@ function ReportView({ module, screen, title, lead }: { module: string; screen: s
               ))}
             </tbody>
           </table>
-        </div>
+        </TableFrame>
       ) : null}
     </div>
   )
@@ -574,21 +563,18 @@ function SettingsView({ module, title, lead }: { module: string; title: string; 
     save.mutate()
   }
   return (
-    <form className="grid max-w-2xl gap-6" onSubmit={onSubmit}>
-      <div>
-        <h1 className="font-serif text-4xl tracking-tight">{title}</h1>
-        <p className="mt-1 text-muted-foreground">{lead}</p>
-      </div>
+    <form className="grid max-w-2xl gap-5" onSubmit={onSubmit}>
+      <PageHeader title={title} lead={lead} />
       {settings.isLoading ? <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p> : null}
       {settings.isError ? <p className="text-sm text-destructive">{settings.error.message}</p> : null}
       {save.isError ? <Notice message={save.error instanceof ApiError ? save.error.message : t('desk.failed')} /> : null}
-      <div className="grid gap-4 rounded-lg border border-border bg-card p-4">
+      <Panel className="grid gap-4">
         {fields.map((field) => (
           <Field key={field.key} label={locale === 'zh' ? field.labelZh : field.labelEn}>
             <Input value={field.value} onChange={(event) => setDraft(fields.map((row) => row.key === field.key ? { ...row, value: event.target.value } : row))} />
           </Field>
         ))}
-      </div>
+      </Panel>
       <div><Button type="submit" disabled={save.isPending || fields.length === 0}>{t('desk.save')}</Button></div>
     </form>
   )
@@ -603,17 +589,16 @@ function AccountsView({ title, lead }: { title: string; lead: string }) {
     return hay.includes(q.trim().toLowerCase())
   })
   return (
-    <div className="grid gap-6">
-      <div>
-        <h1 className="font-serif text-4xl tracking-tight">{title}</h1>
-        <p className="mt-1 max-w-2xl text-muted-foreground">{lead}</p>
-      </div>
-      <Input className="w-full sm:w-56" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
+    <div className="grid gap-5">
+      <PageHeader title={title} lead={lead} />
+      <Toolbar>
+        <Input className="w-full sm:w-56" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
+      </Toolbar>
       {accounts.isLoading ? <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p> : null}
       {accounts.isError ? <p className="text-sm text-destructive">{accounts.error.message}</p> : null}
       {accounts.data && filtered.length === 0 ? <EmptyState title={t('desk.emptyTitle')} body={t('desk.emptyBody')} /> : null}
       {filtered.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <TableFrame>
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="border-b border-border text-muted-foreground">
               <tr>
@@ -632,7 +617,7 @@ function AccountsView({ title, lead }: { title: string; lead: string }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableFrame>
       ) : null}
     </div>
   )
@@ -645,17 +630,17 @@ function AccountForm({ title, id }: { title: string; id: string }) {
   if (accounts.isLoading) return <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p>
   if (!row) return <EmptyState title={t('desk.notFound')} body={t('desk.emptyBody')} />
   return (
-    <div className="grid max-w-2xl gap-6">
-      <div>
-        <Link className="text-sm text-muted-foreground hover:underline" to="/app/accounting/accounts">{t('desk.back')}</Link>
-        <h1 className="mt-2 font-serif text-4xl tracking-tight">{row.code} {row.name}</h1>
-        <p className="mt-1 text-muted-foreground">{title}</p>
-      </div>
-      <div className="grid gap-4 rounded-lg border border-border bg-card p-4 md:grid-cols-2">
+    <div className="grid max-w-2xl gap-5">
+      <PageHeader
+        title={`${row.code} ${row.name}`}
+        lead={title}
+        actions={<Link className="keel-back" to="/app/accounting/accounts">{t('desk.back')}</Link>}
+      />
+      <Panel className="grid gap-4 md:grid-cols-2">
         <Field label={t('desk.name')}><Input value={row.name} readOnly /></Field>
         <Field label={t('desk.bucket')}><Input value={accountTypeText(row.type, t)} readOnly /></Field>
         <Field label={t('desk.state')}><Input value={row.code} readOnly /></Field>
-      </div>
+      </Panel>
     </div>
   )
 }

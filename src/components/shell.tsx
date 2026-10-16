@@ -338,15 +338,11 @@ export function Shell() {
       </header>
       <main className="keel-page mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         {mod ? (
-          <nav className="mb-3 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-            <Link className="hover:text-foreground hover:underline" to="/">{t('shell.apps')}</Link>
-            <span>/</span>
-            <Link className="hover:text-foreground hover:underline" to={mod.home}>{t(mod.label)}</Link>
+          <nav className="keel-crumbs" aria-label={t(mod.label)}>
+            <Link to="/">{t('shell.apps')}</Link>
+            <Link to={mod.home}>{t(mod.label)}</Link>
             {section && section.to.split('?')[0] !== mod.home ? (
-              <>
-                <span>/</span>
-                <span className="text-foreground">{menuLabel(section.label, locale, t)}</span>
-              </>
+              <span aria-current="page">{menuLabel(section.label, locale, t)}</span>
             ) : null}
           </nav>
         ) : null}

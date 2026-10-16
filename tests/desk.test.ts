@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { jiangbeiBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
 import { prisma } from '../server/db.ts'
 import { call, signIn } from './http.ts'
@@ -23,13 +24,13 @@ describe('desk', () => {
       openOrders: 13,
       pipelineValue: 6200,
       pipelineCount: 7,
-      receivable: 266.68,
-      payable: 90.4,
+      receivable: jiangbeiBooks.receivable,
+      payable: jiangbeiBooks.payable,
       shopOrders: 4,
       staff: 10,
       leaveWaiting: 1,
-      profit: -35732,
-      vatPayable: 46.28,
+      profit: jiangbeiBooks.profit,
+      vatPayable: jiangbeiBooks.vatPayable,
     })
   })
 })

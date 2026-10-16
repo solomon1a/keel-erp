@@ -1,5 +1,13 @@
 # Changelog
 
+## Healthy demo books and the inner desk
+
+Jiangbei Goods Co. now posts a wholesale season — notebooks, blankets, and totes at list price, cost of sales at cost, rent, and freight — so the profit and loss shows about a 20% net margin. The balance sheet still balances. Open invoices sit in every aging bucket, and the desk receivable, payable, and profit figures follow the same journals. Running the seed again on a database that already has those invoices does nothing to them, and it does not touch Harbour & Line or Hudson Yard Goods.
+
+`npm run build` and `npm run typecheck` run `prisma generate` first. The Vercel build still generates the client and applies migrations, so new tables are created on Neon before typecheck.
+
+Lists, forms, kanban, reports, settings, tables, filters, breadcrumbs, and the top menus share the same frosted panels, pill controls, and soft shadows as the launcher. Light and dark both keep the teal accent.
+
 ## Books and stock rules
 
 Customer invoices, credit notes, vendor bills, payments, and payment reversals each post a journal that balances. A charges template adds a percent of the untaxed amount. A fiscal year can close into retained earnings, and a closed year refuses a later journal. Cost centres tag the invoice lines. Aging groups open residuals. Stock receipts and issues append a ledger row. FIFO consumes the oldest layer. Moving average uses the running cost. A stock count, a batch, a serial, and a landed cost post the same way. Undoing a bank match puts the invoice and the statement line back. See `docs/logic/accounting.md` and `docs/logic/inventory.md`.

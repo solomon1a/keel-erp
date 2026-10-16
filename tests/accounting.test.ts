@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { jiangbeiBooks, seedHealthyBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
 import { prisma } from '../server/db.ts'
 import { call, signIn } from './http.ts'
@@ -19,13 +20,43 @@ describe('accounting', () => {
   it('posts the seeded shop invoice into the ledger, VAT, and statements', async () => {
     const pnl = await call('/api/reports/pnl', maya)
     expect(pnl.status).toBe(200)
-    expect(pnl.body).toMatchObject({ income: 436, expense: 36168, profit: -35732 })
+    expect(pnl.body).toMatchObject({
+      income: jiangbeiBooks.income,
+      expense: jiangbeiBooks.expense,
+      profit: jiangbeiBooks.profit,
+    })
+    const margin = jiangbeiBooks.profit / jiangbeiBooks.income
+    expect(margin).toBeGreaterThan(0.15)
+    expect(margin).toBeLessThan(0.25)
 
     const vat = await call('/api/reports/vat', maya)
-    expect(vat.body).toMatchObject({ output: 56.68, input: 10.4, payable: 46.28 })
+    expect(vat.body).toMatchObject({
+      output: jiangbeiBooks.outputVat,
+      input: jiangbeiBooks.inputVat,
+      payable: jiangbeiBooks.vatPayable,
+    })
 
     const balance = await call('/api/reports/balance', maya)
-    expect(balance.body).toMatchObject({ assets: 404.68, liabilities: 36136.68, equity: -35732, balanced: true })
+    expect(balance.body).toMatchObject({
+      assets: jiangbeiBooks.assets,
+      liabilities: jiangbeiBooks.liabilities,
+      equity: jiangbeiBooks.equity,
+      balanced: true,
+    })
+
+    const aging = await call('/api/reports/aging?asOf=2026-10-16', maya)
+    expect(aging.status).toBe(200)
+    const buckets = (aging.body as { receivable: { current: number; d30: number; d60: number; older: number; total: number } }).receivable
+    expect(buckets.total).toBe(jiangbeiBooks.receivable)
+    expect(buckets.current).toBeGreaterThan(0)
+    expect(buckets.d30).toBeGreaterThan(0)
+    expect(buckets.d60).toBeGreaterThan(0)
+    expect(buckets.older).toBeGreaterThan(0)
+
+    await seedHealthyBooks(prisma)
+    const againPnl = await call('/api/reports/pnl', maya)
+    expect(againPnl.body).toMatchObject({ profit: jiangbeiBooks.profit })
+    expect(await prisma.invoice.count({ where: { name: 'INV-S2001' } })).toBe(1)
 
     const shopOrder = await prisma.salesOrder.findFirstOrThrow({ where: { name: 'SO0002' } })
     const again = await call(`/api/invoices/from/sales/${shopOrder.id}`, maya, { method: 'POST' })

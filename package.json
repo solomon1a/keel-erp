@@ -6,9 +6,9 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "prisma migrate deploy && concurrently -n api,web -c blue,green \"tsx server/index.ts\" \"vite --host 0.0.0.0 --port 43123\"",
-    "build": "tsc -p tsconfig.app.json --noEmit && vite build",
+    "build": "prisma generate && tsc -p tsconfig.app.json --noEmit && vite build",
     "test": "prisma generate && vitest run",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "typecheck": "prisma generate && tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "db:reset": "node --env-file=.env --import tsx prisma/reset.ts && prisma migrate deploy && prisma db seed",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed"

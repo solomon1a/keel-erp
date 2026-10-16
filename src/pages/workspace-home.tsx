@@ -64,7 +64,7 @@ function SideLink({ item, locale, t, active }: { item: WsLink; locale: Locale; t
     <Link
       to={item.to}
       className={cn(
-        'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm',
+        'flex items-center gap-2 rounded-full px-3 py-2 text-sm transition hover:bg-[var(--kl-color-primary-100)]',
         active ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
       )}
     >

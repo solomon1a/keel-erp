@@ -29,11 +29,11 @@ export function Notice({ message }: { message: string }) {
 
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: { to: string; label: string } }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-card/70 px-4 py-8 text-center">
-      <p className="font-serif text-xl">{title}</p>
+    <div className="keel-panel border-dashed px-6 py-12 text-center">
+      <p className="text-lg font-semibold">{title}</p>
       <p className="mt-1 text-sm text-muted-foreground">{body}</p>
       {action ? (
-        <Link className="mt-4 inline-flex h-[34px] items-center rounded-md bg-primary px-3 text-sm font-semibold text-white hover:bg-[var(--kl-color-primary-600)]" to={action.to}>
+        <Link className="mt-4 inline-flex h-10 items-center rounded-full bg-[var(--kl-color-primary-fill)] px-4 text-sm font-semibold text-white hover:bg-[var(--kl-color-primary-600)]" to={action.to}>
           {action.label}
         </Link>
       ) : null}

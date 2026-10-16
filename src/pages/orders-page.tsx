@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
+import { PageHeader, TableFrame, Toolbar } from '../components/surface.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { orderStateLabel } from '../i18n/labels.ts'
@@ -38,27 +39,21 @@ export function OrdersPage() {
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-4xl tracking-tight">{t('orders.title')}</h1>
-          <p className="mt-1 text-muted-foreground">{t('orders.lead')}</p>
-        </div>
-        <Link to="/orders/new"><Button>{t('orders.new')}</Button></Link>
-      </div>
-      <div className="flex flex-wrap gap-2">
+    <div className="grid gap-5">
+      <PageHeader title={t('orders.title')} lead={t('orders.lead')} actions={<Link to="/orders/new"><Button>{t('orders.new')}</Button></Link>} />
+      <Toolbar>
         {filters.map(([value, label]) => (
           <Button key={value} size="sm" variant={state === value ? 'secondary' : 'outline'} onClick={() => setState(value)}>
             {t(label)}
           </Button>
         ))}
-      </div>
+      </Toolbar>
       {orders.isError ? <p className="text-sm text-destructive">{orders.error.message}</p> : null}
       {orders.isPending && !orders.data ? <div className="h-24 animate-pulse rounded-lg bg-secondary/70" /> : null}
       {orders.data && orders.data.length === 0 ? (
         <EmptyState title={t('orders.emptyTitle')} body={t('orders.emptyBody')} action={{ to: '/orders/new', label: t('orders.new') }} />
       ) : null}
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <TableFrame>
         <table className="w-full min-w-[680px] text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">
             <tr>
@@ -84,7 +79,7 @@ export function OrdersPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableFrame>
     </div>
   )
 }

@@ -241,3 +241,279 @@ tbody tr.record-row:hover {
   color: var(--kl-color-info-fg);
   border-color: var(--kl-color-info-border);
 }
+
+.keel-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--kl-glass-border);
+  background: var(--kl-glass-bg);
+  color: var(--kl-color-semantic-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.keel-back:hover {
+  background: var(--kl-color-primary-100);
+}
+
+.keel-panel.border-dashed {
+  border-style: dashed;
+}
+
+.keel-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.keel-page h1,
+.keel-heading h1 {
+  margin: 0;
+  font-family: var(--kl-font-family-sans);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.keel-lead {
+  max-width: 40rem;
+  margin: 6px 0 0;
+  color: var(--kl-color-semantic-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.keel-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.keel-crumbs a,
+.keel-crumbs span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.keel-crumbs a {
+  color: var(--kl-color-primary-700);
+  background: color-mix(in srgb, var(--kl-color-primary-100) 80%, transparent);
+}
+
+.keel-crumbs a:hover {
+  background: var(--kl-color-primary-100);
+}
+
+.keel-crumbs span[aria-current="page"] {
+  color: var(--kl-color-semantic-text);
+  background: var(--kl-glass-bg);
+  border-color: var(--kl-glass-border);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="dark"] .keel-crumbs a {
+  color: var(--kl-color-primary-600);
+}
+
+.keel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 28px;
+  border: 1px solid var(--kl-glass-border);
+  background: var(--kl-glass-bg);
+  box-shadow: var(--kl-shadow-xs);
+  backdrop-filter: blur(var(--kl-glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--kl-glass-blur)) saturate(1.3);
+}
+
+.keel-panel,
+.keel-table,
+.keel-page .rounded-lg.border,
+.keel-page .rounded-xl.border {
+  border-radius: var(--kl-radius-xl);
+  border: 1px solid var(--kl-glass-border);
+  background: var(--kl-glass-bg);
+  box-shadow: var(--kl-shadow-sm);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+}
+
+.keel-panel {
+  padding: 20px;
+}
+
+.keel-table {
+  overflow-x: auto;
+}
+
+.keel-page table thead th {
+  height: 46px;
+  background: color-mix(in srgb, var(--kl-color-primary-50) 82%, transparent);
+  color: var(--kl-color-neutral-600);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.keel-page table tbody td {
+  height: 52px;
+}
+
+.keel-page table tbody tr {
+  transition: background 140ms ease;
+}
+
+.keel-page a.rounded-lg.border:hover,
+.keel-page a.rounded-xl.border:hover {
+  box-shadow: var(--kl-shadow-md);
+  transform: translateY(-1px);
+}
+
+.keel-kpis {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.keel-kpi {
+  padding: 18px 20px;
+  border-radius: 28px;
+  border: 1px solid var(--kl-glass-border);
+  background: var(--kl-glass-bg);
+  box-shadow: var(--kl-shadow-sm);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+
+.keel-kpi-profit {
+  background: color-mix(in srgb, var(--kl-color-success-bg) 78%, var(--kl-glass-bg));
+  border-color: var(--kl-color-success-border);
+}
+
+.keel-kpi-label {
+  margin: 0;
+  color: var(--kl-color-semantic-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.keel-kpi-value {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.keel-kpi-profit .keel-kpi-value {
+  color: var(--kl-color-success-fg);
+}
+
+.keel-kpi-hint {
+  margin: 6px 0 0;
+  color: var(--kl-color-semantic-text-muted);
+  font-size: 12px;
+}
+
+.keel-kanban {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.keel-kanban-col {
+  width: 18.5rem;
+  flex: none;
+  padding: 12px;
+  border-radius: 28px;
+  border: 1px solid var(--kl-glass-border);
+  background: color-mix(in srgb, var(--kl-color-primary-50) 70%, var(--kl-glass-bg));
+  box-shadow: var(--kl-shadow-xs);
+  backdrop-filter: blur(16px);
+}
+
+.keel-kanban-col[data-tint="1"] { background: color-mix(in srgb, var(--kl-color-info-bg) 72%, var(--kl-glass-bg)); }
+.keel-kanban-col[data-tint="2"] { background: color-mix(in srgb, var(--kl-color-brass-100) 70%, var(--kl-glass-bg)); }
+.keel-kanban-col[data-tint="3"] { background: color-mix(in srgb, var(--kl-color-success-bg) 72%, var(--kl-glass-bg)); }
+.keel-kanban-col[data-tint="4"] { background: color-mix(in srgb, #f6e4ee 55%, var(--kl-glass-bg)); }
+
+[data-theme="dark"] .keel-kanban-col[data-tint="4"] {
+  background: color-mix(in srgb, #3a2430 70%, var(--kl-glass-bg));
+}
+
+.keel-kanban-col > h2 {
+  margin: 0 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.keel-kanban-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid var(--kl-glass-border);
+  background: color-mix(in srgb, var(--kl-color-semantic-surface) 88%, transparent);
+  box-shadow: var(--kl-shadow-xs);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.keel-kanban-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--kl-shadow-md);
+}
+
+.keel-page select {
+  border-radius: 999px;
+  border-color: var(--kl-glass-border);
+  background-color: var(--kl-glass-bg);
+  backdrop-filter: blur(12px);
+}
+
+.keel-page .rounded-md.border.border-border {
+  border-radius: 20px;
+  border-color: var(--kl-glass-border);
+  background: var(--kl-glass-bg);
+  box-shadow: var(--kl-shadow-xs);
+}
+
+@media (max-width: 640px) {
+  .keel-page h1,
+  .keel-heading h1 {
+    font-size: 24px;
+  }
+
+  .keel-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .keel-kpi-value {
+    font-size: 24px;
+  }
+
+  .keel-panel {
+    padding: 16px;
+  }
+}
