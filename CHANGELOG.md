@@ -1,5 +1,9 @@
 # Changelog
 
+## Launcher tiles
+
+Contacts, Payroll, and Expenses each have their own tile, using the brand icon. Employees stays the roster. An admin and a regular user both see all thirteen apps. Posting payroll, paying a run, and approving an expense stay with the admin. People, in the header, stays admin-only.
+
 ## Keel brand
 
 The desk uses the approved Keel look: teal `#0E6B5C`, Inter and Noto Sans SC, the keel mark in the header and on sign-in, and the module tiles on the launcher. Status chips use success, warning, danger, and info colors. A moon control in the header switches to the dark theme and remembers it. Lists keep one teal button for the new record; filters stay neutral.

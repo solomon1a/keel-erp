@@ -18,6 +18,12 @@ export type AppModule = {
   match: string[]
 }
 
+const peopleMenu: MenuEntry[] = [
+  { label: 'menu.employees', to: '/hr' },
+  { label: 'menu.payroll', to: '/hr/payroll' },
+  { label: 'menu.expenses', to: '/hr/expenses' },
+]
+
 export const appModules: AppModule[] = [
   {
     id: 'dashboard',
@@ -34,7 +40,7 @@ export const appModules: AppModule[] = [
     description: 'mod.sales.desc',
     home: '/orders',
     group: 'sell',
-    match: ['/orders', '/contacts', '/products'],
+    match: ['/orders', '/products'],
     menu: [
       {
         label: 'menu.orders',
@@ -145,13 +151,56 @@ export const appModules: AppModule[] = [
     home: '/hr',
     group: 'people',
     match: ['/hr'],
-    menu: [
-      { label: 'menu.employees', to: '/hr' },
-      { label: 'menu.payroll', to: '/hr/payroll' },
-      { label: 'menu.expenses', to: '/hr/expenses' },
-    ],
+    menu: peopleMenu,
+  },
+  {
+    id: 'contacts',
+    label: 'mod.contacts',
+    description: 'mod.contacts.desc',
+    home: '/contacts',
+    group: 'sell',
+    match: ['/contacts'],
+    menu: [{ label: 'mod.contacts', to: '/contacts' }],
+  },
+  {
+    id: 'payroll',
+    label: 'mod.payroll',
+    description: 'mod.payroll.desc',
+    home: '/hr/payroll',
+    group: 'people',
+    match: ['/hr/payroll'],
+    menu: peopleMenu,
+  },
+  {
+    id: 'expenses',
+    label: 'mod.expenses',
+    description: 'mod.expenses.desc',
+    home: '/hr/expenses',
+    group: 'people',
+    match: ['/hr/expenses'],
+    menu: peopleMenu,
   },
 ]
+
+const launcherOrder = [
+  'dashboard',
+  'contacts',
+  'crm',
+  'sales',
+  'purchase',
+  'inventory',
+  'manufacturing',
+  'pos',
+  'website',
+  'accounting',
+  'expenses',
+  'hr',
+  'payroll',
+]
+
+export function launcherModules() {
+  return [...appModules].sort((a, b) => launcherOrder.indexOf(a.id) - launcherOrder.indexOf(b.id))
+}
 
 const groups = ['overview', 'sell', 'supply', 'finance', 'people'] as const
 

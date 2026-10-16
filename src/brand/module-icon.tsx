@@ -29,6 +29,9 @@ const icons = Object.fromEntries(iconNames.map((name) => [name, files[`./icons/$
 
 const menuIcons: Record<string, ModuleIconId> = {
   'mod.dashboard': 'dashboard',
+  'mod.contacts': 'contacts',
+  'mod.payroll': 'payroll',
+  'mod.expenses': 'expenses',
   'menu.orders': 'sales',
   'menu.quotations': 'sales',
   'menu.customers': 'contacts',
@@ -69,6 +72,9 @@ const accents: Record<string, string> = {
   website: 'var(--kl-color-module-ecommerce)',
   accounting: 'var(--kl-color-module-accounting)',
   hr: 'var(--kl-color-module-hr)',
+  contacts: 'var(--kl-color-module-contacts)',
+  payroll: 'var(--kl-color-module-payroll)',
+  expenses: 'var(--kl-color-module-expenses)',
 }
 
 export function moduleIconId(moduleId: string): ModuleIconId {
