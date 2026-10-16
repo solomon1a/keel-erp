@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import handler from '../api/[[...route]].ts'
+import { GET as handler } from '../api/index.ts'
 import { demoPasswords } from '../prisma/seed.ts'
 import { prisma } from '../server/db.ts'
 import { resetAndSeed } from './reset-db.ts'

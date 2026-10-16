@@ -51,7 +51,7 @@ Documented by Vercel at [Deploying Origin repositories](https://vercel.com/docs/
 
 You can also install Vercel from the repo’s **Apps** tab on Origin (codebase settings). That connects the same integration: preview deployments on pull requests, production on `main`.
 
-`vercel.json` keeps the SPA fallback on `/index.html`. Requests to `/api` are a Node function (`api/[[...route]].ts`) and are matched before that rewrite. The function does not seed and does not run migrations.
+`vercel.json` keeps the SPA fallback on `/index.html`. Requests to `/api` are a Node function (`api/index.ts`) and are matched before that rewrite. The function does not seed and does not run migrations.
 
 ## 4. Environment variables
 
