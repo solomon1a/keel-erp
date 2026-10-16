@@ -47,7 +47,7 @@ describe('manufacturing', () => {
 
     const blocked = await call(`/api/manufacturing/${draft.id}/confirm`, maya, { method: 'POST' })
     expect(blocked.status).toBe(409)
-    expect(String(blocked.body?.error)).toContain('本色帆布')
+    expect(String(blocked.body?.error)).toContain('Greige canvas')
     expect(String(blocked.body?.error)).toContain('0')
 
     await call('/api/stock/adjust', maya, {

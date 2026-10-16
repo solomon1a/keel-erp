@@ -1,5 +1,11 @@
 # Changelog
 
+## Payroll and English sample data
+
+Jiangbei Goods Co. stays in Shanghai, in CNY, with 13% VAT and fapiao fields. Its name, contacts, products, warehouses, orders, pipeline, and staff records are in English. A database that already has 江北良品 is rewritten in place. Companies that are not Jiangbei, Harbour & Line, or Hudson Yard Goods are removed, so a partial seed cannot leave duplicates. The seed is safe to run again.
+
+Staff now has payroll and expenses. Each company has a monthly gross, a posted April payslip, one reimbursed claim, and one claim still waiting. China uses sample social insurance, housing fund, and monthly individual income tax. The UK uses a flat PAYE and National Insurance estimate. The US uses a flat federal rate, FICA, and a flat New York state rate. These are demo approximations. Posting a run and reimbursing a claim write journal entries.
+
 ## Shop
 
 Public catalog, product page, cart, and checkout. A guest or a shop account can place an order. It becomes a delivered sales order and takes stock from the online warehouse (上海仓 in the sample). WeChat Pay, Alipay, and card are recorded only. Sample account: 林晓, `lin@northline.example` / `keel-lin-shop`. Sample order SO0002 is a WeChat Pay blanket.

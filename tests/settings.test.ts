@@ -23,7 +23,7 @@ describe('company settings and VAT', () => {
     expect(settings.status).toBe(200)
     expect(settings.body?.currency).toBe('CNY')
     expect(settings.body?.defaultTaxRate).toBe(13)
-    expect(settings.body?.name).toBe('江北良品')
+    expect(settings.body?.name).toBe('Jiangbei Goods Co.')
 
     const blocked = await call('/api/settings', jonah, {
       method: 'PATCH',
@@ -33,14 +33,14 @@ describe('company settings and VAT', () => {
 
     const saved = await call('/api/settings', maya, {
       method: 'PATCH',
-      body: JSON.stringify({ name: '江北良品', currency: 'CNY', defaultTaxRate: 9 }),
+      body: JSON.stringify({ name: 'Jiangbei Goods Co.', currency: 'CNY', defaultTaxRate: 9 }),
     })
     expect(saved.status).toBe(200)
     expect(saved.body?.defaultTaxRate).toBe(9)
 
     const tax = await prisma.tax.findFirstOrThrow({ where: { isDefault: true } })
     expect(tax.rate).toBe(9)
-    expect(tax.name).toBe('增值税')
+    expect(tax.name).toBe('China VAT 13%')
 
     const cedar = await prisma.contact.findFirstOrThrow({ where: { name: 'Cedar & Co' } })
     const notebook = await prisma.product.findFirstOrThrow({ where: { sku: 'NB-01' } })

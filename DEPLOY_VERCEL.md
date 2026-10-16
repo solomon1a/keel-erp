@@ -83,7 +83,7 @@ npm run db:deploy
 npm run db:seed
 ```
 
-`db:deploy` is `prisma migrate deploy`. `db:seed` loads 江北良品 once. Seed is not idempotent. If it fails halfway, fix the error and run `npm run db:reset` only if you mean to drop that database’s schema and load the sample again.
+`db:deploy` is `prisma migrate deploy`. With `KEEL_SEED_ON_BUILD=1`, the build also runs `prisma db seed`. That seed is safe to run again: it keeps Jiangbei Goods Co., Harbour & Line, and Hudson Yard Goods, rewrites any remaining Chinese Jiangbei records into English, and deletes other companies. It does not insert a second copy of a company, payroll run, or expense that is already there.
 
 Open the production URL Vercel shows (or the domain you attach). Sign in:
 
@@ -92,7 +92,7 @@ Open the production URL Vercel shows (or the domain you attach). Sign in:
 | Maya Chen | admin | maya@northline.example | keel-maya-desk |
 | Jonah Ellis | user | jonah@northline.example | keel-jonah-desk |
 
-The company is **江北良品**, Shanghai, CNY, VAT 13%. Maya is the admin. Jonah can sell and can close a register session only when the counted cash matches. Card, WeChat Pay, and Alipay on the register are recorded on the sale. Nothing is sent to a bank or a wallet.
+The China company is **Jiangbei Goods Co.**, Shanghai, CNY, VAT 13%. Maya is the admin. Jonah can sell and can close a register session only when the counted cash matches. Card, WeChat Pay, and Alipay on the register are recorded on the sale. Nothing is sent to a bank or a wallet. Payroll deductions and expense reimbursements are demo postings, not a filing.
 
 ## 6. What this deploy does not do
 

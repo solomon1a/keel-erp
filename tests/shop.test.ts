@@ -60,7 +60,7 @@ describe('shop', () => {
     expect(order.amountTotal).toBe(40.68)
 
     const quant = await prisma.stockQuant.findFirstOrThrow({
-      where: { product: { sku: 'NB-01' }, location: { name: '主库' } },
+      where: { product: { sku: 'NB-01' }, location: { name: 'Main stock' } },
     })
     expect(quant.quantity).toBe(38)
 

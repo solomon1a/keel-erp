@@ -247,9 +247,9 @@ export async function invoiceFromPos(companyId: number, orderId: number) {
     await assertNoInvoice(tx, { posOrderId: order.id })
     let partnerId = order.customerId
     if (!partnerId) {
-      const walkIn = await tx.contact.findFirst({ where: { companyId, name: '散客' } })
+      const walkIn = await tx.contact.findFirst({ where: { companyId, name: { in: ['Walk-in', '散客'] } } })
       const created = walkIn ?? await tx.contact.create({
-        data: { name: '散客', isCustomer: true, companyId },
+        data: { name: 'Walk-in', isCustomer: true, companyId },
       })
       partnerId = created.id
     }

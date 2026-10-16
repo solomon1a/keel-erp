@@ -28,7 +28,7 @@ describe('desk', () => {
       shopOrders: 1,
       staff: 2,
       leaveWaiting: 1,
-      profit: 86,
+      profit: -12042,
       vatPayable: 11.18,
     })
   })

@@ -2,6 +2,7 @@ import { enAccount, zhAccount } from './account-messages.ts'
 import { enCrm, zhCrm } from './crm-messages.ts'
 import { enDesk, zhDesk } from './desk-messages.ts'
 import { enHr, zhHr } from './hr-messages.ts'
+import { enPay, zhPay } from './payroll-messages.ts'
 import { enShop, zhShop } from './shop-messages.ts'
 
 const enBase = {
@@ -882,7 +883,7 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'tr.new': '新建调拨',
   'tr.loading': '正在加载调拨…',
   'tr.emptyTitle': '还没有调拨',
-  'tr.emptyBody': '在两个库位之间起草一张调拨。INT0001 把笔记本从上海主库调到深圳店面。',
+  'tr.emptyBody': '在两个库位之间起草一张调拨。INT0001 把笔记本从 Main stock 调到 Shop floor。',
   'tr.from': '从',
   'tr.to': '到',
   'tr.save': '保存草稿',
@@ -1175,7 +1176,7 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'pos.shop': '门店',
   'pos.chooseShop': '选择门店',
   'pos.continue': '开始销售',
-  'pos.emptySessions': '还没有收银会话。打开深圳门店，并填上抽屉里的备用金。',
+  'pos.emptySessions': '还没有收银会话。打开 Shenzhen Store，并填上抽屉里的备用金。',
   'pos.failed': '这一步没有完成。',
   'pos.search': '搜索',
   'pos.barcode': '条码',
@@ -1248,8 +1249,8 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'country.MX': '墨西哥',
 }
 
-const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk }
-const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk }
+const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk, ...enPay }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk, ...zhPay }
 
 export const messages = { en, zh }
 

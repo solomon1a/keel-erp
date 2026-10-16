@@ -27,13 +27,13 @@ describe('hr', () => {
     const departments = await call('/api/departments', maya)
     expect(departments.status).toBe(200)
     const names = (departments.body as unknown as Array<{ name: string }>).map((row) => row.name)
-    expect(names).toContain('销售部')
-    expect(names).toContain('生产部')
+    expect(names).toContain('Sales')
+    expect(names).toContain('Production')
 
     const listed = await call('/api/employees', maya)
     const people = listed.body as unknown as Employee[]
-    const zhou = people.find((person) => person.name === '周宁')
-    const he = people.find((person) => person.name === '何工')
+    const zhou = people.find((person) => person.name === 'Zhou Ning')
+    const he = people.find((person) => person.name === 'He Gong')
     expect(zhou?.attendances[0]?.status).toBe('present')
     expect(zhou?.leaves[0]?.state).toBe('draft')
     expect(he?.leaves[0]?.state).toBe('approved')
@@ -48,7 +48,7 @@ describe('hr', () => {
   })
 
   it('approves leave once and rejects a backwards range', async () => {
-    const plant = await prisma.department.findFirstOrThrow({ where: { name: '生产部' } })
+    const plant = await prisma.department.findFirstOrThrow({ where: { name: 'Production' } })
     const created = await call('/api/employees', maya, {
       method: 'POST',
       body: JSON.stringify({
@@ -82,7 +82,7 @@ describe('hr', () => {
 
     const duplicate = await call('/api/departments', maya, {
       method: 'POST',
-      body: JSON.stringify({ name: '生产部' }),
+      body: JSON.stringify({ name: 'Production' }),
     })
     expect(duplicate.status).toBe(409)
   })

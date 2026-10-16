@@ -31,11 +31,11 @@ describe('inventory', () => {
     const shanghai = warehouses.find((row) => row.code === 'SH')
     const shop = warehouses.find((row) => row.code === 'SZ')
     expect(shanghai?.isDefault).toBe(true)
-    expect(shanghai?.name).toBe('上海仓')
-    expect(shop?.name).toBe('深圳门店')
-    const main = shanghai?.locations.find((location) => location.name === '主库')
-    const finished = shanghai?.locations.find((location) => location.name === '成品区')
-    const counter = shop?.locations.find((location) => location.name === '店面')
+    expect(shanghai?.name).toBe('Shanghai Warehouse')
+    expect(shop?.name).toBe('Shenzhen Store')
+    const main = shanghai?.locations.find((location) => location.name === 'Main stock')
+    const finished = shanghai?.locations.find((location) => location.name === 'Finished goods')
+    const counter = shop?.locations.find((location) => location.name === 'Shop floor')
     expect(main?.isDefault).toBe(true)
     expect(finished?.isDefault).toBe(false)
     expect(counter?.isDefault).toBe(true)
@@ -92,8 +92,8 @@ describe('inventory', () => {
       valuation: number
       levels: Array<{ sku: string; locationName: string; onHand: number; value: number }>
     }
-    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === '主库')?.onHand).toBe(39)
-    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === '店面')?.onHand).toBe(8)
+    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === 'Main stock')?.onHand).toBe(39)
+    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === 'Shop floor')?.onHand).toBe(8)
 
     const counted = await call('/api/stock/adjust', maya, {
       method: 'POST',
@@ -124,7 +124,7 @@ describe('inventory', () => {
       valuation: number
       levels: Array<{ sku: string; locationName: string; onHand: number; value: number }>
     }
-    const yarnLevel = afterStock.levels.find((row) => row.sku === 'RM-YN' && row.locationName === '成品区')
+    const yarnLevel = afterStock.levels.find((row) => row.sku === 'RM-YN' && row.locationName === 'Finished goods')
     expect(yarnLevel?.onHand).toBe(4)
     expect(yarnLevel?.value).toBe(160)
     expect(afterStock.valuation).toBeGreaterThan(0)

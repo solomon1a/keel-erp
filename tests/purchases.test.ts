@@ -19,7 +19,7 @@ afterAll(async () => {
 
 describe('purchases', () => {
   it('lets a user draft an RFQ and blocks confirm until an admin receives stock in parts', async () => {
-    const vendor = await prisma.contact.findFirstOrThrow({ where: { name: '苏杭织造' } })
+    const vendor = await prisma.contact.findFirstOrThrow({ where: { name: 'Suhang Weaving' } })
     const canvas = await prisma.product.findFirstOrThrow({ where: { sku: 'RM-CV' } })
     const notebook = await prisma.product.findFirstOrThrow({ where: { sku: 'NB-01' } })
     const tax = await prisma.tax.findFirstOrThrow()

@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 import { hashPassword } from '../server/auth.ts'
+import { anglicizeJiangbei } from './anglicize.ts'
+import { removeStrayCompanies } from './company-cleanup.ts'
+import { seedPayrollAndExpenses } from './seed-payroll.ts'
 import { seedRegionalCompanies } from './seed-regions.ts'
 
 const prisma = new PrismaClient()
@@ -15,16 +18,25 @@ export const demoPasswords = {
 } as const
 
 export async function seedDatabase(client: PrismaClient = prisma) {
+  await removeStrayCompanies(client)
   await seedJiangbei(client)
   await seedRegionalCompanies(client)
+  await removeStrayCompanies(client)
+  await seedPayrollAndExpenses(client)
 }
 
 async function seedJiangbei(client: PrismaClient) {
-  const already = await client.company.findFirst({ where: { name: '江北良品' } })
-  if (already) return
+  const mayaUser = await client.user.findUnique({ where: { email: 'maya@northline.example' } })
+  const existing = mayaUser
+    ? await client.company.findUnique({ where: { id: mayaUser.companyId } })
+    : await client.company.findFirst({ where: { name: { in: ['江北良品', 'Jiangbei Goods Co.'] } } })
+  if (existing) {
+    await anglicizeJiangbei(client, existing.id)
+    return
+  }
 
   const company = await client.company.create({
-    data: { name: '江北良品', city: '上海', currency: 'CNY', defaultTaxRate: 13 },
+    data: { name: 'Jiangbei Goods Co.', city: 'Shanghai', currency: 'CNY', defaultTaxRate: 13 },
   })
 
   const [mayaHash, jonahHash] = await Promise.all([
@@ -70,18 +82,18 @@ async function seedJiangbei(client: PrismaClient) {
   }
   const china = countries[0]
 
-  const existingVat = await client.tax.findFirst({ where: { name: '增值税' } })
-  if (!existingVat) await client.tax.create({ data: { name: '增值税', rate: 13, isDefault: true } })
+  const existingVat = await client.tax.findFirst({ where: { name: { in: ['China VAT 13%', '增值税'] } } })
+  if (!existingVat) await client.tax.create({ data: { name: 'China VAT 13%', rate: 13, isDefault: true } })
 
   const shanghai = await client.warehouse.create({
-    data: { name: '上海仓', code: 'SH', isDefault: true, companyId: company.id },
+    data: { name: 'Shanghai Warehouse', code: 'SH', isDefault: true, companyId: company.id },
   })
   await client.company.update({
     where: { id: company.id },
-    data: { onlineWarehouseId: shanghai.id, taxId: '91310000KEEL00001X', address: '上海市江北路 88 号' },
+    data: { onlineWarehouseId: shanghai.id, taxId: '91310000KEEL00001X', address: '88 Jiangbei Road, Shanghai' },
   })
   const shenzhen = await client.warehouse.create({
-    data: { name: '深圳门店', code: 'SZ', isDefault: false, companyId: company.id },
+    data: { name: 'Shenzhen Store', code: 'SZ', isDefault: false, companyId: company.id },
   })
   await client.stockLocation.createMany({
     data: [
@@ -92,13 +104,13 @@ async function seedJiangbei(client: PrismaClient) {
     ],
   })
   const internal = await client.stockLocation.create({
-    data: { name: '主库', type: 'internal', isDefault: true, warehouseId: shanghai.id, companyId: company.id },
+    data: { name: 'Main stock', type: 'internal', isDefault: true, warehouseId: shanghai.id, companyId: company.id },
   })
   await client.stockLocation.create({
-    data: { name: '成品区', type: 'internal', isDefault: false, warehouseId: shanghai.id, companyId: company.id },
+    data: { name: 'Finished goods', type: 'internal', isDefault: false, warehouseId: shanghai.id, companyId: company.id },
   })
   const shop = await client.stockLocation.create({
-    data: { name: '店面', type: 'internal', isDefault: true, warehouseId: shenzhen.id, companyId: company.id },
+    data: { name: 'Shop floor', type: 'internal', isDefault: true, warehouseId: shenzhen.id, companyId: company.id },
   })
   const supplier = await client.stockLocation.findFirstOrThrow({
     where: { companyId: company.id, type: 'supplier' },
@@ -188,32 +200,32 @@ async function seedJiangbei(client: PrismaClient) {
   })
   const suhang = await client.contact.create({
     data: {
-      name: '苏杭织造',
+      name: 'Suhang Weaving',
       email: 'orders@suhang.example',
       phone: '0512-555-0188',
       isCompany: true,
       isSupplier: true,
-      street: '吴中区纺织路 18 号',
-      city: '苏州',
+      street: '18 Textile Road, Wuzhong',
+      city: 'Suzhou',
       countryId: china.id,
       companyId: company.id,
-      notes: '帆布与坯布。',
+      notes: 'Canvas and greige cloth.',
       createdById: maya.id,
       updatedById: maya.id,
     },
   })
   await client.contact.create({
     data: {
-      name: '青浦纱线',
+      name: 'Qingpu Yarn',
       email: 'sales@qingpu-yarn.example',
       phone: '021-555-0166',
       isCompany: true,
       isSupplier: true,
-      street: '青浦区盈港路 88 号',
-      city: '上海',
+      street: '88 Yinggang Road, Qingpu',
+      city: 'Shanghai',
       countryId: china.id,
       companyId: company.id,
-      notes: '羊毛纱。',
+      notes: 'Wool yarn.',
       createdById: maya.id,
       updatedById: maya.id,
     },
@@ -234,10 +246,10 @@ async function seedJiangbei(client: PrismaClient) {
   })
 
   const stationery = await client.productCategory.create({
-    data: { name: '文具', companyId: company.id },
+    data: { name: 'Stationery', companyId: company.id },
   })
   const home = await client.productCategory.create({
-    data: { name: '家居', companyId: company.id },
+    data: { name: 'Home', companyId: company.id },
   })
 
   const notebook = await client.product.create({
@@ -326,27 +338,27 @@ async function seedJiangbei(client: PrismaClient) {
 
   const canvas = await client.product.create({
     data: {
-      name: '本色帆布',
+      name: 'Greige canvas',
       sku: 'RM-CV',
       type: 'product',
       kind: 'raw',
       listPrice: 0,
       costPrice: 12,
       purchasable: true,
-      description: '坯布，供以后裁成包袋。',
+      description: 'Unbleached cloth for later totes.',
       companyId: company.id,
     },
   })
   const yarn = await client.product.create({
     data: {
-      name: '羊毛纱',
+      name: 'Wool yarn',
       sku: 'RM-YN',
       type: 'product',
       kind: 'raw',
       listPrice: 0,
       costPrice: 40,
       purchasable: true,
-      description: '毛毯用纱。',
+      description: 'Yarn for the wool blanket.',
       tracking: 'lot',
       companyId: company.id,
     },
@@ -445,7 +457,7 @@ async function seedJiangbei(client: PrismaClient) {
       productId: tote.id,
       companyId: company.id,
       yieldQty: 1,
-      notes: '一只帆布包：包身用本色帆布，提手用羊毛纱。',
+      notes: 'One tote: the body is greige canvas and the handles are wool yarn.',
       lines: {
         create: [
           { productId: canvas.id, quantity: 1.5 },
@@ -585,13 +597,13 @@ async function seedJiangbei(client: PrismaClient) {
 
   const lin = await client.contact.create({
     data: {
-      name: '林晓',
+      name: 'Lin Xiao',
       email: 'lin@northline.example',
       phone: '13800001111',
       isCompany: false,
       isCustomer: true,
-      street: '江北路 18 号',
-      city: '上海',
+      street: '18 Jiangbei Road',
+      city: 'Shanghai',
       taxId: '91310000LINX000018',
       countryId: china.id,
       companyId: company.id,
@@ -601,7 +613,7 @@ async function seedJiangbei(client: PrismaClient) {
   })
   await client.shopCustomer.create({
     data: {
-      name: '林晓',
+      name: 'Lin Xiao',
       email: 'lin@northline.example',
       passwordHash: await hashPassword(demoPasswords.lin),
       phone: '13800001111',
@@ -656,15 +668,15 @@ async function seedJiangbei(client: PrismaClient) {
   })
 
   const books = [
-    ['1001', '库存现金', 'asset'],
-    ['1002', '银行存款', 'asset'],
-    ['1122', '应收账款', 'asset'],
-    ['1405', '库存商品', 'asset'],
-    ['2202', '应付账款', 'liability'],
-    ['222101', '应交税费-销项税额', 'liability'],
-    ['222102', '应交税费-进项税额', 'liability'],
-    ['6001', '主营业务收入', 'income'],
-    ['6401', '主营业务成本', 'expense'],
+    ['1001', 'Cash', 'asset'],
+    ['1002', 'Bank', 'asset'],
+    ['1122', 'Accounts receivable', 'asset'],
+    ['1405', 'Inventory', 'asset'],
+    ['2202', 'Accounts payable', 'liability'],
+    ['222101', 'Output VAT', 'liability'],
+    ['222102', 'Input VAT', 'liability'],
+    ['6001', 'Sales income', 'income'],
+    ['6401', 'Cost of sales', 'expense'],
   ] as const
   await client.account.createMany({
     data: books.map(([code, name, type]) => ({ code, name, type, companyId: company.id })),
@@ -673,10 +685,10 @@ async function seedJiangbei(client: PrismaClient) {
   const accountByCode = new Map(accountRows.map((row) => [row.code, row]))
   await client.journal.createMany({
     data: [
-      { code: 'SAL', name: '销售', companyId: company.id },
-      { code: 'PUR', name: '采购', companyId: company.id },
-      { code: 'BNK', name: '银行', companyId: company.id },
-      { code: 'GEN', name: '杂项', companyId: company.id },
+      { code: 'SAL', name: 'Sales', companyId: company.id },
+      { code: 'PUR', name: 'Purchases', companyId: company.id },
+      { code: 'BNK', name: 'Bank', companyId: company.id },
+      { code: 'GEN', name: 'General', companyId: company.id },
     ],
   })
   const salesJournal = await client.journal.findFirstOrThrow({ where: { companyId: company.id, code: 'SAL' } })
@@ -702,9 +714,9 @@ async function seedJiangbei(client: PrismaClient) {
       amountTax: 11.18,
       amountTotal: 97.18,
       residual: 97.18,
-      buyerName: '林晓',
+      buyerName: 'Lin Xiao',
       buyerTaxId: '91310000LINX000018',
-      buyerAddress: '上海市江北路 18 号',
+      buyerAddress: '18 Jiangbei Road, Shanghai',
       fapiaoType: 'electronic',
       fapiaoNumber: '26312000000000000001',
       fapiaoStatus: 'ready',
@@ -722,8 +734,8 @@ async function seedJiangbei(client: PrismaClient) {
   })
   await client.lead.create({
     data: {
-      name: '春季展会 — 帆布袋',
-      contactName: '陈薇',
+      name: 'Spring fair — canvas totes',
+      contactName: 'Chen Wei',
       email: 'chen@example.com',
       phone: '13900002222',
       expectedRevenue: 2400,
@@ -733,7 +745,7 @@ async function seedJiangbei(client: PrismaClient) {
       activities: {
         create: [{
           kind: 'call',
-          summary: '回访报价',
+          summary: 'Call back with the quote',
           dueOn: new Date('2026-04-13T00:00:00.000Z'),
         }],
       },
@@ -741,8 +753,8 @@ async function seedJiangbei(client: PrismaClient) {
   })
   await client.lead.create({
     data: {
-      name: '门店补货咨询',
-      contactName: '赵磊',
+      name: 'Store restock enquiry',
+      contactName: 'Zhao Lei',
       phone: '13700003333',
       expectedRevenue: 800,
       stage: 'new',
@@ -751,14 +763,14 @@ async function seedJiangbei(client: PrismaClient) {
     },
   })
 
-  const salesDept = await client.department.create({ data: { name: '销售部', companyId: company.id } })
-  const plantDept = await client.department.create({ data: { name: '生产部', companyId: company.id } })
+  const salesDept = await client.department.create({ data: { name: 'Sales', companyId: company.id } })
+  const plantDept = await client.department.create({ data: { name: 'Production', companyId: company.id } })
   await client.employee.create({
     data: {
-      name: '周宁',
+      name: 'Zhou Ning',
       email: 'zhou.ning@northline.example',
       phone: '13600004444',
-      jobTitle: '销售',
+      jobTitle: 'Sales',
       departmentId: salesDept.id,
       companyId: company.id,
       attendances: {
@@ -770,15 +782,15 @@ async function seedJiangbei(client: PrismaClient) {
           dateFrom: new Date('2026-04-18T00:00:00.000Z'),
           dateTo: new Date('2026-04-18T00:00:00.000Z'),
           state: 'draft',
-          reason: '发烧',
+          reason: 'Fever',
         }],
       },
     },
   })
   await client.employee.create({
     data: {
-      name: '何工',
-      jobTitle: '班组长',
+      name: 'He Gong',
+      jobTitle: 'Shift lead',
       departmentId: plantDept.id,
       companyId: company.id,
       leaves: {
@@ -787,7 +799,7 @@ async function seedJiangbei(client: PrismaClient) {
           dateFrom: new Date('2026-05-01T00:00:00.000Z'),
           dateTo: new Date('2026-05-03T00:00:00.000Z'),
           state: 'approved',
-          reason: '劳动节',
+          reason: 'Labour Day',
         }],
       },
     },
