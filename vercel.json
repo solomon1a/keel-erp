@@ -1,9 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "prisma generate && npm run typecheck && vite build",
+  "buildCommand": "sh scripts/vercel-build.sh",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api/|api$).*)", "destination": "/index.html" }
+  ],
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 30

@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
 import { api } from '../lib/api.ts'
@@ -40,13 +41,19 @@ function roleText(role: User['role'], t: Translate) {
 
 export function Shell() {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { t } = useI18n()
+  const [menuOpen, setMenuOpen] = useState(false)
   const me = useQuery({
     queryKey: ['me'],
     queryFn: () => api<User>('/api/session/me'),
     retry: false,
   })
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
 
   if (me.isLoading) {
     return <p className="px-6 py-16 text-sm text-muted-foreground">{t('shell.checking')}</p>
@@ -57,10 +64,10 @@ export function Shell() {
 
   return (
     <div className="mx-auto grid min-h-screen max-w-7xl md:grid-cols-[220px_1fr]">
-      <aside className="border-b border-border px-4 py-4 md:border-b-0 md:border-r md:px-5 md:py-6">
+      <aside className={cn('border-b border-border px-4 py-4 md:block md:border-b-0 md:border-r md:px-5 md:py-6', menuOpen ? 'block' : 'hidden')}>
         <p className="font-serif text-3xl tracking-tight">Keel</p>
         <p className="text-sm text-muted-foreground">{me.data.company.name}</p>
-        <nav className="mt-4 flex gap-2 overflow-x-auto md:mt-8 md:flex-col">
+        <nav className="mt-4 flex flex-col gap-1 md:mt-8">
           {nav.map(([to, label]) => (
             <NavLink
               key={to}
@@ -80,10 +87,15 @@ export function Shell() {
       </aside>
       <div className="min-w-0">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 md:px-8">
-          <p className="text-sm">
-            <span className="font-semibold">{me.data.name}</span>
-            <span className="text-muted-foreground"> · {roleText(me.data.role, t)}</span>
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <Button className="md:hidden" variant="outline" size="sm" onClick={() => setMenuOpen((open) => !open)}>
+              {menuOpen ? t('shell.close') : t('shell.menu')}
+            </Button>
+            <p className="truncate text-sm">
+              <span className="font-semibold">{me.data.name}</span>
+              <span className="text-muted-foreground"> · {roleText(me.data.role, t)}</span>
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             <Button

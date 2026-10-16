@@ -10,7 +10,8 @@ import { lineAmounts, sumLines } from '../domain/money.ts'
 import { singleTaxRate } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
-import type { Contact, Product, PurchaseOrder, Tax, Warehouse } from '../lib/types.ts'
+import { taxIdForCompany } from '../lib/format.ts'
+import type { Contact, Product, PurchaseOrder, Tax, User, Warehouse } from '../lib/types.ts'
 
 type DraftLine = {
   productId: string
@@ -39,6 +40,7 @@ export function PurchaseFormPage() {
     queryFn: () => api<Contact[]>('/api/contacts?role=supplier'),
   })
   const products = useQuery({ queryKey: ['products'], queryFn: () => api<Product[]>('/api/products') })
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me'), retry: false })
   const taxes = useQuery({ queryKey: ['taxes'], queryFn: () => api<Tax[]>('/api/taxes') })
   const warehouses = useQuery({ queryKey: ['warehouses'], queryFn: () => api<Warehouse[]>('/api/warehouses') })
   const order = useQuery({
@@ -47,7 +49,7 @@ export function PurchaseFormPage() {
     enabled: !isNew,
   })
 
-  const defaultTaxId = taxes.data?.find((tax) => tax.isDefault)?.id ?? taxes.data?.[0]?.id
+  const defaultTaxId = taxIdForCompany(taxes.data, me.data?.company.defaultTaxRate)
 
   useEffect(() => {
     if (!order.data) return

@@ -8,6 +8,15 @@ export function formatMoney(value: number, currency: string, locale: Locale) {
   return new Intl.NumberFormat(intlLocale, { style: 'currency', currency }).format(value)
 }
 
+export function taxIdForCompany(
+  taxes: Array<{ id: number; rate: number; isDefault: boolean }> | undefined,
+  rate: number | undefined,
+) {
+  if (!taxes?.length) return undefined
+  const match = rate === undefined ? undefined : taxes.find((tax) => Math.abs(tax.rate - rate) < 0.0001)
+  return match?.id ?? taxes.find((tax) => tax.isDefault)?.id ?? taxes[0]?.id
+}
+
 export function useMoney() {
   const { locale } = useI18n()
   const me = useQuery({

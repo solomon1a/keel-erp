@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 
-const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL
-if (!url) throw new Error('Set DIRECT_URL or DATABASE_URL before resetting the database.')
+const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL
+if (!url) throw new Error('Set DATABASE_URL_UNPOOLED or DATABASE_URL before resetting the database.')
 
 const prisma = new PrismaClient({ datasources: { db: { url } } })
 

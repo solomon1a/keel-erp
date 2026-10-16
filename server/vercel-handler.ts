@@ -1,4 +1,4 @@
-import { createApp } from '../server/app.ts'
+import { createApp } from './app.ts'
 
 const app = createApp()
 
@@ -12,6 +12,6 @@ function requestForApp(request: Request) {
   return new Request(url, request)
 }
 
-export default function handler(request: Request) {
+export function handler(request: Request) {
   return app.fetch(requestForApp(request))
 }
