@@ -6,6 +6,7 @@ import { seedPayrollAndExpenses } from './seed-payroll.ts'
 import { seedRegionalCompanies } from './seed-regions.ts'
 import { seedDesk } from './seed-desk.ts'
 import { seedAccess } from '../server/services/access.ts'
+import { ensureCompanyFrame } from '../server/services/books.ts'
 import { seedRichDemo } from './seed-rich.ts'
 
 const prisma = new PrismaClient()
@@ -29,6 +30,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   await seedRichDemo(client)
   await seedDesk(client)
   await seedAccess(client)
+  const companies = await client.company.findMany({ select: { id: true } })
+  for (const company of companies) await ensureCompanyFrame(client, company.id)
 }
 
 async function seedJiangbei(client: PrismaClient) {

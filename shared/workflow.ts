@@ -36,7 +36,7 @@ const stockTransfer: Record<string, readonly string[]> = {
 const accountMove: Record<string, readonly string[]> = {
   draft: ['posted', 'cancel'],
   posted: ['paid'],
-  paid: [],
+  paid: ['posted'],
   cancel: [],
 }
 

@@ -319,7 +319,11 @@ export function ReportsPage() {
   const pnl = useQuery({ queryKey: ['pnl'], queryFn: () => api<{ income: number; expense: number; profit: number; accounts: Array<{ code: string; name: string; amount: number }> }>('/api/reports/pnl') })
   const balance = useQuery({ queryKey: ['balance'], queryFn: () => api<{ assets: number; liabilities: number; equity: number; accounts: Array<{ code: string; name: string; amount: number }> }>('/api/reports/balance') })
   const vat = useQuery({ queryKey: ['vat'], queryFn: () => api<{ output: number; input: number; payable: number }>('/api/reports/vat') })
-  if (pnl.isLoading || balance.isLoading || vat.isLoading) return <p className="text-sm text-muted-foreground">{t('acct.loading')}</p>
+  const aging = useQuery({
+    queryKey: ['aging'],
+    queryFn: () => api<{ receivable: { current: number; d30: number; d60: number; older: number; total: number } }>('/api/reports/aging?asOf=2026-10-16'),
+  })
+  if (pnl.isLoading || balance.isLoading || vat.isLoading || aging.isLoading) return <p className="text-sm text-muted-foreground">{t('acct.loading')}</p>
   const heading = view === 'balance' ? t('acct.balance') : view === 'vat' ? t('acct.vat') : view === 'pnl' ? t('acct.pnl') : t('acct.reports')
   const showPnl = !view || view === 'pnl'
   const showBalance = !view || view === 'balance'
@@ -365,6 +369,20 @@ export function ReportsPage() {
             ]} />
           </div>
           <p className="text-sm text-muted-foreground">{t('acct.notSubmitted')}</p>
+        </section>
+      ) : null}
+      {!view || view === 'aging' ? (
+        <section className="grid gap-3">
+          <h2 className="font-serif text-2xl">{t('acct.aging')}</h2>
+          <p className="text-sm text-muted-foreground">{t('acct.agingLead')}</p>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <BarChart rows={[
+              { label: t('acct.current'), value: aging.data?.receivable.current ?? 0, display: money(aging.data?.receivable.current ?? 0) },
+              { label: t('acct.d30'), value: aging.data?.receivable.d30 ?? 0, display: money(aging.data?.receivable.d30 ?? 0) },
+              { label: t('acct.d60'), value: aging.data?.receivable.d60 ?? 0, display: money(aging.data?.receivable.d60 ?? 0) },
+              { label: t('acct.older'), value: aging.data?.receivable.older ?? 0, display: money(aging.data?.receivable.older ?? 0) },
+            ]} />
+          </div>
         </section>
       ) : null}
     </div>

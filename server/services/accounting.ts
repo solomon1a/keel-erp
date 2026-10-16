@@ -1,6 +1,8 @@
+import { Prisma } from '@prisma/client'
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { assertYearOpen, ensureCompanyFrame } from './books.ts'
 import { assertBooksOpen } from './locks.ts'
 import { guardWorkflow } from './workflow.ts'
 
@@ -23,6 +25,10 @@ const chart = [
   ['222102', '应交税费-进项税额', 'liability'],
   ['6001', '主营业务收入', 'income'],
   ['6401', '主营业务成本', 'expense'],
+  ['3103', 'Retained earnings', 'equity'],
+  ['6051', 'Other income', 'income'],
+  ['6402', 'Operating charges', 'expense'],
+  ['1409', 'Landed cost clearing', 'liability'],
 ] as const
 
 const journals = [
@@ -34,23 +40,43 @@ const journals = [
 
 export async function ensureBooks(companyId: number) {
   const existing = await prisma.account.count({ where: { companyId } })
-  if (existing > 0) return
-  await prisma.account.createMany({
-    data: chart.map(([code, name, type]) => ({ code, name, type, companyId })),
-  })
-  await prisma.journal.createMany({
-    data: journals.map(([code, name]) => ({ code, name, companyId })),
-  })
-  await prisma.sequence.createMany({
-    data: [
-      { name: `account.out.${companyId}`, next: 0 },
-      { name: `account.in.${companyId}`, next: 0 },
-      { name: `account.out_refund.${companyId}`, next: 0 },
-      { name: `account.in_refund.${companyId}`, next: 0 },
-      { name: `account.entry.${companyId}`, next: 0 },
-    ],
-    skipDuplicates: true,
-  })
+  if (existing === 0) {
+    await prisma.account.createMany({
+      data: chart.map(([code, name, type]) => ({ code, name, type, companyId })),
+    })
+    await prisma.journal.createMany({
+      data: journals.map(([code, name]) => ({ code, name, companyId })),
+    })
+    await prisma.sequence.createMany({
+      data: [
+        { name: `account.out.${companyId}`, next: 0 },
+        { name: `account.in.${companyId}`, next: 0 },
+        { name: `account.out_refund.${companyId}`, next: 0 },
+        { name: `account.in_refund.${companyId}`, next: 0 },
+        { name: `account.entry.${companyId}`, next: 0 },
+      ],
+      skipDuplicates: true,
+    })
+  }
+  for (const [code, name, type] of chart) {
+    const found = await prisma.account.findUnique({ where: { companyId_code: { companyId, code } } })
+    if (found) continue
+    try {
+      await prisma.account.create({ data: { code, name, type, companyId } })
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error
+    }
+  }
+  try {
+    await prisma.sequence.upsert({
+      where: { name: `account.entry.${companyId}` },
+      update: {},
+      create: { name: `account.entry.${companyId}`, next: 0 },
+    })
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error
+  }
+  await ensureCompanyFrame(prisma, companyId)
 }
 
 async function nextName(tx: Tx, sequenceName: string, prefix: string) {
@@ -93,6 +119,7 @@ function postingLines(
   untaxed: number,
   tax: number,
   total: number,
+  charge: number,
   label: string,
 ): PostingLine[] {
   const id = (code: string) => {
@@ -109,16 +136,16 @@ function postingLines(
   let lines: PostingLine[]
   switch (moveType) {
     case 'out_invoice':
-      lines = [row('1122', total, 0), row('6001', 0, untaxed), row('222101', 0, tax)]
+      lines = [row('1122', total, 0), row('6001', 0, untaxed), row('222101', 0, tax), row('6051', 0, charge)]
       break
     case 'out_refund':
-      lines = [row('1122', 0, total), row('6001', untaxed, 0), row('222101', tax, 0)]
+      lines = [row('1122', 0, total), row('6001', untaxed, 0), row('222101', tax, 0), row('6051', charge, 0)]
       break
     case 'in_invoice':
-      lines = [row('1405', untaxed, 0), row('222102', tax, 0), row('2202', 0, total)]
+      lines = [row('1405', untaxed, 0), row('222102', tax, 0), row('6402', charge, 0), row('2202', 0, total)]
       break
     case 'in_refund':
-      lines = [row('1405', 0, untaxed), row('222102', 0, tax), row('2202', total, 0)]
+      lines = [row('1405', 0, untaxed), row('222102', 0, tax), row('6402', 0, charge), row('2202', total, 0)]
       break
     default:
       throw new AppError(400, 'Unknown invoice type.')
@@ -314,6 +341,7 @@ export async function postInvoice(companyId: number, invoiceId: number) {
     if (!invoice) throw new AppError(404, 'Invoice not found.')
     if (invoice.state !== 'draft') throw new AppError(409, 'Only a draft can be posted.')
     await assertBooksOpen(tx, companyId, invoice.invoiceDate, Math.abs(invoice.amountTax) > 0.001)
+    await assertYearOpen(tx, companyId, invoice.invoiceDate)
     await guardWorkflow(tx, {
       companyId,
       model: 'account.move',
@@ -325,7 +353,15 @@ export async function postInvoice(companyId: number, invoiceId: number) {
     const accounts = await accountMap(tx, companyId)
     const journalCode = invoice.moveType.startsWith('in') ? 'PUR' : 'SAL'
     const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: journalCode } })
-    const lines = postingLines(invoice.moveType, accounts, invoice.amountUntaxed, invoice.amountTax, invoice.amountTotal, invoice.name)
+    const lines = postingLines(
+      invoice.moveType,
+      accounts,
+      invoice.amountUntaxed,
+      invoice.amountTax,
+      invoice.amountTotal,
+      invoice.chargeAmount,
+      invoice.name,
+    )
     const debit = roundMoney(lines.reduce((sum, line) => sum + line.debit, 0))
     const credit = roundMoney(lines.reduce((sum, line) => sum + line.credit, 0))
     if (Math.abs(debit - credit) > 0.001) throw new AppError(500, 'The journal entry does not balance.')
@@ -336,7 +372,7 @@ export async function postInvoice(companyId: number, invoiceId: number) {
         invoiceId: invoice.id,
         date: invoice.invoiceDate,
         companyId,
-        lines: { create: lines.map((line) => ({ ...line, partnerId: invoice.partnerId })) },
+        lines: { create: lines.map((line) => ({ ...line, partnerId: invoice.partnerId, costCentreId: invoice.costCentreId })) },
       },
     })
     return tx.invoice.update({
@@ -359,6 +395,7 @@ export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number,
       throw new AppError(409, 'Post the invoice before recording a payment.')
     }
     await assertBooksOpen(tx, companyId, new Date(), false)
+    await assertYearOpen(tx, companyId, new Date())
     const pay = roundMoney(amount)
     if (pay <= 0) throw new AppError(400, 'Payment amount must be greater than zero.')
     if (pay - invoice.residual > 0.001) throw new AppError(400, 'That payment is more than the amount still open.')
@@ -428,6 +465,79 @@ export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number,
       data: { residual, state: next },
       include: invoiceInclude,
     })
+}
+
+export async function reversePaymentTx(tx: Tx, companyId: number, invoiceId: number, amount: number) {
+  const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, companyId } })
+  if (!invoice) throw new AppError(404, 'Invoice not found.')
+  const pay = roundMoney(amount)
+  if (pay <= 0) throw new AppError(400, 'Payment amount must be greater than zero.')
+  await assertYearOpen(tx, companyId, new Date())
+  const accounts = await accountMap(tx, companyId)
+  const cash = accounts.get('1002')
+  const ar = accounts.get('1122')
+  const ap = accounts.get('2202')
+  if (!cash || !ar || !ap) throw new AppError(500, 'Payment accounts are missing.')
+  const label = `${invoice.name} reversal`
+  const partnerId = invoice.partnerId
+  let lines: Array<{ accountId: number; debit: number; credit: number; label: string; partnerId: number }>
+  switch (invoice.moveType) {
+    case 'out_invoice':
+      lines = [
+        { accountId: ar.id, debit: pay, credit: 0, label, partnerId },
+        { accountId: cash.id, debit: 0, credit: pay, label, partnerId },
+      ]
+      break
+    case 'out_refund':
+      lines = [
+        { accountId: cash.id, debit: pay, credit: 0, label, partnerId },
+        { accountId: ar.id, debit: 0, credit: pay, label, partnerId },
+      ]
+      break
+    case 'in_invoice':
+      lines = [
+        { accountId: cash.id, debit: pay, credit: 0, label, partnerId },
+        { accountId: ap.id, debit: 0, credit: pay, label, partnerId },
+      ]
+      break
+    case 'in_refund':
+      lines = [
+        { accountId: ap.id, debit: pay, credit: 0, label, partnerId },
+        { accountId: cash.id, debit: 0, credit: pay, label, partnerId },
+      ]
+      break
+    default:
+      throw new AppError(400, 'Unknown invoice type.')
+  }
+  const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: 'BNK' } })
+  await tx.journalEntry.create({
+    data: {
+      name: await nextName(tx, `account.entry.${companyId}`, 'JE'),
+      journalId: journal.id,
+      invoiceId: invoice.id,
+      date: new Date(),
+      companyId,
+      lines: { create: lines },
+    },
+  })
+  const payment = await tx.invoicePayment.findFirst({ where: { invoiceId: invoice.id, amount: pay }, orderBy: { id: 'desc' } })
+  if (payment) await tx.invoicePayment.delete({ where: { id: payment.id } })
+  const residual = roundMoney(invoice.residual + pay)
+  const next = residual <= 0.001 ? 'paid' : 'posted'
+  if (next !== invoice.state) {
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'account.move',
+      recordId: invoice.id,
+      from: invoice.state,
+      to: next,
+      label: invoice.name,
+    })
+  }
+  return tx.invoice.update({
+    where: { id: invoice.id },
+    data: { residual, state: next },
+  })
 }
 
 export async function creditInvoice(companyId: number, invoiceId: number) {

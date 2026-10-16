@@ -1,5 +1,9 @@
 # Changelog
 
+## Books and stock rules
+
+Customer invoices, credit notes, vendor bills, payments, and payment reversals each post a journal that balances. A charges template adds a percent of the untaxed amount. A fiscal year can close into retained earnings, and a closed year refuses a later journal. Cost centres tag the invoice lines. Aging groups open residuals. Stock receipts and issues append a ledger row. FIFO consumes the oldest layer. Moving average uses the running cost. A stock count, a batch, a serial, and a landed cost post the same way. Undoing a bank match puts the invoice and the statement line back. See `docs/logic/accounting.md` and `docs/logic/inventory.md`.
+
 ## Soft glass desk
 
 The desk uses a lighter palette with teal `#0E6B5C` kept as the accent. Module tiles and status badges are pastel. Buttons, tabs, filters and the language switch are pills. The header, sidebar, cards, menus and launcher sit on frosted glass with a soft shadow and a larger radius. Light and dark both keep the ink contrast. The books are unchanged.

@@ -4,8 +4,9 @@ import { requireAdmin, type AppEnv } from './auth.ts'
 import { prisma } from './db.ts'
 import { AppError } from './errors.ts'
 import { accessSnapshot, addRule, assertModelAccess, deleteRule, setGrant, setUserGroups } from './services/access.ts'
-import { getLockDates, importStatement, listStatements, reconcileLine, setLockDates } from './services/bank.ts'
-import { listValuation, setCostMethod } from './services/valuation.ts'
+import { getLockDates, importStatement, listStatements, reconcileLine, setLockDates, unreconcileLine } from './services/bank.ts'
+import { countStock } from './services/orders.ts'
+import { landedCost, listStockLedger, listValuation, setCostMethod } from './services/valuation.ts'
 
 function text(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
@@ -175,6 +176,14 @@ export function registerCoreRoutes(app: Hono<AppEnv>) {
     return c.json(await reconcileLine(user.companyId, Number(c.req.param('id')), body.invoiceId, body.amount))
   })
 
+  app.post('/api/bank/lines/:id/unreconcile', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'write')
+    const body = await c.req.json() as { invoiceId?: number }
+    if (!body.invoiceId) throw new AppError(400, 'Choose the invoice to release.')
+    return c.json(await unreconcileLine(user.companyId, Number(c.req.param('id')), body.invoiceId))
+  })
+
   app.get('/api/accounting/locks', async (c) => {
     const user = c.get('user')
     await assertModelAccess(user, 'account.move', 'read')
@@ -206,5 +215,29 @@ export function registerCoreRoutes(app: Hono<AppEnv>) {
     const body = await c.req.json() as { productId?: number; method?: string }
     if (!body.productId || !body.method) throw new AppError(400, 'Choose a product and a cost method.')
     return c.json(await setCostMethod(user.companyId, body.productId, body.method))
+  })
+
+  app.get('/api/stock/ledger', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'stock.valuation', 'read')
+    const productId = Number(c.req.query('productId'))
+    if (!Number.isInteger(productId) || productId <= 0) throw new AppError(400, 'Choose a product.')
+    return c.json(await listStockLedger(user.companyId, productId))
+  })
+
+  app.post('/api/stock/count', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'stock.valuation', 'write')
+    const body = await c.req.json() as { productId?: number; locationId?: number; counted?: number }
+    if (!body.productId || !body.locationId || body.counted == null) throw new AppError(400, 'Count a product in a location.')
+    return c.json(await countStock(user.companyId, body.productId, body.locationId, body.counted))
+  })
+
+  app.post('/api/stock/landed-cost', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'stock.valuation', 'write')
+    const body = await c.req.json() as { productId?: number; amount?: number }
+    if (!body.productId || body.amount == null) throw new AppError(400, 'Choose a product and an amount.')
+    return c.json(await landedCost(user.companyId, body.productId, body.amount))
   })
 }

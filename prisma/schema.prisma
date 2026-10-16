@@ -35,6 +35,12 @@ model Company {
   journals      Journal[]
   invoices      Invoice[]
   entries       JournalEntry[]
+  fiscalYears   FiscalYear[]
+  costCentres   CostCentre[]
+  chargeTemplates ChargeTemplate[]
+  stockLedgers  StockLedger[]
+  stockBatches  StockBatch[]
+  stockSerials  StockSerial[]
   leads         Lead[]
   departments   Department[]
   employees     Employee[]
@@ -190,6 +196,9 @@ model Product {
   websitePublished Boolean          @default(false)
   posLines     PosOrderLine[]
   valuations   ValuationLayer[]
+  ledgers      StockLedger[]
+  batches      StockBatch[]
+  serials      StockSerial[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
@@ -435,6 +444,7 @@ model StockLocation {
   movesTo       StockMove[]         @relation("MoveTo")
   transfersFrom StockTransfer[]     @relation("TransferFrom")
   transfersTo   StockTransfer[]     @relation("TransferTo")
+  serials       StockSerial[]
 
   @@index([companyId, type])
   @@index([warehouseId])
@@ -668,6 +678,11 @@ model Invoice {
   fapiaoType      String?
   /// none or ready. Never submitted to a Golden Tax platform.
   fapiaoStatus    String           @default("none")
+  /// Percent of the untaxed amount added by a charges template. Zero means no charge.
+  chargeRate      Float            @default(0)
+  chargeAmount    Float            @default(0)
+  costCentreId    Int?
+  costCentre      CostCentre?      @relation(fields: [costCentreId], references: [id])
   lines           InvoiceLine[]
   payments        InvoicePayment[]
   entries         JournalEntry[]
@@ -731,8 +746,92 @@ model JournalItem {
   label     String
   debit     Float        @default(0)
   credit    Float        @default(0)
+  costCentreId Int?
+  costCentre   CostCentre? @relation(fields: [costCentreId], references: [id])
 
   @@index([accountId])
+  @@index([costCentreId])
+}
+
+model FiscalYear {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  startsOn  DateTime
+  endsOn    DateTime
+  closed    Boolean  @default(false)
+
+  @@unique([companyId, name])
+}
+
+model CostCentre {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id])
+  code      String
+  name      String
+  invoices  Invoice[]
+  items     JournalItem[]
+
+  @@unique([companyId, code])
+}
+
+model ChargeTemplate {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  name      String
+  /// sales or purchase
+  side      String
+  /// Percent of the untaxed amount.
+  rate      Float
+
+  @@unique([companyId, name])
+}
+
+model StockLedger {
+  id           Int      @id @default(autoincrement())
+  companyId    Int
+  company      Company  @relation(fields: [companyId], references: [id])
+  productId    Int
+  product      Product  @relation(fields: [productId], references: [id])
+  moveId       Int?
+  qtyIn        Float    @default(0)
+  qtyOut       Float    @default(0)
+  value        Float
+  balanceQty   Float
+  balanceValue Float
+  createdAt    DateTime @default(now())
+
+  @@index([companyId, productId])
+}
+
+model StockBatch {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  name      String
+  quantity  Float   @default(0)
+
+  @@unique([companyId, productId, name])
+}
+
+model StockSerial {
+  id         Int            @id @default(autoincrement())
+  companyId  Int
+  company    Company        @relation(fields: [companyId], references: [id])
+  productId  Int
+  product    Product        @relation(fields: [productId], references: [id])
+  name       String
+  locationId Int?
+  location   StockLocation? @relation(fields: [locationId], references: [id])
+  /// in_stock or issued
+  state      String
+
+  @@unique([companyId, name])
 }
 
 model Lead {
