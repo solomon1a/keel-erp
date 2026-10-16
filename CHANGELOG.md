@@ -1,5 +1,11 @@
 # Changelog
 
+## Signup and a fuller demo
+
+The desk opens in English. **中文** still switches the interface, and that choice stays in the `keel_lang` cookie. `/start` creates a company: name, country (China, United Kingdom, United States, or somewhere else), the admin’s name, email, and password, and an optional sample notebook and quotation. The country sets currency, default tax, and the language of that first session. Signup is checked and limited to five tries an hour from one network address. An admin invites more people from People. A company with users is kept when the seed runs again; only an empty leftover company is removed.
+
+The three demo companies now carry a fuller English book: more customers and vendors, quotations and orders in mixed states, purchase orders, manufacturing orders, stock moves, leads in every stage, invoices that are paid, unpaid, and overdue, a closed register beside the open one, shop orders, ten people, payroll for February, March, and April, and expenses that are submitted, approved, reimbursed, and refused. Re-running the seed adds a missing row and does not copy one that is already there.
+
 ## App launcher
 
 Sign-in opens a grid of modules: Dashboard, Sales, CRM, Purchase, Inventory, Manufacturing, Point of Sale, eCommerce, Accounting, and Employees. Inside a module, the bar shows that module’s name and its own menu, with dropdowns where a section has more than one screen. Apps returns to the grid. Lists stay in memory after login, so moving between modules does not flash a loading page. Harbour & Line and Hudson Yard Goods now have a draft purchase, a bill of materials, a manufacturing order, a transfer, a register sale, and a second lead, in English.

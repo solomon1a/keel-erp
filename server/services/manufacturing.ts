@@ -130,7 +130,7 @@ export async function updateBom(companyId: number, bomId: number, input: BomInpu
     if (!existing) throw new AppError(404, 'Bill of materials not found.')
     await requireFinished(tx, companyId, input.productId)
     if (input.productId !== existing.productId) {
-      const taken = await tx.billOfMaterials.findFirst({ where: { productId: input.productId } })
+      const taken = await tx.billOfMaterials.findFirst({ where: { productId: input.productId, companyId } })
       if (taken) throw new AppError(409, 'This product already has a bill of materials.')
     }
     const lines = await buildBomLines(tx, companyId, input.productId, input.lines)

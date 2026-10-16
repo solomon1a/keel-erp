@@ -47,6 +47,7 @@ import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
 import { registerPayrollRoutes } from './payroll-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
+import { registerSignupRoutes } from './signup-routes.ts'
 import { profitAndLoss, vatReport } from './services/accounting.ts'
 import {
   addLocation,
@@ -132,6 +133,7 @@ const orderInclude = {
 function isPublicApi(method: string, path: string) {
   if (method === 'GET' && path === '/api/health') return true
   if (method === 'POST' && path === '/api/session/login') return true
+  if (method === 'POST' && path === '/api/signup') return true
   return path === '/api/shop' || path.startsWith('/api/shop/')
 }
 
@@ -167,6 +169,8 @@ export function createApp() {
   })
 
   app.get('/api/health', (c) => c.json({ ok: true }))
+
+  registerSignupRoutes(app)
 
   app.post('/api/session/login', async (c) => {
     const input = parseBody(loginSchema, await c.req.json())
@@ -293,12 +297,6 @@ export function createApp() {
       },
       select: { name: true, city: true, currency: true, defaultTaxRate: true },
     })
-    const current = await prisma.tax.findFirst({ where: { isDefault: true } })
-    if (current) {
-      await prisma.tax.update({ where: { id: current.id }, data: { rate: input.defaultTaxRate } })
-    } else {
-      await prisma.tax.create({ data: { name: 'China VAT 13%', rate: input.defaultTaxRate, isDefault: true } })
-    }
     return c.json(company)
   })
 

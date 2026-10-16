@@ -17,13 +17,13 @@ export function isLocale(value: string): value is Locale {
 }
 
 export function readLocale(): Locale {
-  if (typeof document === 'undefined') return 'zh'
+  if (typeof document === 'undefined') return 'en'
   const parts = document.cookie.split(';')
   for (const part of parts) {
     const [rawName, rawValue] = part.trim().split('=')
     if (rawName === cookieName && rawValue && isLocale(rawValue)) return rawValue
   }
-  return 'zh'
+  return 'en'
 }
 
 export function writeLocale(locale: Locale) {

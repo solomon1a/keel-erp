@@ -31,6 +31,17 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 })
 
+export const signupCountries = ['CN', 'GB', 'US', 'OTHER'] as const
+
+export const signupSchema = z.object({
+  companyName: z.string().trim().min(1, 'Company name is required').max(120),
+  country: z.enum(signupCountries),
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  email: emailSchema,
+  password: passwordSchema,
+  loadSample: z.boolean().default(false),
+})
+
 export const currencyCodes = ['CNY', 'USD', 'EUR', 'GBP', 'HKD', 'JPY'] as const
 
 export const companySettingsSchema = z.object({

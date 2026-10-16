@@ -1,7 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
 
-const keepEmails = ['maya@northline.example', 'amira@harbourline.example', 'jordan@hudsonyard.example']
-
 async function deleteCompany(client: PrismaClient, companyId: number) {
   await client.$transaction(async (tx) => {
     await tx.company.update({ where: { id: companyId }, data: { onlineWarehouseId: null } })
@@ -67,13 +65,13 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
 }
 
 export async function removeStrayCompanies(client: PrismaClient) {
-  const keepers = await client.user.findMany({
-    where: { email: { in: [...keepEmails] } },
-    select: { companyId: true },
+  // A company with at least one user is a real tenant (demo or self-serve).
+  // Only empty leftovers from a partial seed are removed.
+  const empty = await client.company.findMany({
+    where: { users: { none: {} } },
+    select: { id: true },
   })
-  const keep = new Set(keepers.map((user) => user.companyId))
-  const companies = await client.company.findMany({ select: { id: true } })
-  for (const company of companies) {
-    if (!keep.has(company.id)) await deleteCompany(client, company.id)
+  for (const company of empty) {
+    await deleteCompany(client, company.id)
   }
 }

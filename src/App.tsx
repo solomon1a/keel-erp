@@ -50,6 +50,7 @@ import { PurchaseFormPage } from './pages/purchase-form-page.tsx'
 import { PurchasePrintPage } from './pages/purchase-print-page.tsx'
 import { PurchasesPage } from './pages/purchases-page.tsx'
 import { SignInPage } from './pages/sign-in-page.tsx'
+import { StartPage } from './pages/start-page.tsx'
 import { VendorsPage } from './pages/vendors-page.tsx'
 
 const queryClient = new QueryClient({
@@ -72,6 +73,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/start" element={<StartPage />} />
           <Route path="/shop" element={<ShopCatalogPage />} />
           <Route path="/shop/p/:id" element={<ShopProductPage />} />
           <Route path="/shop/cart" element={<ShopCartPage />} />
