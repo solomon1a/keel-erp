@@ -1,5 +1,9 @@
 # Changelog
 
+## Assets, projects, quality, subcontracting, and helpdesk
+
+Those five apps use the same workspace as Manufacturing: a sidebar, a twelve-month chart, three figures, a Reports & Masters grid, and a getting-started checklist. Assets adds locations, movements, disposals, a depreciation schedule, and a maintenance report. Projects adds updates, templates, activity types, profitability, delayed tasks, and a timesheet summary. Quality adds goals, teams, an inspection summary, and alert and product reports. Subcontracting adds pending receipts, a subcontract bill of materials, components sent, and cost. Helpdesk adds ticket types, priorities, canned replies, and SLA and team reports. Each list already has sample rows. The launcher opens an app on `/go/<app>` when that workspace exists.
+
 ## App workspaces
 
 Opening an app shows a workspace in the style of a manufacturing desk. A sidebar lists that app’s sections. Your Shortcuts holds a twelve-month chart and three figures. Reports & Masters is a grid of cards, and every card opens a list, a form, or a report that already has sample rows. Getting Started tracks a setup checklist for the company in this browser: check a step, open it, or skip the rest. Manufacturing includes production, bills of materials, subcontracting, the planning and shop-floor reports, the BOM update tool, and settings. The same layout is on Sales, CRM, Procurement, Inventory, Wastage, Point of Sale, eCommerce, Contacts, Finance, HR, Attendance, Payroll, Expenses, and the other apps.

@@ -1,4 +1,3 @@
-import { workspaceFor } from '../lib/workspaces.ts'
 import { useQuery } from '@tanstack/react-query'
 import { moduleAccent, moduleIconId } from '../brand/module-icon.tsx'
 import { LauncherTile } from '../components/launcher-tile.tsx'
@@ -7,6 +6,7 @@ import type { MessageKey } from '../i18n/messages.ts'
 import { api } from '../lib/api.ts'
 import { launcherModules } from '../lib/modules.ts'
 import type { User } from '../lib/types.ts'
+import { workspaceFor } from '../lib/workspaces.ts'
 
 function greetingKey(hour: number): MessageKey {
   if (hour < 12) return 'apps.greeting.morning'
