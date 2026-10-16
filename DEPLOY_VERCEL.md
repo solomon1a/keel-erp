@@ -19,16 +19,16 @@ In the [Neon console](https://console.neon.tech):
 1. Create a project. For a partner in or near China, pick **AWS Asia Pacific (Singapore)** or the closest region Neon offers. Vercel has no mainland China region. In the Vercel project, set the function region to **Hong Kong (`hkg1`)** or **Singapore (`sin1`)** so it sits near that database.
 2. Open **Connect**. Leave the branch, database, and role on the defaults.
 3. Copy the connection string **with connection pooling on**. That is `DATABASE_URL`. It should use the `-pooler` host. Append these query parameters if they are missing: `sslmode=require&pgbouncer=true&connect_timeout=15&connection_limit=1`.
-4. Turn connection pooling **off** and copy that string. That is `DIRECT_URL`. It must not use the pooler host. Keep `sslmode=require`. Do not add `pgbouncer=true` on this one.
+4. Turn connection pooling **off** and copy that string. That is `DATABASE_URL_UNPOOLED`. It must not use the pooler host. Keep `sslmode=require`. Do not add `pgbouncer=true` on this one.
 
 Example shape (the host and password come from Neon):
 
 ```text
 DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&pgbouncer=true&connect_timeout=15&connection_limit=1
-DIRECT_URL=postgresql://USER:PASSWORD@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL_UNPOOLED=postgresql://USER:PASSWORD@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
 ```
 
-Marketplace path instead of the Neon console: in the Vercel project, **Storage → Create → Neon** (or **Marketplace → Neon**). The integration writes `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct). Copy `DATABASE_URL_UNPOOLED` into a variable named `DIRECT_URL`. If the pooled URL has no `pgbouncer=true`, edit `DATABASE_URL` and add `&pgbouncer=true&connection_limit=1`.
+Marketplace path instead of the Neon console: in the Vercel project, **Storage → Create → Neon** (or **Marketplace → Neon**). The integration writes `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct). Copy `DATABASE_URL_UNPOOLED` into a variable named `DATABASE_URL_UNPOOLED`. If the pooled URL has no `pgbouncer=true`, edit `DATABASE_URL` and add `&pgbouncer=true&connection_limit=1`.
 
 A single non-pooled URL can be pasted into both variables for a first try. Serverless will open more connections that way. Prefer the pooler for `DATABASE_URL`.
 
@@ -60,7 +60,7 @@ Set these on the Vercel project for Production:
 | Name | Required | Value |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | Neon pooled URL, with `sslmode=require`, `pgbouncer=true`, and `connection_limit=1` |
-| `DIRECT_URL` | yes | Neon direct URL, `sslmode=require`, no pooler |
+| `DATABASE_URL_UNPOOLED` | yes | Neon direct URL, `sslmode=require`, no pooler |
 | `SESSION_SECRET` | yes | At least 16 characters. Generate with `openssl rand -base64 32`. Do not reuse `keel-dev-session-secret-change-me` |
 
 `NODE_ENV` and `VERCEL` are set by Vercel. Do not add a `PORT`. Changing `SESSION_SECRET` later signs everyone out.
@@ -75,7 +75,7 @@ Do this from your machine, against the production database, after the variables 
 cp .env.example .env
 ```
 
-Edit `.env` so `DATABASE_URL` and `DIRECT_URL` are the **production** Neon URLs from step 2. Then:
+Edit `.env` so `DATABASE_URL` and `DATABASE_URL_UNPOOLED` are the **production** Neon URLs from step 2. Then:
 
 ```bash
 npm install

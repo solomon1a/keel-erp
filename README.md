@@ -19,7 +19,7 @@ Open [http://127.0.0.1:43123](http://127.0.0.1:43123). The desk and API listen o
 
 Sign in with email and password. The session is an httpOnly cookie, and it is marked Secure on HTTPS. Demo accounts are listed in [RUN_LOCAL.md](RUN_LOCAL.md). Maya Chen is an admin and can add people or reset passwords. Anyone signed in can change their own password.
 
-To wipe the database in `DIRECT_URL` and load the sample company again:
+To wipe the database in `DATABASE_URL_UNPOOLED` and load the sample company again:
 
 ```bash
 npm run db:reset

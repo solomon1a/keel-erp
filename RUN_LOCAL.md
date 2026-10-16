@@ -21,7 +21,7 @@ createdb -O keel keel
 createdb -O keel keel_test
 ```
 
-Or use a hosted dev database (a Neon branch is enough). Copy that project's pooled URL into `DATABASE_URL` and its direct URL into `DIRECT_URL`. On a single local server both URLs are the same. Tests read `KEEL_TEST_DATABASE_URL` when the default `keel_test` login does not match your machine.
+Or use a hosted dev database (a Neon branch is enough). Copy that project's pooled URL into `DATABASE_URL` and its direct URL into `DATABASE_URL_UNPOOLED`. On a single local server both URLs are the same. Tests read `KEEL_TEST_DATABASE_URL` when the default `keel_test` login does not match your machine.
 
 ```bash
 node -v
@@ -34,7 +34,7 @@ npm run dev
 
 `cp` creates `.env`. That file is gitignored. Edit the URLs if your Postgres user or host is different. `SESSION_SECRET` can stay as the example on your own machine. `npm install` runs `prisma generate`.
 
-`npm run db:reset` clears the schema on `DIRECT_URL`, applies `prisma/migrations`, and loads the sample company. Run it again any time you want the demo data back. `npm run dev` applies migrations if they are pending, then starts the API. It seeds only when the company table is empty, so an older database is left as it is until you reset.
+`npm run db:reset` clears the schema on `DATABASE_URL_UNPOOLED`, applies `prisma/migrations`, and loads the sample company. Run it again any time you want the demo data back. `npm run dev` applies migrations if they are pending, then starts the API. It seeds only when the company table is empty, so an older database is left as it is until you reset.
 
 `npm run dev` starts the API on port 43124 and the desk on port 43123. The session cookie is not marked Secure on this http address. A production or Vercel process marks it Secure. See [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md) for the hosted demo.
 
