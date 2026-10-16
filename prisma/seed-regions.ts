@@ -382,6 +382,7 @@ async function seedRegion(client: PrismaClient, region: Region) {
       city: region.city,
       currency: region.currency,
       defaultTaxRate: region.taxRate,
+      countryCode: region.countryCode,
       taxId: region.taxId,
       address: region.address,
     },

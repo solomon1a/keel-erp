@@ -179,6 +179,101 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: label('expenses', 'categories'), to: screen('expenses', 'categories') },
     ] },
   ],
+  assets: [
+    { label: label('assets', 'register'), to: screen('assets', 'register') },
+    { label: label('assets', 'depreciation'), to: screen('assets', 'depreciation') },
+    { label: label('assets', 'maintenance'), to: screen('assets', 'maintenance') },
+    { label: 'menu.reporting', children: [{ label: label('assets', 'analysis'), to: screen('assets', 'analysis') }] },
+    { label: 'desk.g.configuration', children: [
+      { label: label('assets', 'settings'), to: screen('assets', 'settings') },
+      { label: label('assets', 'categories'), to: screen('assets', 'categories') },
+    ] },
+  ],
+  projects: [
+    { label: label('projects', 'projects'), to: screen('projects', 'projects') },
+    { label: label('projects', 'tasks'), to: screen('projects', 'tasks') },
+    { label: label('projects', 'timesheets'), to: screen('projects', 'timesheets') },
+    { label: label('projects', 'billing'), to: screen('projects', 'billing') },
+    { label: 'menu.reporting', children: [{ label: label('projects', 'analysis'), to: screen('projects', 'analysis') }] },
+    { label: 'desk.g.configuration', children: [{ label: label('projects', 'settings'), to: screen('projects', 'settings') }] },
+  ],
+  quality: [
+    { label: label('quality', 'inspections'), to: screen('quality', 'inspections') },
+    { label: label('quality', 'nonconformance'), to: screen('quality', 'nonconformance') },
+    { label: label('quality', 'procedures'), to: screen('quality', 'procedures') },
+    { label: 'menu.reporting', children: [{ label: label('quality', 'analysis'), to: screen('quality', 'analysis') }] },
+    { label: 'desk.g.configuration', children: [{ label: label('quality', 'settings'), to: screen('quality', 'settings') }] },
+  ],
+  subcontracting: [
+    { label: label('subcontracting', 'orders'), to: screen('subcontracting', 'orders') },
+    { label: label('subcontracting', 'receipts'), to: screen('subcontracting', 'receipts') },
+    { label: 'menu.reporting', children: [{ label: label('subcontracting', 'analysis'), to: screen('subcontracting', 'analysis') }] },
+    { label: 'desk.g.configuration', children: [{ label: label('subcontracting', 'settings'), to: screen('subcontracting', 'settings') }] },
+  ],
+  helpdesk: [
+    { label: label('helpdesk', 'tickets'), to: screen('helpdesk', 'tickets') },
+    { label: label('helpdesk', 'sla'), to: screen('helpdesk', 'sla') },
+    { label: 'menu.reporting', children: [{ label: label('helpdesk', 'analysis'), to: screen('helpdesk', 'analysis') }] },
+    { label: 'desk.g.configuration', children: [
+      { label: label('helpdesk', 'settings'), to: screen('helpdesk', 'settings') },
+      { label: label('helpdesk', 'teams'), to: screen('helpdesk', 'teams') },
+      { label: label('helpdesk', 'tags'), to: screen('helpdesk', 'tags') },
+    ] },
+  ],
+  compliance: complianceMenu('CN'),
+}
+
+export type CompanyCountry = 'CN' | 'GB' | 'US' | 'PK' | 'OTHER'
+
+export function complianceHome(country: string) {
+  switch (country) {
+    case 'CN':
+      return screen('compliance', 'fapiao')
+    case 'GB':
+      return screen('compliance', 'mtd')
+    case 'US':
+      return screen('compliance', 'sales-tax')
+    case 'PK':
+      return screen('compliance', 'fbr')
+    default:
+      return screen('compliance', 'summary')
+  }
+}
+
+export function complianceMenu(country: string): MenuEntry[] {
+  const settings = { label: 'desk.g.configuration', children: [{ label: label('compliance', 'settings'), to: screen('compliance', 'settings') }] }
+  switch (country) {
+    case 'CN':
+      return [
+        { label: label('compliance', 'fapiao'), to: screen('compliance', 'fapiao') },
+        { label: 'menu.reporting', children: [{ label: label('compliance', 'fapiao-report'), to: screen('compliance', 'fapiao-report') }] },
+        settings,
+      ]
+    case 'GB':
+      return [
+        { label: label('compliance', 'mtd'), to: screen('compliance', 'mtd') },
+        { label: 'menu.reporting', children: [{ label: label('compliance', 'mtd-report'), to: screen('compliance', 'mtd-report') }] },
+        settings,
+      ]
+    case 'US':
+      return [
+        { label: label('compliance', 'sales-tax'), to: screen('compliance', 'sales-tax') },
+        { label: label('compliance', 'jurisdictions'), to: screen('compliance', 'jurisdictions') },
+        settings,
+      ]
+    case 'PK':
+      return [
+        { label: label('compliance', 'fbr'), to: screen('compliance', 'fbr') },
+        { label: label('compliance', 'withholding'), to: screen('compliance', 'withholding') },
+        { label: 'menu.reporting', children: [{ label: label('compliance', 'sales-tax-pk'), to: screen('compliance', 'sales-tax-pk') }] },
+        settings,
+      ]
+    default:
+      return [
+        { label: 'menu.reporting', to: screen('compliance', 'summary') },
+        settings,
+      ]
+  }
 }
 
 export function menuPaths() {

@@ -16,6 +16,7 @@ export type DeskSetting = {
   labelEn: string
   labelZh: string
   value: string
+  byCountry?: Record<string, string>
 }
 
 export type DeskScreen = {
@@ -30,6 +31,8 @@ export type DeskScreen = {
   leadZh: string
   rows: DeskSeed[]
   settings: DeskSetting[]
+  /** When set, the seed writes these rows only for companies in these country codes. */
+  countries?: string[]
 }
 
 const day = (iso: string) => iso
@@ -70,6 +73,10 @@ function report(
     rows,
     settings: [],
   }
+}
+
+function inCountries(screen: DeskScreen, countries: string[]) {
+  return { ...screen, countries }
 }
 
 function settings(
@@ -425,6 +432,190 @@ export const deskScreens: DeskScreen[] = [
     { name: 'Meals', state: 'active', recordDate: day('2026-01-01') },
     { name: 'Supplies', state: 'active', recordDate: day('2026-01-01') },
   ], false),
+
+  list('assets', 'register', 'Asset register', '资产登记', 'Equipment the company owns and still depreciates.', '公司拥有并仍在折旧的设备。', ['running', 'progress', 'disposed'], [
+    { name: 'Loom 02', state: 'running', partner: 'Jiangbei Goods Co.', owner: 'He Gong', bucket: 'Machinery', amount: 18600, notes: 'Rapier loom. Straight-line, 8 years.', recordDate: day('2024-03-01') },
+    { name: 'Delivery van', state: 'running', partner: 'Jiangbei Goods Co.', owner: 'Lin Xiao', bucket: 'Vehicles', amount: 4200, notes: 'Shop deliveries inside the city.', recordDate: day('2023-11-12') },
+    { name: 'Cutting table', state: 'progress', partner: 'Harbour & Line', owner: 'Amira Shah', bucket: 'Machinery', amount: 980, notes: 'Out for a blade change.', recordDate: day('2025-06-02') },
+    { name: 'Office laptops', state: 'disposed', owner: 'Maya Chen', bucket: 'IT', amount: 0, notes: 'Sold as a lot in March.', recordDate: day('2022-01-15') },
+  ]),
+  list('assets', 'depreciation', 'Depreciation', '折旧', 'Posted depreciation runs. Figures are samples.', '已过账的折旧。数字是示例。', ['draft', 'posted'], [
+    { name: 'DEP/2026/04', state: 'posted', bucket: 'April', amount: 246.5, notes: 'Loom 02 and the van.', recordDate: day('2026-04-30') },
+    { name: 'DEP/2026/03', state: 'posted', bucket: 'March', amount: 246.5, notes: 'Same assets as April.', recordDate: day('2026-03-31') },
+    { name: 'DEP/2026/05', state: 'draft', bucket: 'May', amount: 210, notes: 'Cutting table paused while it is in maintenance.', recordDate: day('2026-05-31') },
+  ], false),
+  list('assets', 'maintenance', 'Maintenance', '维护', 'Work orders on assets.', '资产上的维修单。', ['scheduled', 'progress', 'done'], [
+    { name: 'Loom belt', state: 'scheduled', partner: 'Loom 02', owner: 'He Gong', amount: 40, notes: 'Replace the drive belt before the next cutting order.', recordDate: day('2026-04-22') },
+    { name: 'Van service', state: 'done', partner: 'Delivery van', owner: 'Lin Xiao', amount: 85, notes: 'Oil and brakes.', recordDate: day('2026-04-04') },
+    { name: 'Blade change', state: 'progress', partner: 'Cutting table', owner: 'Amira Shah', amount: 30, notes: 'Waiting on the blade.', recordDate: day('2026-04-16') },
+  ]),
+  report('assets', 'analysis', 'Asset analysis', '资产分析', 'Gross value still on the register, by group.', '登记册上仍在的原值，按分组。', [
+    { name: 'Machinery', state: 'running', bucket: 'Machinery', amount: 19580, recordDate: day('2026-04-16') },
+    { name: 'Vehicles', state: 'running', bucket: 'Vehicles', amount: 4200, recordDate: day('2026-04-16') },
+    { name: 'IT', state: 'disposed', bucket: 'IT', amount: 0, recordDate: day('2026-04-16') },
+  ]),
+  settings('assets', 'Asset settings', '资产设置', 'How depreciation is posted.', '折旧如何过账。', [
+    { key: 'method', labelEn: 'Depreciation method', labelZh: '折旧方法', value: 'Straight line' },
+    { key: 'journal', labelEn: 'Asset journal', labelZh: '资产日记账', value: 'GEN' },
+  ]),
+  list('assets', 'categories', 'Asset categories', '资产类别', 'Groups on the register.', '登记册上的分组。', ['active'], [
+    { name: 'Machinery', state: 'active', notes: '8 year life.', recordDate: day('2026-01-01') },
+    { name: 'Vehicles', state: 'active', notes: '5 year life.', recordDate: day('2026-01-01') },
+    { name: 'IT', state: 'active', notes: '3 year life.', recordDate: day('2026-01-01') },
+  ], false),
+
+  list('projects', 'projects', 'Projects', '项目', 'Jobs the company is running for itself or a customer.', '公司为自己或客户进行的工作。', ['planned', 'progress', 'done'], [
+    { name: 'Spring tote run', state: 'progress', partner: 'Orchard School', owner: 'Maya Chen', amount: 2400, notes: 'Cut, sew, and deliver 200 totes.', recordDate: day('2026-04-02') },
+    { name: 'Shop refit', state: 'planned', partner: 'Jiangbei Goods Co.', owner: 'Lin Xiao', amount: 800, notes: 'New shelves before May.', recordDate: day('2026-04-18') },
+    { name: 'Harbour wholesale kit', state: 'done', partner: 'Harbour & Line', owner: 'Amira Shah', amount: 1600, notes: 'Delivered in March.', recordDate: day('2026-03-12') },
+  ]),
+  list('projects', 'tasks', 'Tasks', '任务', 'The work inside a project.', '项目里的工作。', ['planned', 'progress', 'done'], [
+    { name: 'Cut canvas', state: 'progress', partner: 'Spring tote run', owner: 'He Gong', bucket: 'Shop floor', notes: '120 of 200 cut.', recordDate: day('2026-04-14') },
+    { name: 'Confirm dye lot', state: 'planned', partner: 'Spring tote run', owner: 'Jonah Ellis', bucket: 'Buying', notes: 'Waiting on Harbour Dye.', recordDate: day('2026-04-16') },
+    { name: 'Photograph samples', state: 'done', partner: 'Harbour wholesale kit', owner: 'Priya Nair', bucket: 'Shop', notes: 'Used on the storefront.', recordDate: day('2026-03-08') },
+  ]),
+  list('projects', 'timesheets', 'Timesheets', '工时表', 'Hours recorded against a project.', '记在项目上的工时。', ['draft', 'posted'], [
+    { name: 'He Gong week 16', state: 'posted', partner: 'Spring tote run', owner: 'He Gong', amount: 32, notes: 'Hours, not money.', recordDate: day('2026-04-17') },
+    { name: 'Jonah Ellis week 16', state: 'draft', partner: 'Spring tote run', owner: 'Jonah Ellis', amount: 6, notes: 'Buyer calls.', recordDate: day('2026-04-17') },
+  ], false),
+  list('projects', 'billing', 'To bill', '待开票', 'Project work that can become a customer invoice.', '可以开给客户的项目工作。', ['to_bill', 'billed'], [
+    { name: 'Spring tote milestone', state: 'to_bill', partner: 'Orchard School', owner: 'Maya Chen', amount: 1200, notes: 'Half the run is cut.', recordDate: day('2026-04-16') },
+    { name: 'Harbour kit', state: 'billed', partner: 'Harbour & Line', owner: 'Amira Shah', amount: 1600, notes: 'Invoiced in March.', recordDate: day('2026-03-20') },
+  ], false),
+  report('projects', 'analysis', 'Project analysis', '项目分析', 'Open project value by status.', '按状态的未完项目金额。', [
+    { name: 'In progress', state: 'progress', bucket: 'In progress', amount: 2400, recordDate: day('2026-04-16') },
+    { name: 'Planned', state: 'planned', bucket: 'Planned', amount: 800, recordDate: day('2026-04-16') },
+    { name: 'Done', state: 'done', bucket: 'Done', amount: 1600, recordDate: day('2026-04-16') },
+  ]),
+  settings('projects', 'Project settings', '项目设置', 'How time and billing are recorded.', '如何记录工时和开票。', [
+    { key: 'billing', labelEn: 'Bill from', labelZh: '开票依据', value: 'Milestones' },
+    { key: 'hours', labelEn: 'Timesheet unit', labelZh: '工时单位', value: 'Hours' },
+  ]),
+
+  list('quality', 'inspections', 'Inspections', '检验', 'Checks on a lot before it is sold or received.', '销售或收货前对批次的检查。', ['draft', 'pass', 'fail'], [
+    { name: 'QC1108 canvas lot', state: 'pass', partner: 'Harbour Dye', owner: 'He Gong', bucket: 'Incoming', notes: 'Shade matches the standard.', recordDate: day('2026-04-11') },
+    { name: 'QC1112 tote stitch', state: 'fail', partner: 'Spring tote run', owner: 'He Gong', bucket: 'In process', notes: 'Loose stitch on 6 pieces.', recordDate: day('2026-04-15') },
+    { name: 'QC1116 shop count', state: 'draft', partner: 'Shop', owner: 'Lin Xiao', bucket: 'Final', notes: 'Not started.', recordDate: day('2026-04-16') },
+  ]),
+  list('quality', 'nonconformance', 'Non-conformance', '不合格', 'Something that failed a check.', '未通过检查的事项。', ['open', 'progress', 'done'], [
+    { name: 'NCR-014 loose stitch', state: 'open', partner: 'Spring tote run', owner: 'Maya Chen', amount: 6, notes: 'Six totes pulled from the lot.', recordDate: day('2026-04-15') },
+    { name: 'NCR-011 shade drift', state: 'done', partner: 'Harbour Dye', owner: 'Jonah Ellis', amount: 1, notes: 'Vendor replaced the roll.', recordDate: day('2026-03-28') },
+  ]),
+  list('quality', 'procedures', 'Procedures', '规程', 'The written checks.', '书面检验规程。', ['active', 'draft'], [
+    { name: 'Incoming fabric', state: 'active', notes: 'Shade, width, and faults per roll.', recordDate: day('2026-01-01') },
+    { name: 'Finished tote', state: 'active', notes: 'Stitch, handles, and count.', recordDate: day('2026-01-01') },
+    { name: 'Shop display', state: 'draft', notes: 'Not published yet.', recordDate: day('2026-04-01') },
+  ], false),
+  report('quality', 'analysis', 'Quality analysis', '质量分析', 'Inspections by result.', '按结果的检验。', [
+    { name: 'Pass', state: 'pass', bucket: 'Pass', amount: 8, recordDate: day('2026-04-16') },
+    { name: 'Fail', state: 'fail', bucket: 'Fail', amount: 1, recordDate: day('2026-04-16') },
+    { name: 'Draft', state: 'draft', bucket: 'Draft', amount: 2, recordDate: day('2026-04-16') },
+  ]),
+  settings('quality', 'Quality settings', '质量设置', 'When a failed check blocks stock.', '不合格时是否冻结库存。', [
+    { key: 'block', labelEn: 'Block failed lots', labelZh: '冻结不合格批次', value: 'yes' },
+    { key: 'team', labelEn: 'Default team', labelZh: '默认团队', value: 'Shop floor' },
+  ]),
+
+  list('subcontracting', 'orders', 'Subcontracting orders', '委外订单', 'Work sent to another workshop.', '发给其他车间的加工。', ['draft', 'confirmed', 'received'], [
+    { name: 'SC1102 dye lot', state: 'confirmed', partner: 'Harbour Dye', owner: 'Jonah Ellis', amount: 640, notes: '40 rolls. Not back yet.', recordDate: day('2026-04-09') },
+    { name: 'SC1104 embroidery', state: 'draft', partner: 'West Stitch', owner: 'Maya Chen', amount: 180, notes: 'Quote for the school logo.', recordDate: day('2026-04-16') },
+    { name: 'SC1098 hemming', state: 'received', partner: 'West Stitch', owner: 'He Gong', amount: 220, notes: 'Received in full.', recordDate: day('2026-03-30') },
+  ]),
+  list('subcontracting', 'receipts', 'Subcontract receipts', '委外收货', 'Goods coming back from a subcontractor.', '从委外方收回的货物。', ['ready', 'done'], [
+    { name: 'WH/SUB/1102', state: 'ready', partner: 'Harbour Dye', owner: 'He Gong', amount: 40, notes: 'Expected this week. Rolls, not money.', recordDate: day('2026-04-18') },
+    { name: 'WH/SUB/1098', state: 'done', partner: 'West Stitch', owner: 'He Gong', amount: 80, notes: 'Hemmed totes put away.', recordDate: day('2026-03-30') },
+  ]),
+  report('subcontracting', 'analysis', 'Subcontracting analysis', '委外分析', 'Open and received subcontract value.', '未完成和已收回的委外金额。', [
+    { name: 'Confirmed', state: 'confirmed', bucket: 'Confirmed', amount: 640, recordDate: day('2026-04-16') },
+    { name: 'Draft', state: 'draft', bucket: 'Draft', amount: 180, recordDate: day('2026-04-16') },
+    { name: 'Received', state: 'received', bucket: 'Received', amount: 220, recordDate: day('2026-04-16') },
+  ]),
+  settings('subcontracting', 'Subcontracting settings', '委外设置', 'Where finished goods land.', '完工品进入哪个库位。', [
+    { key: 'location', labelEn: 'Receipt location', labelZh: '收货库位', value: 'Stock' },
+    { key: 'resupply', labelEn: 'Send components', labelZh: '发出组件', value: 'yes' },
+  ]),
+
+  list('helpdesk', 'tickets', 'Tickets', '工单', 'Questions and problems from customers.', '客户的问题和请求。', ['open', 'progress', 'done', 'cancel'], [
+    { name: 'T1108 late delivery', state: 'progress', partner: 'Orchard School', owner: 'Maya Chen', bucket: 'Delivery', notes: 'Tote run is a week behind.', recordDate: day('2026-04-14') },
+    { name: 'T1110 shade question', state: 'open', partner: 'Paper & Pine', owner: 'Jonah Ellis', bucket: 'Product', notes: 'Photo looks darker than the sample.', recordDate: day('2026-04-16') },
+    { name: 'T1102 invoice copy', state: 'done', partner: 'Field Office', owner: 'Maya Chen', bucket: 'Billing', notes: 'Copy sent.', recordDate: day('2026-04-08') },
+    { name: 'T1099 spam', state: 'cancel', partner: 'Unknown', owner: 'Lin Xiao', bucket: 'Other', notes: 'Not a customer.', recordDate: day('2026-04-01') },
+  ]),
+  list('helpdesk', 'sla', 'SLA', '服务级别', 'Whether a ticket met its time.', '工单是否按时处理。', ['met', 'breached'], [
+    { name: 'Delivery — 2 days', state: 'breached', partner: 'T1108 late delivery', owner: 'Maya Chen', amount: 2, notes: 'Still open after two days.', recordDate: day('2026-04-16') },
+    { name: 'Billing — 1 day', state: 'met', partner: 'T1102 invoice copy', owner: 'Maya Chen', amount: 1, notes: 'Answered the same day.', recordDate: day('2026-04-08') },
+    { name: 'Product — 1 day', state: 'met', partner: 'T1110 shade question', owner: 'Jonah Ellis', notes: 'Clock still running.', recordDate: day('2026-04-16') },
+  ], false),
+  report('helpdesk', 'analysis', 'Ticket analysis', '工单分析', 'Open tickets by topic.', '按主题的未关闭工单。', [
+    { name: 'Delivery', state: 'open', bucket: 'Delivery', amount: 3, recordDate: day('2026-04-16') },
+    { name: 'Product', state: 'open', bucket: 'Product', amount: 2, recordDate: day('2026-04-16') },
+    { name: 'Billing', state: 'done', bucket: 'Billing', amount: 1, recordDate: day('2026-04-16') },
+  ]),
+  settings('helpdesk', 'Helpdesk settings', '服务台设置', 'Who sees a new ticket.', '新工单先到谁。', [
+    { key: 'team', labelEn: 'Default team', labelZh: '默认团队', value: 'Desk' },
+    { key: 'hours', labelEn: 'Working hours', labelZh: '工作时间', value: '09:00–18:00' },
+  ]),
+  list('helpdesk', 'teams', 'Helpdesk teams', '服务团队', 'Who answers.', '谁来回复。', ['active'], [
+    { name: 'Desk', state: 'active', owner: 'Maya Chen', notes: 'Orders and billing.', recordDate: day('2026-01-01') },
+    { name: 'Shop', state: 'active', owner: 'Lin Xiao', notes: 'The counter.', recordDate: day('2026-01-01') },
+  ], false),
+  list('helpdesk', 'tags', 'Ticket tags', '工单标签', 'Topics on a ticket.', '工单上的主题。', ['active'], [
+    { name: 'Delivery', state: 'active', recordDate: day('2026-01-01') },
+    { name: 'Product', state: 'active', recordDate: day('2026-01-01') },
+    { name: 'Billing', state: 'active', recordDate: day('2026-01-01') },
+  ], false),
+
+  inCountries(list('compliance', 'fapiao', 'Fapiao', '发票', 'Sample fapiao for this company. Nothing is sent to the tax authority.', '这家公司的发票示例。不会提交给税务机关。', ['issued', 'waiting', 'void'], [
+    { name: 'FP20260411001', state: 'issued', partner: 'Orchard School', owner: 'Maya Chen', amount: 84.75, notes: 'Electronic, general. Buyer tax id on the order.', recordDate: day('2026-04-11') },
+    { name: 'FP20260416002', state: 'waiting', partner: 'Paper & Pine', owner: 'Jonah Ellis', amount: 27.12, notes: 'Draft. Not issued.', recordDate: day('2026-04-16') },
+    { name: 'FP20260302008', state: 'void', partner: 'Field Office', owner: 'Maya Chen', amount: 62.15, notes: 'Voided. A replacement was issued.', recordDate: day('2026-03-02') },
+  ]), ['CN']),
+  inCountries(report('compliance', 'fapiao-report', 'Fapiao report', '发票报表', 'Issued fapiao by month. A sample, not a filing.', '按月的已开发票。示例，不是申报。', [
+    { name: 'April', state: 'issued', bucket: 'April', amount: 111.87, recordDate: day('2026-04-16') },
+    { name: 'March', state: 'issued', bucket: 'March', amount: 240, recordDate: day('2026-03-31') },
+    { name: 'February', state: 'issued', bucket: 'February', amount: 180, recordDate: day('2026-02-28') },
+  ]), ['CN']),
+  inCountries(list('compliance', 'mtd', 'MTD VAT return', 'MTD 增值税申报', 'Making Tax Digital periods. Nothing is sent to HMRC.', 'Making Tax Digital 的申报期。不会提交给 HMRC。', ['open', 'submitted'], [
+    { name: 'Q1 2026', state: 'open', partner: 'HMRC', owner: 'Amira Shah', amount: 420, notes: 'Boxes are a sample. Not submitted.', recordDate: day('2026-03-31') },
+    { name: 'Q4 2025', state: 'submitted', partner: 'HMRC', owner: 'Amira Shah', amount: 380, notes: 'Marked submitted in this sample only.', recordDate: day('2025-12-31') },
+  ], false), ['GB']),
+  inCountries(report('compliance', 'mtd-report', 'VAT report', '增值税报表', 'Output and input tax for the open period.', '当前申报期的销项和进项税。', [
+    { name: 'Output tax', state: 'open', bucket: 'Output', amount: 640, recordDate: day('2026-03-31') },
+    { name: 'Input tax', state: 'open', bucket: 'Input', amount: 220, recordDate: day('2026-03-31') },
+    { name: 'Payable', state: 'open', bucket: 'Payable', amount: 420, recordDate: day('2026-03-31') },
+  ]), ['GB']),
+  inCountries(report('compliance', 'sales-tax', 'Sales tax report', '销售税报表', 'Sample sales tax by state. Nothing is filed.', '按州的销售税示例。不会申报。', [
+    { name: 'New York', state: 'open', bucket: 'New York', amount: 186.4, recordDate: day('2026-04-16') },
+    { name: 'New Jersey', state: 'open', bucket: 'New Jersey', amount: 42, recordDate: day('2026-04-16') },
+    { name: 'Other', state: 'open', bucket: 'Other', amount: 0, recordDate: day('2026-04-16') },
+  ]), ['US']),
+  inCountries(list('compliance', 'jurisdictions', 'Tax jurisdictions', '税区', 'Where this company collects sales tax.', '这家公司代收销售税的地方。', ['active'], [
+    { name: 'New York', state: 'active', amount: 8.875, notes: 'State and city sample rate.', recordDate: day('2026-01-01') },
+    { name: 'New Jersey', state: 'active', amount: 6.625, notes: 'State rate sample.', recordDate: day('2026-01-01') },
+  ], false), ['US']),
+  inCountries(list('compliance', 'fbr', 'FBR e-invoicing', 'FBR 电子发票', 'Sample invoices for the Federal Board of Revenue. Nothing is transmitted.', '联邦税务局的发票示例。不会发送。', ['waiting', 'validated', 'rejected'], [
+    { name: 'INV-FBR-1042', state: 'validated', partner: 'Lahore Cloth House', owner: 'Sana Iqbal', amount: 18500, notes: 'Sample IRN stored on the row. Not sent to FBR.', recordDate: day('2026-04-12') },
+    { name: 'INV-FBR-1048', state: 'waiting', partner: 'Karachi Uniforms', owner: 'Sana Iqbal', amount: 9200, notes: 'Queued in this sample.', recordDate: day('2026-04-16') },
+    { name: 'INV-FBR-1033', state: 'rejected', partner: 'Multan Dye', owner: 'Sana Iqbal', amount: 4100, notes: 'Sample rejection: buyer NTN missing.', recordDate: day('2026-04-02') },
+  ]), ['PK']),
+  inCountries(report('compliance', 'sales-tax-pk', 'Sales tax return', '销售税申报', 'Output and input sales tax. A sample return, not a filing.', '销项和进项销售税。示例申报，不是正式申报。', [
+    { name: 'Output tax', state: 'open', bucket: 'Output', amount: 4986, recordDate: day('2026-04-16') },
+    { name: 'Input tax', state: 'open', bucket: 'Input', amount: 1260, recordDate: day('2026-04-16') },
+    { name: 'Payable', state: 'open', bucket: 'Payable', amount: 3726, recordDate: day('2026-04-16') },
+  ]), ['PK']),
+  inCountries(list('compliance', 'withholding', 'Withholding tax', '预扣税', 'Sample withholding on payments to vendors.', '付给供应商时的预扣税示例。', ['draft', 'posted'], [
+    { name: 'WHT 153(1)(a) goods', state: 'posted', partner: 'Multan Dye', owner: 'Sana Iqbal', amount: 410, notes: 'Section 153 on a goods payment. Sample rate.', recordDate: day('2026-04-08') },
+    { name: 'WHT 153(1)(b) services', state: 'draft', partner: 'Karachi Stitch', owner: 'Sana Iqbal', amount: 220, notes: 'Not posted.', recordDate: day('2026-04-16') },
+  ], false), ['PK']),
+  inCountries(report('compliance', 'summary', 'Tax summary', '税务摘要', 'A short tax read for a company outside the prepared countries.', '未单独配置国家时的税务简表。', [
+    { name: 'Output tax', state: 'open', bucket: 'Output', amount: 0, recordDate: day('2026-04-16') },
+    { name: 'Input tax', state: 'open', bucket: 'Input', amount: 0, recordDate: day('2026-04-16') },
+  ]), ['OTHER']),
+  settings('compliance', 'Compliance settings', '合规设置', 'The registration this company would file under. Nothing is submitted.', '这家公司申报时使用的登记号。不会提交。', [
+    { key: 'authority', labelEn: 'Filing authority', labelZh: '申报机关', value: 'Local tax office', byCountry: { CN: 'STA', GB: 'HMRC', US: 'State department of revenue', PK: 'FBR', OTHER: 'Local tax office' } },
+    { key: 'registration', labelEn: 'Registration number', labelZh: '登记号', value: '—', byCountry: { CN: '91310000SAMPLE', GB: 'GB123456789', US: 'NY-45821', PK: '1234567-8', OTHER: '—' } },
+    { key: 'status', labelEn: 'Filing status', labelZh: '申报状态', value: 'Not submitted' },
+  ]),
 ]
 
 export function findDeskScreen(module: string, screen: string) {

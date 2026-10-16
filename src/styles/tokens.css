@@ -48,6 +48,12 @@
   --kl-color-module-hr: #4F46E5;
   --kl-color-module-payroll: #0D9488;
   --kl-color-module-expenses: #CA8A04;
+  --kl-color-module-assets: #0369A1;
+  --kl-color-module-projects: #4338CA;
+  --kl-color-module-quality: #BE123C;
+  --kl-color-module-subcontracting: #9A3412;
+  --kl-color-module-helpdesk: #0F766E;
+  --kl-color-module-compliance: #1E3A8A;
   --kl-color-module-dashboard: #334155;
   --kl-color-semantic-bg: var(--kl-color-neutral-25);
   --kl-color-semantic-surface: var(--kl-color-neutral-0);

@@ -9,6 +9,7 @@ import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api } from '../lib/api.ts'
 import { useMoney } from '../lib/format.ts'
 import { menuLabel } from '../lib/menu-label.ts'
+import { complianceHome, complianceMenu } from '../lib/module-menus.ts'
 import { linkActive, moduleForPath, sectionForPath, type AppModule, type MenuEntry } from '../lib/modules.ts'
 import { prefetchDesk } from '../lib/prefetch.ts'
 import type { User } from '../lib/types.ts'
@@ -267,7 +268,11 @@ export function Shell() {
   }
   if (!me.data) return <Navigate to="/sign-in" replace />
 
-  const mod = moduleForPath(location.pathname)
+  const matched = moduleForPath(location.pathname)
+  const countryCode = me.data.company.countryCode || 'CN'
+  const mod = matched?.id === 'compliance'
+    ? { ...matched, menu: complianceMenu(countryCode), home: complianceHome(countryCode) }
+    : matched
   const section = mod ? sectionForPath(mod, location.pathname, location.search) : null
   const showPulse = mod ? location.pathname === mod.home : false
 

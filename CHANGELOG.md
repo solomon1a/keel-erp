@@ -1,5 +1,9 @@
 # Changelog
 
+## Assets, projects, quality, and country compliance
+
+Six more apps sit on the launcher: Assets, Projects, Quality, Subcontracting, Helpdesk, and Compliance. Each has its own menu, lists, forms, a report, and settings, with sample rows in the company. Compliance follows the company’s country. China shows fapiao, the United Kingdom an MTD VAT return, the United States a sales tax report, and Pakistan FBR e-invoicing, sales tax, and withholding. A signup can pick Pakistan. Nothing on these pages is filed with a tax authority.
+
 ## Module menus
 
 Every app in the launcher now has an Odoo-style menu: orders, operations, products, reporting, and configuration, with a page behind each item. Lists search, filter, group, and switch between a table and a kanban where that fits. A row opens a form that saves. Reports draw a chart. Each module has a settings page. Records that are not part of the older books are sample rows stored per company. Running the seed again adds a missing row and leaves an edited setting alone.

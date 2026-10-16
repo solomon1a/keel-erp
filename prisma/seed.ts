@@ -40,7 +40,7 @@ async function seedJiangbei(client: PrismaClient) {
   }
 
   const company = await client.company.create({
-    data: { name: 'Jiangbei Goods Co.', city: 'Shanghai', currency: 'CNY', defaultTaxRate: 13 },
+    data: { name: 'Jiangbei Goods Co.', city: 'Shanghai', currency: 'CNY', defaultTaxRate: 13, countryCode: 'CN' },
   })
 
   const [mayaHash, jonahHash] = await Promise.all([

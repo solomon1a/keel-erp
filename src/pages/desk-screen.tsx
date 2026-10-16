@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { BarChart } from '../components/bar-chart.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { useToast } from '../components/toast.tsx'
@@ -11,6 +11,8 @@ import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { dateInput, useMoney, useShortDate } from '../lib/format.ts'
 import { screenCopy } from '../lib/menu-label.ts'
+import { complianceHome } from '../lib/module-menus.ts'
+import type { User } from '../lib/types.ts'
 import type { DeskScreen } from '../../shared/desk-screens.ts'
 
 type DeskRow = {
@@ -74,6 +76,38 @@ function stateText(state: string, t: Translate) {
       return t('desk.state.reimbursed')
     case 'cancel':
       return t('desk.state.cancel')
+    case 'running':
+      return t('desk.state.running')
+    case 'disposed':
+      return t('desk.state.disposed')
+    case 'scheduled':
+      return t('desk.state.scheduled')
+    case 'planned':
+      return t('desk.state.planned')
+    case 'progress':
+      return t('desk.state.progress')
+    case 'pass':
+      return t('desk.state.pass')
+    case 'fail':
+      return t('desk.state.fail')
+    case 'received':
+      return t('desk.state.received')
+    case 'validated':
+      return t('desk.state.validated')
+    case 'rejected':
+      return t('desk.state.rejected')
+    case 'issued':
+      return t('desk.state.issued')
+    case 'void':
+      return t('desk.state.void')
+    case 'breached':
+      return t('desk.state.breached')
+    case 'met':
+      return t('desk.state.met')
+    case 'to_bill':
+      return t('desk.state.to_bill')
+    case 'billed':
+      return t('desk.state.billed')
     default:
       return state
   }
@@ -118,6 +152,13 @@ function groupValue(row: DeskRow, group: GroupBy) {
 function groupLabel(group: GroupBy, value: string, t: Translate) {
   if (group === 'state') return stateText(value, t)
   return value
+}
+
+export function ComplianceHomePage() {
+  const { t } = useI18n()
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me') })
+  if (!me.data) return <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p>
+  return <Navigate to={complianceHome(me.data.company.countryCode)} replace />
 }
 
 export function DeskScreenPage() {

@@ -4,13 +4,16 @@ import { deskScreens } from '../shared/desk-screens.ts'
 type DeskDb = PrismaClient | Prisma.TransactionClient
 
 export async function seedDeskForCompany(client: DeskDb, companyId: number) {
+  const company = await client.company.findUnique({ where: { id: companyId }, select: { countryCode: true } })
+  const country = company?.countryCode || 'CN'
+  const screens = deskScreens.filter((screen) => !screen.countries || screen.countries.includes(country))
   const existing = await client.deskRecord.findMany({
     where: { companyId },
     select: { module: true, screen: true, name: true },
   })
   const have = new Set(existing.map((row) => `${row.module}\0${row.screen}\0${row.name}`))
   const missing = []
-  for (const screen of deskScreens) {
+  for (const screen of screens) {
     for (const row of screen.rows) {
       const key = `${screen.module}\0${screen.screen}\0${row.name}`
       if (have.has(key)) continue
@@ -37,11 +40,11 @@ export async function seedDeskForCompany(client: DeskDb, companyId: number) {
   })
   const haveSettings = new Set(settings.map((row) => `${row.module}\0${row.key}`))
   const settingRows = []
-  for (const screen of deskScreens) {
+  for (const screen of screens) {
     for (const field of screen.settings) {
       const key = `${screen.module}\0${field.key}`
       if (haveSettings.has(key)) continue
-      settingRows.push({ companyId, module: screen.module, key: field.key, value: field.value })
+      settingRows.push({ companyId, module: screen.module, key: field.key, value: field.byCountry?.[country] ?? field.value })
     }
   }
   if (settingRows.length > 0) await client.moduleSetting.createMany({ data: settingRows, skipDuplicates: true })

@@ -31,7 +31,7 @@ export const resetPasswordSchema = z.object({
   password: passwordSchema,
 })
 
-export const signupCountries = ['CN', 'GB', 'US', 'OTHER'] as const
+export const signupCountries = ['CN', 'GB', 'US', 'PK', 'OTHER'] as const
 
 export const signupSchema = z.object({
   companyName: z.string().trim().min(1, 'Company name is required').max(120),
