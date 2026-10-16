@@ -28,16 +28,16 @@ describe('crm', () => {
     const listed = await call('/api/leads', maya)
     expect(listed.status).toBe(200)
     const leads = listed.body as unknown as Lead[]
-    const tote = leads.find((lead) => lead.name === '春季展会 — 帆布袋')
+    const tote = leads.find((lead) => lead.name === 'Spring fair — canvas totes')
     expect(tote?.stage).toBe('qualified')
-    expect(tote?.activities.some((activity) => activity.summary === '回访报价')).toBe(true)
+    expect(tote?.activities.some((activity) => activity.summary === 'Call back with the quote')).toBe(true)
     if (!tote) throw new Error('missing lead')
 
     const moved = await call(`/api/leads/${tote.id}`, maya, {
       method: 'PATCH',
       body: JSON.stringify({
         name: tote.name,
-        contactName: '陈薇',
+        contactName: 'Chen Wei',
         email: 'chen@example.com',
         phone: '13900002222',
         expectedRevenue: 2400,

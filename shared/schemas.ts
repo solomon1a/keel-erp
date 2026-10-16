@@ -368,3 +368,24 @@ export type DepartmentInput = z.infer<typeof departmentSchema>
 export type EmployeeInput = z.infer<typeof employeeSchema>
 export type AttendanceInput = z.infer<typeof attendanceSchema>
 export type LeaveInput = z.infer<typeof leaveSchema>
+
+export const salarySchema = z.object({
+  monthlyGross: z.number().positive('Gross pay must be greater than zero'),
+})
+
+export const payrollRunSchema = z.object({
+  period: z.string().regex(/^\d{4}-\d{2}$/, 'Use a month, YYYY-MM.'),
+})
+
+export const expenseSchema = z.object({
+  employeeId: z.number().int().positive(),
+  merchant: z.string().trim().min(1, 'Merchant is required').max(120),
+  description: z.string().trim().min(1, 'Description is required').max(240),
+  receiptRef: z.string().trim().min(1, 'A receipt reference is required').max(120),
+  amount: z.number().positive('Amount must be greater than zero'),
+  spentOn: dayField,
+})
+
+export type SalaryInput = z.infer<typeof salarySchema>
+export type PayrollRunInput = z.infer<typeof payrollRunSchema>
+export type ExpenseInput = z.infer<typeof expenseSchema>

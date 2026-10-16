@@ -136,6 +136,10 @@ export function HrPage() {
       <div>
         <h1 className="font-serif text-4xl tracking-tight">{t('hr.title')}</h1>
         <p className="mt-1 max-w-2xl text-muted-foreground">{t('hr.lead')}</p>
+        <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold">
+          <Link className="text-primary hover:underline" to="/hr/payroll">{t('pay.openPayroll')}</Link>
+          <Link className="text-primary hover:underline" to="/hr/expenses">{t('pay.openExpenses')}</Link>
+        </div>
       </div>
       {error ? <Notice message={error} /> : null}
       <section className="rounded-lg border border-border bg-card p-4">

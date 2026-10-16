@@ -38,6 +38,9 @@ model Company {
   leads         Lead[]
   departments   Department[]
   employees     Employee[]
+  salaryStructures SalaryStructure[]
+  payrollRuns   PayrollRun[]
+  expenses      ExpenseClaim[]
   /// Seller taxpayer ID printed on invoices. Not a Golden Tax registration.
   taxId         String?
   address       String?
@@ -688,6 +691,8 @@ model JournalEntry {
   companyId Int
   company   Company       @relation(fields: [companyId], references: [id])
   lines     JournalItem[]
+  payrollRun PayrollRun?
+  expenseClaim ExpenseClaim?
 
   @@unique([companyId, name])
   @@index([companyId, date])
@@ -766,6 +771,9 @@ model Employee {
   company      Company      @relation(fields: [companyId], references: [id])
   attendances  Attendance[]
   leaves       LeaveRequest[]
+  salary       SalaryStructure?
+  payslips     Payslip[]
+  expenses     ExpenseClaim[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -797,4 +805,83 @@ model LeaveRequest {
   state      String   @default("draft")
   reason     String?
   createdAt  DateTime @default(now())
+}
+
+/// One monthly gross per employee. Deduction maths is a demo approximation.
+model SalaryStructure {
+  id            Int      @id @default(autoincrement())
+  companyId     Int
+  company       Company  @relation(fields: [companyId], references: [id])
+  employeeId    Int      @unique
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  monthlyGross  Float
+  createdAt     DateTime @default(now())
+
+  @@index([companyId])
+}
+
+model PayrollRun {
+  id         Int          @id @default(autoincrement())
+  name       String
+  /// YYYY-MM
+  period     String
+  /// draft, posted, paid
+  state      String
+  companyId  Int
+  company    Company      @relation(fields: [companyId], references: [id])
+  payslips   Payslip[]
+  entryId    Int?         @unique
+  entry      JournalEntry? @relation(fields: [entryId], references: [id])
+  createdAt  DateTime     @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId, period])
+}
+
+model Payslip {
+  id          Int          @id @default(autoincrement())
+  runId       Int
+  run         PayrollRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId  Int
+  employee    Employee     @relation(fields: [employeeId], references: [id])
+  gross       Float
+  deduction   Float
+  net         Float
+  lines       PayslipLine[]
+
+  @@unique([runId, employeeId])
+}
+
+model PayslipLine {
+  id        Int     @id @default(autoincrement())
+  payslipId Int
+  payslip   Payslip @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  code      String
+  label     String
+  /// earning or deduction
+  kind      String
+  amount    Float
+}
+
+model ExpenseClaim {
+  id          Int           @id @default(autoincrement())
+  name        String
+  companyId   Int
+  company     Company       @relation(fields: [companyId], references: [id])
+  employeeId  Int
+  employee    Employee      @relation(fields: [employeeId], references: [id])
+  merchant    String
+  description String
+  /// A receipt reference. The file itself is not stored.
+  receiptRef  String
+  amount      Float
+  spentOn     DateTime
+  /// submitted, approved, reimbursed, refused
+  state       String
+  entryId     Int?          @unique
+  entry       JournalEntry? @relation(fields: [entryId], references: [id])
+  createdAt   DateTime      @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
 }

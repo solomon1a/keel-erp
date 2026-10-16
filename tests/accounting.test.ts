@@ -19,13 +19,13 @@ describe('accounting', () => {
   it('posts the seeded shop invoice into the ledger, VAT, and statements', async () => {
     const pnl = await call('/api/reports/pnl', maya)
     expect(pnl.status).toBe(200)
-    expect(pnl.body).toMatchObject({ income: 86, expense: 0, profit: 86 })
+    expect(pnl.body).toMatchObject({ income: 86, expense: 12128, profit: -12042 })
 
     const vat = await call('/api/reports/vat', maya)
     expect(vat.body).toMatchObject({ output: 11.18, input: 0, payable: 11.18 })
 
     const balance = await call('/api/reports/balance', maya)
-    expect(balance.body).toMatchObject({ assets: 97.18, liabilities: 11.18, equity: 86, balanced: true })
+    expect(balance.body).toMatchObject({ assets: -30.82, liabilities: 12011.18, equity: -12042, balanced: true })
 
     const shopOrder = await prisma.salesOrder.findFirstOrThrow({ where: { name: 'SO0002' } })
     const again = await call(`/api/invoices/from/sales/${shopOrder.id}`, maya, { method: 'POST' })
@@ -33,7 +33,7 @@ describe('accounting', () => {
   })
 
   it('invoices a delivered sale, records a bank payment, and credits it', async () => {
-    const customer = await prisma.contact.findFirstOrThrow({ where: { name: '林晓' } })
+    const customer = await prisma.contact.findFirstOrThrow({ where: { name: 'Lin Xiao' } })
     const notebook = await prisma.product.findFirstOrThrow({ where: { sku: 'NB-01' } })
     const tax = await prisma.tax.findFirstOrThrow()
     const created = await call('/api/orders', maya, {

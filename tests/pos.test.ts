@@ -29,8 +29,8 @@ describe('point of sale', () => {
     const products = (catalog.body as { products: Array<{ sku: string; barcode: string; onHand: number; categoryName: string }> }).products
     const notebook = products.find((row) => row.sku === 'NB-01')
     const blanket = products.find((row) => row.sku === 'BL-04')
-    expect(notebook).toMatchObject({ barcode: '6901000000018', onHand: 7, categoryName: '文具' })
-    expect(blanket).toMatchObject({ barcode: '6901000000025', onHand: 4, categoryName: '家居' })
+    expect(notebook).toMatchObject({ barcode: '6901000000018', onHand: 7, categoryName: 'Stationery' })
+    expect(blanket).toMatchObject({ barcode: '6901000000025', onHand: 4, categoryName: 'Home' })
 
     const seeded = await call('/api/pos/orders', maya)
     const seededOrders = seeded.body as unknown as Array<{ name: string; amountTotal: number; state: string }>
@@ -61,7 +61,7 @@ describe('point of sale', () => {
     expect(order.amountTotal).toBe(97.18)
 
     const shelf = await prisma.stockQuant.findFirstOrThrow({
-      where: { product: { sku: 'BL-04' }, location: { name: '店面' } },
+      where: { product: { sku: 'BL-04' }, location: { name: 'Shop floor' } },
     })
     expect(shelf.quantity).toBe(3)
 
@@ -95,7 +95,7 @@ describe('point of sale', () => {
     expect(refunded.status).toBe(200)
     expect((refunded.body as { state: string }).state).toBe('refunded')
     const restored = await prisma.stockQuant.findFirstOrThrow({
-      where: { product: { sku: 'BL-04' }, location: { name: '店面' } },
+      where: { product: { sku: 'BL-04' }, location: { name: 'Shop floor' } },
     })
     expect(restored.quantity).toBe(4)
 

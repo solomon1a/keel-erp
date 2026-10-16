@@ -45,6 +45,7 @@ import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
+import { registerPayrollRoutes } from './payroll-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
 import { profitAndLoss, vatReport } from './services/accounting.ts'
 import {
@@ -296,7 +297,7 @@ export function createApp() {
     if (current) {
       await prisma.tax.update({ where: { id: current.id }, data: { rate: input.defaultTaxRate } })
     } else {
-      await prisma.tax.create({ data: { name: '增值税', rate: input.defaultTaxRate, isDefault: true } })
+      await prisma.tax.create({ data: { name: 'China VAT 13%', rate: input.defaultTaxRate, isDefault: true } })
     }
     return c.json(company)
   })
@@ -971,6 +972,7 @@ export function createApp() {
   registerAccountingRoutes(app)
   registerCrmRoutes(app)
   registerHrRoutes(app)
+  registerPayrollRoutes(app)
 
   return app
 }

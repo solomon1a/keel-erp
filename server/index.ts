@@ -7,7 +7,7 @@ const port = Number(process.env.PORT ?? 43124)
 const hostname = '0.0.0.0'
 
 await seedDatabase()
-console.log('Seed checked. Existing companies are left in place.')
+console.log('Seed checked. Demo companies are updated in place.')
 
 serve({ fetch: createApp().fetch, port, hostname }, () => {
   console.log(`Keel API http://${hostname}:${port}`)

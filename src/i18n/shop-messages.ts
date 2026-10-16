@@ -1,6 +1,6 @@
 export const enShop = {
   'nav.shop': 'Shop',
-  'shop.kicker': '江北良品',
+  'shop.kicker': 'Keel',
   'shop.title': 'The shop',
   'shop.lead': 'Finished goods, priced in CNY with 13% VAT. Checkout records WeChat Pay, Alipay, or card. Nothing is sent to a bank.',
   'shop.catalog': 'Catalog',
@@ -52,7 +52,7 @@ export const enShop = {
 
 export const zhShop = {
   'nav.shop': '网店',
-  'shop.kicker': '江北良品',
+  'shop.kicker': 'Keel',
   'shop.title': '网店',
   'shop.lead': '在售成品，人民币标价，增值税 13%。结算只记录微信支付、支付宝或银行卡，不会发给银行。',
   'shop.catalog': '目录',
