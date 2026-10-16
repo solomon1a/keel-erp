@@ -286,9 +286,9 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
           </Select>
         </label>
         {spec.kanban ? (
-          <div className="flex gap-2">
-            <Button size="sm" variant={layout === 'list' ? 'secondary' : 'outline'} onClick={() => setLayout('list')}>{t('desk.list')}</Button>
-            <Button size="sm" variant={layout === 'kanban' ? 'secondary' : 'outline'} onClick={() => setLayout('kanban')}>{t('desk.kanban')}</Button>
+          <div className="keel-segment">
+            <Button size="sm" variant={layout === 'list' ? 'secondary' : 'ghost'} onClick={() => setLayout('list')}>{t('desk.list')}</Button>
+            <Button size="sm" variant={layout === 'kanban' ? 'secondary' : 'ghost'} onClick={() => setLayout('kanban')}>{t('desk.kanban')}</Button>
           </div>
         ) : null}
         <Select

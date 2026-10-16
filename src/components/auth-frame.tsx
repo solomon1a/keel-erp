@@ -11,7 +11,7 @@ export function AuthFrame({ mode, children }: { mode: 'sign-in' | 'start'; child
   const { t } = useI18n()
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <aside className="relative hidden flex-col justify-between bg-[linear-gradient(160deg,#0A4F45_0%,#072E29_100%)] px-12 py-10 text-white lg:flex">
+      <aside className="relative hidden flex-col justify-between bg-[linear-gradient(165deg,#1A8F7A_0%,#0E6B5C_42%,#0A3F36_100%)] px-12 py-10 text-white lg:flex">
         <div className="flex items-center gap-3">
           <KeelMark onDark className="size-11" />
           <span className="text-lg font-semibold tracking-tight">Keel</span>
@@ -47,12 +47,13 @@ export function AuthFrame({ mode, children }: { mode: 'sign-in' | 'start'; child
           </div>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center pb-10">
-          <div className="mb-6 grid grid-cols-2 rounded-lg bg-[var(--kl-color-neutral-100)] p-1 text-sm font-semibold">
+          <div className="keel-glass rounded-[28px] p-6 sm:p-8">
+          <div className="keel-segment mb-6 grid w-full grid-cols-2 text-sm font-semibold">
             <Link
               to="/sign-in"
               className={cn(
-                'grid h-9 place-items-center rounded-md',
-                mode === 'sign-in' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                'grid h-9 place-items-center rounded-full',
+                mode === 'sign-in' ? 'bg-[var(--kl-color-primary-fill)] text-[var(--kl-color-primary-on)] shadow-sm' : 'text-muted-foreground',
               )}
             >
               {t('auth.signIn')}
@@ -60,14 +61,15 @@ export function AuthFrame({ mode, children }: { mode: 'sign-in' | 'start'; child
             <Link
               to="/start"
               className={cn(
-                'grid h-9 place-items-center rounded-md',
-                mode === 'start' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                'grid h-9 place-items-center rounded-full',
+                mode === 'start' ? 'bg-[var(--kl-color-primary-fill)] text-[var(--kl-color-primary-on)] shadow-sm' : 'text-muted-foreground',
               )}
             >
               {t('auth.create')}
             </Link>
           </div>
           {children}
+          </div>
         </div>
       </div>
     </div>

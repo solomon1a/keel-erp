@@ -295,6 +295,14 @@ export async function cancelOrder(companyId: number, orderId: number) {
   })
 }
 
+export async function countStock(companyId: number, productId: number, locationId: number, counted: number) {
+  const current = await prisma.$transaction((tx) => onHand(tx, productId, locationId))
+  const delta = roundQty(counted - current)
+  if (Math.abs(delta) <= 0.0001) return { delta: 0, onHand: current }
+  const move = await adjustStock(companyId, productId, delta, 'Stock count', locationId, null)
+  return { delta, onHand: counted, moveId: move.id }
+}
+
 export async function adjustStock(
   companyId: number,
   productId: number,

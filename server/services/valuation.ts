@@ -1,12 +1,15 @@
+import { Prisma } from '@prisma/client'
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { assertYearOpen } from './books.ts'
 import { assertBooksOpen } from './locks.ts'
 import { roundQty } from './stock.ts'
 
 const stockAccounts = [
   ['2203', 'Goods received not invoiced', 'liability'],
   ['1407', 'Work in progress', 'asset'],
+  ['1409', 'Landed cost clearing', 'liability'],
 ] as const
 
 async function ensureStockAccounts(tx: Tx, companyId: number) {
@@ -138,6 +141,7 @@ export async function valueDoneMove(tx: Tx, companyId: number, moveId: number) {
   const toInternal = move.locationTo.type === 'internal'
   if (fromInternal === toInternal) return
   await assertBooksOpen(tx, companyId, move.date, false)
+  await assertYearOpen(tx, companyId, move.date)
   await ensureStockAccounts(tx, companyId)
   const method = move.product.costMethod === 'fifo' ? 'fifo' : 'avco'
   let incoming = roundMoney(move.product.costPrice)
@@ -170,6 +174,8 @@ export async function valueDoneMove(tx: Tx, companyId: number, moveId: number) {
         entryId: entry?.id,
       },
     })
+    await writeLedger(tx, companyId, move.productId, move.id, move.quantity, 0, value)
+    await trackIdentity(tx, companyId, move, true)
     return
   }
   const fallback = roundMoney(move.product.costPrice)
@@ -191,6 +197,64 @@ export async function valueDoneMove(tx: Tx, companyId: number, moveId: number) {
       entryId: entry?.id,
     },
   })
+  await writeLedger(tx, companyId, move.productId, move.id, 0, move.quantity, -value)
+  await trackIdentity(tx, companyId, move, false)
+}
+
+async function writeLedger(tx: Tx, companyId: number, productId: number, moveId: number, qtyIn: number, qtyOut: number, value: number) {
+  const last = await tx.stockLedger.findFirst({
+    where: { companyId, productId },
+    orderBy: { id: 'desc' },
+  })
+  await tx.stockLedger.create({
+    data: {
+      companyId,
+      productId,
+      moveId,
+      qtyIn,
+      qtyOut,
+      value,
+      balanceQty: roundQty((last?.balanceQty ?? 0) + qtyIn - qtyOut),
+      balanceValue: roundMoney((last?.balanceValue ?? 0) + value),
+    },
+  })
+}
+
+async function trackIdentity(
+  tx: Tx,
+  companyId: number,
+  move: { product: { tracking: string }; productId: number; lotName: string | null; quantity: number; locationToId: number },
+  incoming: boolean,
+) {
+  if (move.product.tracking === 'none' || !move.lotName) return
+  if (move.product.tracking === 'lot') {
+    const batch = await tx.stockBatch.upsert({
+      where: { companyId_productId_name: { companyId, productId: move.productId, name: move.lotName } },
+      update: {},
+      create: { companyId, productId: move.productId, name: move.lotName, quantity: 0 },
+    })
+    const next = roundQty(batch.quantity + (incoming ? move.quantity : -move.quantity))
+    if (next < -0.0001) throw new AppError(409, `${move.lotName} does not have enough quantity.`)
+    await tx.stockBatch.update({ where: { id: batch.id }, data: { quantity: Math.max(0, next) } })
+    return
+  }
+  if (Math.abs(move.quantity - 1) > 0.0001) throw new AppError(400, 'A serial number moves one unit at a time.')
+  if (incoming) {
+    try {
+      await tx.stockSerial.create({
+        data: { companyId, productId: move.productId, name: move.lotName, locationId: move.locationToId, state: 'in_stock' },
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AppError(409, `${move.lotName} is already in stock.`)
+      }
+      throw error
+    }
+    return
+  }
+  const serial = await tx.stockSerial.findFirst({ where: { companyId, productId: move.productId, name: move.lotName } })
+  if (!serial || serial.state !== 'in_stock') throw new AppError(409, `${move.lotName} is not in stock.`)
+  await tx.stockSerial.update({ where: { id: serial.id }, data: { state: 'issued', locationId: null } })
 }
 
 export async function setCostMethod(companyId: number, productId: number, method: string) {
@@ -201,6 +265,40 @@ export async function setCostMethod(companyId: number, productId: number, method
     where: { id: product.id },
     data: { costMethod: method },
     select: { id: true, name: true, sku: true, costMethod: true, costPrice: true },
+  })
+}
+
+export async function landedCost(companyId: number, productId: number, amount: number) {
+  const extra = roundMoney(amount)
+  if (extra <= 0) throw new AppError(400, 'Landed cost must be greater than zero.')
+  return prisma.$transaction(async (tx) => {
+    const product = await tx.product.findFirst({ where: { id: productId, companyId } })
+    if (!product) throw new AppError(404, 'Product not found.')
+    const layer = await tx.valuationLayer.findFirst({
+      where: { companyId, productId, remaining: { gt: 0 }, quantity: { gt: 0 } },
+      orderBy: { id: 'desc' },
+    })
+    if (!layer) throw new AppError(409, 'There is no open receipt to absorb the landed cost.')
+    await assertYearOpen(tx, companyId, new Date())
+    await ensureStockAccounts(tx, companyId)
+    const value = roundMoney(layer.value + extra)
+    const unitCost = layer.quantity > 0 ? roundMoney(value / layer.quantity) : layer.unitCost
+    await tx.valuationLayer.update({ where: { id: layer.id }, data: { value, unitCost } })
+    if (product.costMethod === 'avco') {
+      const open = await tx.valuationLayer.findMany({ where: { companyId, productId, remaining: { gt: 0 } } })
+      const qty = open.reduce((sum, row) => sum + row.remaining, 0)
+      const total = open.reduce((sum, row) => sum + row.remaining * (row.id === layer.id ? unitCost : row.unitCost), 0)
+      if (qty > 0.0001) await tx.product.update({ where: { id: product.id }, data: { costPrice: roundMoney(total / qty) } })
+    }
+    const entry = await postPair(tx, companyId, new Date(), `Landed ${product.sku}`, '1405', '1409', extra)
+    return { unitCost, value, entryId: entry?.id ?? null }
+  })
+}
+
+export async function listStockLedger(companyId: number, productId: number) {
+  return prisma.stockLedger.findMany({
+    where: { companyId, productId },
+    orderBy: { id: 'asc' },
   })
 }
 

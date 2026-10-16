@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client'
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { payInvoiceTx } from './accounting.ts'
+import { ensureBooks, payInvoiceTx, reversePaymentTx } from './accounting.ts'
 
 function parseCsv(csv: string) {
   const rows = csv
@@ -73,6 +73,7 @@ function directionFits(amount: number, moveType: string) {
 }
 
 export async function reconcileLine(companyId: number, lineId: number, invoiceId: number, amount: number) {
+  await ensureBooks(companyId)
   const pay = roundMoney(amount)
   if (pay <= 0) throw new AppError(400, 'Payment amount must be greater than zero.')
   return prisma.$transaction(async (tx) => {
@@ -92,6 +93,23 @@ export async function reconcileLine(companyId: number, lineId: number, invoiceId
     return tx.bankStatementLine.update({
       where: { id: line.id },
       data: { reconciled: roundMoney(line.reconciled + pay) },
+      include: { matches: { include: { invoice: { select: { id: true, name: true } } } } },
+    })
+  })
+}
+
+export async function unreconcileLine(companyId: number, lineId: number, invoiceId: number) {
+  await ensureBooks(companyId)
+  return prisma.$transaction(async (tx) => {
+    const match = await tx.reconcileMatch.findFirst({ where: { lineId, invoiceId, companyId } })
+    if (!match) throw new AppError(404, 'That match is not on this statement line.')
+    const line = await tx.bankStatementLine.findFirst({ where: { id: lineId, companyId } })
+    if (!line) throw new AppError(404, 'That statement line is not in this company.')
+    await reversePaymentTx(tx, companyId, invoiceId, match.amount)
+    await tx.reconcileMatch.delete({ where: { id: match.id } })
+    return tx.bankStatementLine.update({
+      where: { id: line.id },
+      data: { reconciled: roundMoney(Math.max(0, line.reconciled - match.amount)) },
       include: { matches: { include: { invoice: { select: { id: true, name: true } } } } },
     })
   })

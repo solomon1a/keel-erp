@@ -4,12 +4,12 @@ import { cn } from '../lib/utils.ts'
 export function LanguageSwitcher() {
   const { locale, setLocale, t } = useI18n()
   return (
-    <div className="flex h-8 items-center rounded-md bg-[var(--kl-color-neutral-100)] p-0.5 text-xs font-semibold" role="group" aria-label={t('lang.label')}>
+    <div className="keel-segment inline-flex h-8 text-xs font-semibold" role="group" aria-label={t('lang.label')}>
       <button
         type="button"
         className={cn(
-          'h-7 rounded px-2',
-          locale === 'en' ? 'bg-[var(--kl-color-neutral-900)] text-[var(--kl-color-neutral-0)]' : 'text-muted-foreground',
+          'h-6 rounded-full px-2.5',
+          locale === 'en' ? 'bg-[var(--kl-color-primary-fill)] text-[var(--kl-color-primary-on)] shadow-xs' : 'text-muted-foreground',
         )}
         onClick={() => setLocale('en')}
       >
@@ -18,8 +18,8 @@ export function LanguageSwitcher() {
       <button
         type="button"
         className={cn(
-          'h-7 rounded px-2',
-          locale === 'zh' ? 'bg-[var(--kl-color-neutral-900)] text-[var(--kl-color-neutral-0)]' : 'text-muted-foreground',
+          'h-6 rounded-full px-2.5',
+          locale === 'zh' ? 'bg-[var(--kl-color-primary-fill)] text-[var(--kl-color-primary-on)] shadow-xs' : 'text-muted-foreground',
         )}
         onClick={() => setLocale('zh')}
       >

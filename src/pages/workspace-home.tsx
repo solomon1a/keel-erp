@@ -64,7 +64,7 @@ function SideLink({ item, locale, t, active }: { item: WsLink; locale: Locale; t
     <Link
       to={item.to}
       className={cn(
-        'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm',
+        'flex items-center gap-2 rounded-full px-3 py-1.5 text-sm',
         active ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
       )}
     >
@@ -80,7 +80,7 @@ function SideNode({ item, locale, t, home }: { item: WsSide; locale: Locale; t: 
       <div>
         <button
           type="button"
-          className="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+          className="flex w-full items-center justify-between rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
         >
@@ -135,14 +135,14 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
 
   return (
     <div className={cn('lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:items-start lg:gap-8', panel && 'xl:grid-cols-[13.5rem_minmax(0,1fr)_18rem]')}>
-      <aside className={cn('mb-6 lg:mb-0', panel && 'lg:row-span-2 xl:row-span-1')}>
+      <aside className={cn('keel-glass mb-6 rounded-[28px] p-3 lg:sticky lg:top-20 lg:mb-0', panel && 'lg:row-span-2 xl:row-span-1')}>
         <nav className="space-y-0.5" aria-label={t(mod.label)}>
           {workspace.sidebar.map((item) => (
             <SideNode key={text(item.label, 'en', t) + (item.to ?? '')} item={item} locale={locale} t={t} home={mod.home} />
           ))}
           <button
             type="button"
-            className="flex w-full items-center rounded-md px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="flex w-full items-center rounded-full px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
             onClick={() => setPanel(true)}
           >
             {t('ws.started')}
@@ -158,7 +158,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
                 <h3 className="font-medium">{text(workspace.chartTitle, locale, t)}</h3>
                 <p className="text-xs text-muted-foreground">{t('ws.synced')}</p>
               </div>
-              <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">{t('ws.lastYear')}</span>
+              <span className="rounded-full border border-[var(--kl-glass-border)] px-3 py-1 text-xs text-muted-foreground">{t('ws.lastYear')}</span>
             </div>
             <MonthChart points={workspace.chart} locale={locale} />
           </div>
@@ -196,7 +196,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
         <aside className="mt-6 rounded-lg border border-border bg-card p-4 shadow-md lg:col-start-2 xl:col-start-auto xl:mt-0">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">{t('ws.started')}</h2>
-            <button type="button" className="rounded-md p-1 text-muted-foreground hover:bg-secondary" aria-label={t('ws.close')} onClick={() => setPanel(false)}>
+            <button type="button" className="rounded-full p-1 text-muted-foreground hover:bg-secondary" aria-label={t('ws.close')} onClick={() => setPanel(false)}>
               <X className="size-4" />
             </button>
           </div>

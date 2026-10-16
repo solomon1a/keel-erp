@@ -6,6 +6,7 @@ import {
   balanceSheet,
   cancelInvoice,
   creditInvoice,
+  ensureBooks,
   getInvoice,
   invoiceFromPos,
   invoiceFromPurchase,
@@ -19,6 +20,7 @@ import {
   updateFapiao,
   vatReport,
 } from './services/accounting.ts'
+import { agingReport, applyChargeTemplate, assignCostCentre, centreReport, closeFiscalYear, listFiscalYears, openFiscalYear } from './services/books.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -73,4 +75,36 @@ export function registerAccountingRoutes(app: Hono<AppEnv>) {
   app.get('/api/reports/balance', async (c) => c.json(await balanceSheet(c.get('user').companyId, c.req.query('on') || undefined)))
 
   app.get('/api/reports/vat', async (c) => c.json(await vatReport(c.get('user').companyId, c.req.query('from') || undefined, c.req.query('to') || undefined)))
+
+  app.get('/api/reports/aging', async (c) => {
+    const asOf = c.req.query('asOf') || new Date().toISOString().slice(0, 10)
+    return c.json(await agingReport(c.get('user').companyId, asOf))
+  })
+
+  app.get('/api/reports/centres', async (c) => c.json(await centreReport(c.get('user').companyId)))
+
+  app.get('/api/fiscal-years', async (c) => c.json(await listFiscalYears(c.get('user').companyId)))
+
+  app.post('/api/fiscal-years', async (c) => {
+    const body = await c.req.json() as { name?: string; startsOn?: string; endsOn?: string }
+    if (!body.name || !body.startsOn || !body.endsOn) throw new AppError(400, 'Name the year and give it dates.')
+    return c.json(await openFiscalYear(c.get('user').companyId, body.name, body.startsOn, body.endsOn), 201)
+  })
+
+  app.post('/api/fiscal-years/:name/close', async (c) => {
+    await ensureBooks(c.get('user').companyId)
+    return c.json(await closeFiscalYear(c.get('user').companyId, c.req.param('name')))
+  })
+
+  app.post('/api/invoices/:id/charge', async (c) => {
+    const body = await c.req.json() as { template?: string }
+    if (!body.template) throw new AppError(400, 'Name the charges template.')
+    return c.json(await applyChargeTemplate(c.get('user').companyId, Number(c.req.param('id')), body.template))
+  })
+
+  app.post('/api/invoices/:id/centre', async (c) => {
+    const body = await c.req.json() as { code?: string }
+    if (!body.code) throw new AppError(400, 'Choose a cost centre.')
+    return c.json(await assignCostCentre(c.get('user').companyId, Number(c.req.param('id')), body.code))
+  })
 }
