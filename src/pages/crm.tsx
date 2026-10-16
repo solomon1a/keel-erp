@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
+import { KanbanBoard, KanbanColumn, PageHeader } from '../components/surface.tsx'
 import { useToast } from '../components/toast.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -119,11 +120,8 @@ export function CrmPage() {
   }
 
   return (
-    <div className="grid gap-6">
-      <div>
-        <h1 className="font-serif text-4xl tracking-tight">{t('crm.title')}</h1>
-        <p className="mt-1 max-w-2xl text-muted-foreground">{t('crm.lead')}</p>
-      </div>
+    <div className="grid gap-5">
+      <PageHeader title={t('crm.title')} lead={t('crm.lead')} />
       {error ? <Notice message={error} /> : null}
       <form onSubmit={onCreate} className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-6">
         <Field label={t('crm.name')}>
@@ -149,13 +147,14 @@ export function CrmPage() {
       </form>
       {leads.isLoading ? <p className="text-sm text-muted-foreground">{t('crm.loading')}</p> : null}
       {leads.isError ? <p className="text-sm text-destructive">{leads.error.message}</p> : null}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {stages.map((stage) => {
+      <KanbanBoard>
+        {stages.map((stage, index) => {
           const column = leads.data?.filter((lead) => lead.stage === stage) ?? []
           return (
-            <section
+            <KanbanColumn
               key={stage}
-              className="rounded-lg border border-border bg-secondary/40 p-3"
+              title={t(stageKey(stage))}
+              tint={index}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault()
@@ -164,10 +163,8 @@ export function CrmPage() {
                 if (lead && lead.stage !== stage) move.mutate({ lead, stage })
               }}
             >
-              <h2 className="mb-3 text-sm font-semibold">{t(stageKey(stage))}</h2>
               {column.length === 0 ? <p className="text-xs text-muted-foreground">{t('crm.empty')}</p> : null}
-              <div className="grid gap-2">
-                {column.map((lead) => {
+              {column.map((lead) => {
                   const index = stages.indexOf(stage)
                   const earlier = index > 0 ? stages[index - 1] : null
                   const later = index < stages.length - 1 ? stages[index + 1] : null
@@ -176,7 +173,7 @@ export function CrmPage() {
                       key={lead.id}
                       draggable
                       onDragStart={(event) => event.dataTransfer.setData('text/plain', String(lead.id))}
-                      className="cursor-grab rounded-md border border-border bg-card p-3 transition hover:-translate-y-0.5 hover:border-primary/40 active:cursor-grabbing"
+                      className="keel-kanban-card cursor-grab active:cursor-grabbing"
                     >
                       <Link className="font-semibold hover:underline" to={`/crm/${lead.id}`}>{lead.name}</Link>
                       <p className="mt-1 text-sm text-muted-foreground">{lead.contactName}</p>
@@ -196,11 +193,10 @@ export function CrmPage() {
                     </article>
                   )
                 })}
-              </div>
-            </section>
+            </KanbanColumn>
           )
         })}
-      </div>
+      </KanbanBoard>
     </div>
   )
 }
@@ -266,25 +262,22 @@ export function LeadPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Link className="text-sm font-semibold text-primary" to="/crm">{t('crm.back')}</Link>
-          <h1 className="mt-1 font-serif text-4xl tracking-tight">{current.name}</h1>
-          <p className="mt-1 text-muted-foreground">
-            {t(stageKey(current.stage))} · {money(current.expectedRevenue)}
-            {current.user ? ` · ${current.user.name}` : ''}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {current.orderId ? (
-            <Link to={`/orders/${current.orderId}`}><Button>{t('crm.quotation')}</Button></Link>
-          ) : (
-            <Button disabled={convert.isPending || current.stage === 'lost'} onClick={() => convert.mutate()}>
-              {convert.isPending ? t('crm.converting') : t('crm.convert')}
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={current.name}
+        lead={`${t(stageKey(current.stage))} · ${money(current.expectedRevenue)}${current.user ? ` · ${current.user.name}` : ''}`}
+        actions={
+          <>
+            <Link className="keel-back" to="/crm">{t('crm.back')}</Link>
+            {current.orderId ? (
+              <Link to={`/orders/${current.orderId}`}><Button>{t('crm.quotation')}</Button></Link>
+            ) : (
+              <Button disabled={convert.isPending || current.stage === 'lost'} onClick={() => convert.mutate()}>
+                {convert.isPending ? t('crm.converting') : t('crm.convert')}
+              </Button>
+            )}
+          </>
+        }
+      />
       {error ? <Notice message={error} /> : null}
       <form onSubmit={onSave} className="grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-2">
         <Field label={t('crm.name')}>

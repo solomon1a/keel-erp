@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { BarChart } from '../components/bar-chart.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
+import { Kpi, KpiGrid, PageHeader, Panel } from '../components/surface.tsx'
 import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -328,31 +329,40 @@ export function ReportsPage() {
   const showPnl = !view || view === 'pnl'
   const showBalance = !view || view === 'balance'
   const showVat = !view || view === 'vat'
+  const income = pnl.data?.income ?? 0
+  const expense = pnl.data?.expense ?? 0
+  const profit = pnl.data?.profit ?? 0
+  const margin = income > 0 ? `${((profit / income) * 100).toFixed(1)}%` : '—'
   return (
     <div className="grid gap-8">
-      <h1 className="font-serif text-4xl tracking-tight">{heading}</h1>
+      <PageHeader title={heading} />
       {showPnl ? (
         <section className="grid gap-3">
-          <h2 className="font-serif text-2xl">{t('acct.pnl')}</h2>
-          <div className="rounded-lg border border-border bg-card p-4">
+          {view ? null : <h2 className="text-lg font-semibold">{t('acct.pnl')}</h2>}
+          <KpiGrid>
+            <Kpi label={t('acct.income')} value={money(income)} />
+            <Kpi label={t('acct.expense')} value={money(expense)} />
+            <Kpi label={t('acct.profit')} value={money(profit)} hint={`${t('acct.margin')} ${margin}`} tone="profit" />
+          </KpiGrid>
+          <Panel>
             <BarChart rows={[
-              { label: t('acct.income'), value: pnl.data?.income ?? 0, display: money(pnl.data?.income ?? 0) },
-              { label: t('acct.expense'), value: pnl.data?.expense ?? 0, display: money(pnl.data?.expense ?? 0) },
-              { label: t('acct.profit'), value: pnl.data?.profit ?? 0, display: money(pnl.data?.profit ?? 0) },
+              { label: t('acct.income'), value: income, display: money(income) },
+              { label: t('acct.expense'), value: expense, display: money(expense) },
+              { label: t('acct.profit'), value: profit, display: money(profit) },
             ]} />
-          </div>
+          </Panel>
         </section>
       ) : null}
       {showBalance ? (
         <section className="grid gap-3">
           <h2 className="font-serif text-2xl">{t('acct.balance')}</h2>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <Panel>
             <BarChart rows={[
               { label: t('acct.assets'), value: balance.data?.assets ?? 0, display: money(balance.data?.assets ?? 0) },
               { label: t('acct.liabilities'), value: balance.data?.liabilities ?? 0, display: money(balance.data?.liabilities ?? 0) },
               { label: t('acct.equity'), value: balance.data?.equity ?? 0, display: money(balance.data?.equity ?? 0) },
             ]} />
-          </div>
+          </Panel>
           <ul className="text-sm text-muted-foreground">
             {balance.data?.accounts.map((row) => <li key={row.code}>{row.code} {row.name} {money(row.amount)}</li>)}
           </ul>
@@ -361,13 +371,13 @@ export function ReportsPage() {
       {showVat ? (
         <section className="grid gap-3">
           <h2 className="font-serif text-2xl">{t('acct.vat')}</h2>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <Panel>
             <BarChart rows={[
               { label: t('acct.output'), value: vat.data?.output ?? 0, display: money(vat.data?.output ?? 0) },
               { label: t('acct.input'), value: vat.data?.input ?? 0, display: money(vat.data?.input ?? 0) },
               { label: t('acct.payable'), value: vat.data?.payable ?? 0, display: money(vat.data?.payable ?? 0) },
             ]} />
-          </div>
+          </Panel>
           <p className="text-sm text-muted-foreground">{t('acct.notSubmitted')}</p>
         </section>
       ) : null}
@@ -375,14 +385,14 @@ export function ReportsPage() {
         <section className="grid gap-3">
           <h2 className="font-serif text-2xl">{t('acct.aging')}</h2>
           <p className="text-sm text-muted-foreground">{t('acct.agingLead')}</p>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <Panel>
             <BarChart rows={[
               { label: t('acct.current'), value: aging.data?.receivable.current ?? 0, display: money(aging.data?.receivable.current ?? 0) },
               { label: t('acct.d30'), value: aging.data?.receivable.d30 ?? 0, display: money(aging.data?.receivable.d30 ?? 0) },
               { label: t('acct.d60'), value: aging.data?.receivable.d60 ?? 0, display: money(aging.data?.receivable.d60 ?? 0) },
               { label: t('acct.older'), value: aging.data?.receivable.older ?? 0, display: money(aging.data?.receivable.older ?? 0) },
             ]} />
-          </div>
+          </Panel>
         </section>
       ) : null}
     </div>

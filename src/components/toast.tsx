@@ -20,7 +20,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="pointer-events-none fixed top-4 left-1/2 z-50 grid w-[min(32rem,calc(100%-2rem))] -translate-x-1/2 gap-2">
         {toasts.map((toast) => (
-          <p key={toast.id} className="keel-toast flex items-center gap-3 rounded-lg bg-primary px-5 py-4 text-base font-semibold text-primary-foreground shadow-lg">
+          <p key={toast.id} className="keel-toast keel-glass flex items-center gap-3 rounded-full px-5 py-3 text-sm font-semibold text-foreground">
             <Check className="size-6 shrink-0" aria-hidden="true" />
             {toast.text}
           </p>
