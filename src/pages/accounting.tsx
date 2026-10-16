@@ -338,7 +338,7 @@ export function ReportsPage() {
       <PageHeader title={heading} />
       {showPnl ? (
         <section className="grid gap-3">
-          <h2 className="text-lg font-semibold">{t('acct.pnl')}</h2>
+          {view ? null : <h2 className="text-lg font-semibold">{t('acct.pnl')}</h2>}
           <KpiGrid>
             <Kpi label={t('acct.income')} value={money(income)} />
             <Kpi label={t('acct.expense')} value={money(expense)} />

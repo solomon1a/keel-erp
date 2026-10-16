@@ -176,7 +176,7 @@ const sales: Workspace = {
   kpis: [
     { label: copy('Open quotations', '未结报价'), value: 3, to: '/orders?state=draft' },
     { label: copy('Sales orders', '销售订单'), value: 4, to: '/orders' },
-    { label: copy('To invoice', '待开票'), value: 266.68, money: true, to: app('sales', 'to-invoice') },
+    { label: copy('To invoice', '待开票'), value: 51930.28, money: true, to: app('sales', 'to-invoice') },
   ],
   sidebar: [
     { label: 'ws.home', to: '/go/sales' },
@@ -265,7 +265,7 @@ const purchase: Workspace = {
   kpis: [
     { label: copy('Open requests', '未结询价'), value: 2, to: '/purchases?state=draft' },
     { label: copy('Orders to receive', '待收货订单'), value: 1, to: app('purchase', 'receipts') },
-    { label: copy('Bills to pay', '待付账单'), value: 90.4, money: true, to: app('purchase', 'bills') },
+    { label: copy('Bills to pay', '待付账单'), value: 33990.4, money: true, to: app('purchase', 'bills') },
   ],
   sidebar: [
     { label: 'ws.home', to: '/go/purchase' },
@@ -543,9 +543,9 @@ const accounting: Workspace = {
   chartTitle: copy('Cash movement', '现金变动'),
   chart: series([120, 80, 210, 90, 160, 140, 200, 110, 180, 220, 150, 130]),
   kpis: [
-    { label: copy('Receivable', '应收'), value: 266.68, money: true, to: '/accounting?moveType=out_invoice' },
-    { label: copy('Payable', '应付'), value: 90.4, money: true, to: '/accounting?moveType=in_invoice' },
-    { label: copy('Bank balance', '银行余额'), value: 404.68, money: true, to: app('accounting', 'bank') },
+    { label: copy('Receivable', '应收'), value: 51930.28, money: true, to: '/accounting?moveType=out_invoice' },
+    { label: copy('Payable', '应付'), value: 33990.4, money: true, to: '/accounting?moveType=in_invoice' },
+    { label: copy('Bank balance', '银行余额'), value: 24358, money: true, to: app('accounting', 'bank') },
   ],
   sidebar: [
     { label: 'ws.home', to: '/go/accounting' },
@@ -966,7 +966,7 @@ const dashboard: Workspace = {
   chart: series([4200, 4600, 4400, 5100, 4800, 5600, 5900, 5400, 6000, 6200, 5800, 6200]),
   kpis: [
     { label: copy('Open orders', '未结订单'), value: 3, to: '/orders' },
-    { label: copy('Customers owe', '客户欠款'), value: 266.68, money: true, to: '/accounting?moveType=out_invoice' },
+    { label: copy('Customers owe', '客户欠款'), value: 51930.28, money: true, to: '/accounting?moveType=out_invoice' },
     { label: copy('Activities', '活动'), value: 2, to: app('dashboard', 'activities') },
   ],
   sidebar: [

@@ -32,6 +32,16 @@ export async function seedDeskForCompany(client: DeskDb, companyId: number) {
     }
   }
   if (missing.length > 0) await client.deskRecord.createMany({ data: missing, skipDuplicates: true })
+  const snapshot = [
+    ['Customers owe', 51930.28],
+    ['Vendors to pay', 33990.4],
+  ] as const
+  for (const [name, amount] of snapshot) {
+    await client.deskRecord.updateMany({
+      where: { companyId, module: 'dashboard', screen: 'reporting', name },
+      data: { amount },
+    })
+  }
 
   const settings = await client.moduleSetting.findMany({
     where: { companyId },
