@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { AuthFrame } from '../components/auth-frame.tsx'
 import { Field, Notice } from '../components/field.tsx'
-import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { useI18n } from '../i18n/locale.tsx'
@@ -54,16 +54,11 @@ export function SignInPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-      <div className="mb-8 flex justify-end">
-        <LanguageSwitcher />
-      </div>
-      <p className="text-sm font-semibold tracking-[0.18em] text-accent uppercase">{t('signIn.kicker')}</p>
-      <h1 className="mt-2 font-serif text-5xl tracking-tight">{t('signIn.title')}</h1>
-      <p className="mt-3 text-muted-foreground">{t('signIn.lead')}</p>
-      {me.isLoading ? <p className="mt-8 text-sm text-muted-foreground">{t('signIn.checking')}</p> : null}
-      {me.isLoading ? null : (
-        <form className="mt-8 grid gap-4" onSubmit={onSubmit}>
+    <AuthFrame mode="sign-in">
+      <h1 className="text-[28px] font-bold tracking-tight">{t('signIn.title')}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t('signIn.lead')}</p>
+      {me.isLoading ? <p className="mt-8 text-sm text-muted-foreground">{t('signIn.checking')}</p> : (
+        <form className="mt-6 grid gap-4" onSubmit={onSubmit}>
           {error ? <Notice message={error} /> : null}
           <Field label={t('signIn.email')}>
             <Input
@@ -84,28 +79,25 @@ export function SignInPage() {
               required
             />
           </Field>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" size="lg" className="w-full" disabled={pending}>
             {pending ? t('signIn.pending') : t('signIn.submit')}
           </Button>
-          <p className="text-sm">
-            <Link className="font-semibold text-primary" to="/start">{t('signIn.start')}</Link>
-          </p>
         </form>
       )}
-      <section className="mt-10">
-        <h2 className="font-serif text-2xl">{t('signIn.demoTitle')}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t('signIn.demoLead')}</p>
-        <ul className="mt-4 grid gap-3">
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold">{t('signIn.demoTitle')}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{t('signIn.demoLead')}</p>
+        <ul className="mt-3 grid gap-2">
           {demos.map(([company, person, emailAddress, passwordValue]) => (
-            <li key={emailAddress} className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
+            <li key={emailAddress} className="rounded-lg border border-border bg-card px-3 py-2 text-xs">
               <span className="font-semibold">{company}</span>
-              <span className="mt-0.5 block text-muted-foreground">{person}</span>
-              <span className="mt-1 block break-all">{emailAddress}</span>
+              <span className="text-muted-foreground"> · {person}</span>
+              <span className="mt-0.5 block break-all">{emailAddress}</span>
               <span className="block text-muted-foreground">{passwordValue}</span>
             </li>
           ))}
         </ul>
       </section>
-    </div>
+    </AuthFrame>
   )
 }

@@ -1,6 +1,6 @@
 # Keel
 
-Keel is a multi-tenant operations desk: contacts, quotations, stock, and the books, with one company per business. It is a clean-room start on the plan in [docs/odoo-analysis/BUILD_OUR_OWN.md](docs/odoo-analysis/BUILD_OUR_OWN.md), not a copy of Odoo.
+Keel is a multi-tenant operations desk: contacts, quotations, stock, and the books, with one company per business. It is a clean-room start on the plan in [docs/odoo-analysis/BUILD_OUR_OWN.md](docs/odoo-analysis/BUILD_OUR_OWN.md), not a copy of Odoo. The interface uses the Keel brand: teal `#0E6B5C`, Inter and Noto Sans SC, and a dark theme from the header.
 
 Open `/start` to create a company. The country sets the currency, default tax, and the language of that first session. The person who signs up is the admin and can invite more people. Optional sample data adds a notebook, a customer, a vendor, and a draft quotation. Every staff request is limited to that company.
 

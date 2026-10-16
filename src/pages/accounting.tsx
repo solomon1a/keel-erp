@@ -103,7 +103,7 @@ export function AccountingPage() {
       </div>
       <div className="flex flex-wrap gap-2">
         {filters.map(([value, label]) => (
-          <Button key={value || 'all'} size="sm" variant={moveType === value ? 'default' : 'outline'} onClick={() => setMoveType(value)}>
+          <Button key={value || 'all'} size="sm" variant={moveType === value ? 'secondary' : 'outline'} onClick={() => setMoveType(value)}>
             {t(label)}
           </Button>
         ))}

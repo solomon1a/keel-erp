@@ -1,16 +1,3 @@
-import type { LucideIcon } from 'lucide-react'
-import {
-  BookOpen,
-  Factory,
-  Globe,
-  Kanban,
-  LayoutDashboard,
-  ShoppingBag,
-  Store,
-  Truck,
-  Users,
-  Warehouse,
-} from 'lucide-react'
 import type { MessageKey } from '../i18n/messages.ts'
 
 export type MenuLink = { label: MessageKey; to: string }
@@ -26,7 +13,6 @@ export type AppModule = {
   label: MessageKey
   description: MessageKey
   home: string
-  icon: LucideIcon
   group: 'overview' | 'sell' | 'supply' | 'finance' | 'people'
   menu: MenuEntry[]
   match: string[]
@@ -38,7 +24,6 @@ export const appModules: AppModule[] = [
     label: 'mod.dashboard',
     description: 'mod.dashboard.desc',
     home: '/desk',
-    icon: LayoutDashboard,
     group: 'overview',
     match: ['/desk'],
     menu: [{ label: 'mod.dashboard', to: '/desk' }],
@@ -48,7 +33,6 @@ export const appModules: AppModule[] = [
     label: 'mod.sales',
     description: 'mod.sales.desc',
     home: '/orders',
-    icon: ShoppingBag,
     group: 'sell',
     match: ['/orders', '/contacts', '/products'],
     menu: [
@@ -68,7 +52,6 @@ export const appModules: AppModule[] = [
     label: 'mod.crm',
     description: 'mod.crm.desc',
     home: '/crm',
-    icon: Kanban,
     group: 'sell',
     match: ['/crm'],
     menu: [{ label: 'menu.pipeline', to: '/crm' }],
@@ -78,7 +61,6 @@ export const appModules: AppModule[] = [
     label: 'mod.pos',
     description: 'mod.pos.desc',
     home: '/pos',
-    icon: Store,
     group: 'sell',
     match: ['/pos'],
     menu: [
@@ -92,7 +74,6 @@ export const appModules: AppModule[] = [
     label: 'mod.website',
     description: 'mod.website.desc',
     home: '/website',
-    icon: Globe,
     group: 'sell',
     match: ['/website'],
     menu: [
@@ -105,7 +86,6 @@ export const appModules: AppModule[] = [
     label: 'mod.purchase',
     description: 'mod.purchase.desc',
     home: '/purchases',
-    icon: Truck,
     group: 'supply',
     match: ['/purchases', '/vendors'],
     menu: [
@@ -118,7 +98,6 @@ export const appModules: AppModule[] = [
     label: 'mod.inventory',
     description: 'mod.inventory.desc',
     home: '/inventory',
-    icon: Warehouse,
     group: 'supply',
     match: ['/inventory'],
     menu: [
@@ -139,7 +118,6 @@ export const appModules: AppModule[] = [
     label: 'mod.manufacturing',
     description: 'mod.manufacturing.desc',
     home: '/manufacturing',
-    icon: Factory,
     group: 'supply',
     match: ['/manufacturing', '/boms'],
     menu: [
@@ -152,7 +130,6 @@ export const appModules: AppModule[] = [
     label: 'mod.accounting',
     description: 'mod.accounting.desc',
     home: '/accounting',
-    icon: BookOpen,
     group: 'finance',
     match: ['/accounting'],
     menu: [
@@ -166,7 +143,6 @@ export const appModules: AppModule[] = [
     label: 'mod.hr',
     description: 'mod.hr.desc',
     home: '/hr',
-    icon: Users,
     group: 'people',
     match: ['/hr'],
     menu: [

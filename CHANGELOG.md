@@ -1,5 +1,9 @@
 # Changelog
 
+## Keel brand
+
+The desk uses the approved Keel look: teal `#0E6B5C`, Inter and Noto Sans SC, the keel mark in the header and on sign-in, and the module tiles on the launcher. Status chips use success, warning, danger, and info colors. A moon control in the header switches to the dark theme and remembers it. Lists keep one teal button for the new record; filters stay neutral.
+
 ## Signup and a fuller demo
 
 The desk opens in English. **中文** still switches the interface, and that choice stays in the `keel_lang` cookie. `/start` creates a company: name, country (China, United Kingdom, United States, or somewhere else), the admin’s name, email, and password, and an optional sample notebook and quotation. The country sets currency, default tax, and the language of that first session. Signup is checked and limited to five tries an hour from one network address. An admin invites more people from People. A company with users is kept when the seed runs again; only an empty leftover company is removed.
