@@ -1,3 +1,4 @@
+import { seedDeskForCompany } from '../../prisma/seed-desk.ts'
 import { signupCountries } from '../../shared/schemas.ts'
 import { hashPassword } from '../auth.ts'
 import { prisma, type Tx } from '../db.ts'
@@ -129,6 +130,7 @@ export async function provisionCompany(input: {
     })
     await openBooks(tx, company.id)
     if (input.loadSample) await loadSample(tx, company.id, admin.id, preset)
+    await seedDeskForCompany(tx, company.id)
     return { user: admin, locale: preset.locale }
   }, { maxWait: 20000, timeout: 120000 })
 }

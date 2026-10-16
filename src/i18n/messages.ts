@@ -2,6 +2,7 @@ import { enAccount, zhAccount } from './account-messages.ts'
 import { enCrm, zhCrm } from './crm-messages.ts'
 import { enDesk, zhDesk } from './desk-messages.ts'
 import { enHr, zhHr } from './hr-messages.ts'
+import { enDeskUi, zhDeskUi } from './desk-ui-messages.ts'
 import { enNav, zhNav } from './nav-messages.ts'
 import { enPay, zhPay } from './payroll-messages.ts'
 import { enShop, zhShop } from './shop-messages.ts'
@@ -1314,8 +1315,8 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'country.MX': '墨西哥',
 }
 
-const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk, ...enPay, ...enNav }
-const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk, ...zhPay, ...zhNav }
+const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk, ...enPay, ...enNav, ...enDeskUi }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk, ...zhPay, ...zhNav, ...zhDeskUi }
 
 export const messages = { en, zh }
 

@@ -41,6 +41,8 @@ model Company {
   salaryStructures SalaryStructure[]
   payrollRuns   PayrollRun[]
   expenses      ExpenseClaim[]
+  deskRecords   DeskRecord[]
+  moduleSettings ModuleSetting[]
   /// Seller taxpayer ID printed on invoices. Not a Golden Tax registration.
   taxId         String?
   address       String?
@@ -861,6 +863,38 @@ model PayslipLine {
   /// earning or deduction
   kind      String
   amount    Float
+}
+
+model DeskRecord {
+  id         Int      @id @default(autoincrement())
+  companyId  Int
+  company    Company  @relation(fields: [companyId], references: [id])
+  module     String
+  screen     String
+  name       String
+  state      String   @default("draft")
+  partner    String   @default("")
+  owner      String   @default("")
+  bucket     String   @default("")
+  amount     Float    @default(0)
+  notes      String   @default("")
+  recordDate DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([companyId, module, screen, name])
+  @@index([companyId, module, screen])
+}
+
+model ModuleSetting {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  module    String
+  key       String
+  value     String
+
+  @@unique([companyId, module, key])
 }
 
 model ExpenseClaim {

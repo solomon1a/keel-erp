@@ -4,6 +4,7 @@ import { anglicizeJiangbei } from './anglicize.ts'
 import { removeStrayCompanies } from './company-cleanup.ts'
 import { seedPayrollAndExpenses } from './seed-payroll.ts'
 import { seedRegionalCompanies } from './seed-regions.ts'
+import { seedDesk } from './seed-desk.ts'
 import { seedRichDemo } from './seed-rich.ts'
 
 const prisma = new PrismaClient()
@@ -25,6 +26,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   await removeStrayCompanies(client)
   await seedPayrollAndExpenses(client)
   await seedRichDemo(client)
+  await seedDesk(client)
 }
 
 async function seedJiangbei(client: PrismaClient) {

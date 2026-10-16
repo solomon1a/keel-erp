@@ -45,6 +45,7 @@ import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
+import { registerDeskRoutes } from './desk-routes.ts'
 import { registerPayrollRoutes } from './payroll-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
 import { registerSignupRoutes } from './signup-routes.ts'
@@ -971,6 +972,7 @@ export function createApp() {
   registerCrmRoutes(app)
   registerHrRoutes(app)
   registerPayrollRoutes(app)
+  registerDeskRoutes(app)
 
   return app
 }

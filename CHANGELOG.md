@@ -1,5 +1,9 @@
 # Changelog
 
+## Module menus
+
+Every app in the launcher now has an Odoo-style menu: orders, operations, products, reporting, and configuration, with a page behind each item. Lists search, filter, group, and switch between a table and a kanban where that fits. A row opens a form that saves. Reports draw a chart. Each module has a settings page. Records that are not part of the older books are sample rows stored per company. Running the seed again adds a missing row and leaves an edited setting alone.
+
 ## Launcher tiles
 
 Contacts, Payroll, and Expenses each have their own tile, using the brand icon. Employees stays the roster. An admin and a regular user both see all thirteen apps. Posting payroll, paying a run, and approving an expense stay with the admin. People, in the header, stays admin-only.

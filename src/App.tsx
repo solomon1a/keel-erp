@@ -10,6 +10,7 @@ import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
 import { AppsPage } from './pages/apps-page.tsx'
+import { DeskFormPage, DeskScreenPage } from './pages/desk-screen.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
 import { WebsitePage } from './pages/website-page.tsx'
 import { EmployeePage, HrPage } from './pages/hr.tsx'
@@ -91,6 +92,9 @@ export default function App() {
           <Route element={<Shell />}>
             <Route path="/" element={<AppsPage />} />
             <Route path="/desk" element={<DeskPage />} />
+            <Route path="/app/:module/:screen/new" element={<DeskFormPage />} />
+            <Route path="/app/:module/:screen/:id" element={<DeskFormPage />} />
+            <Route path="/app/:module/:screen" element={<DeskScreenPage />} />
             <Route path="/website" element={<WebsitePage />} />
             <Route path="/contacts" element={<ContactsPage />} />
             <Route path="/contacts/new" element={<ContactFormPage />} />

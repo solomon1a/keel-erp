@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, LogOut, Menu, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { KeelMark } from '../brand/mark.tsx'
 import { menuIconId, moduleAccent, moduleIconId, ModuleIcon } from '../brand/module-icon.tsx'
@@ -8,6 +8,7 @@ import { ThemeToggle } from '../brand/theme.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api } from '../lib/api.ts'
 import { useMoney } from '../lib/format.ts'
+import { menuLabel } from '../lib/menu-label.ts'
 import { linkActive, moduleForPath, sectionForPath, type AppModule, type MenuEntry } from '../lib/modules.ts'
 import { prefetchDesk } from '../lib/prefetch.ts'
 import type { User } from '../lib/types.ts'
@@ -50,11 +51,11 @@ function roleText(role: User['role'], t: Translate) {
 }
 
 function MenuItems({ mod, pathname, search, onNavigate }: { mod: AppModule; pathname: string; search: string; onNavigate: () => void }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   return (
     <>
       {mod.menu.map((entry) => (
-        <MenuNode key={entry.label} entry={entry} pathname={pathname} search={search} onNavigate={onNavigate} label={t(entry.label)} />
+        <MenuNode key={entry.label + (entry.to ?? '')} entry={entry} pathname={pathname} search={search} onNavigate={onNavigate} label={menuLabel(entry.label, locale, t)} />
       ))}
     </>
   )
@@ -67,29 +68,45 @@ function MenuGlyph({ label }: { label: string }) {
 }
 
 function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuEntry; pathname: string; search: string; onNavigate: () => void; label: string }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [opened, setOpened] = useState(false)
+  const [box, setBox] = useState({ top: 0, left: 0 })
+  const place = () => {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setBox({ top: rect.bottom + 4, left: rect.left })
+    setOpened(true)
+  }
   if (entry.children) {
-    const open = entry.children.some((child) => linkActive(child.to, pathname, search))
+    const current = entry.children.some((child) => linkActive(child.to, pathname, search))
     return (
-      <div className="group relative">
+      <div className="relative" onMouseEnter={place} onMouseLeave={() => setOpened(false)}>
         <button
+          ref={buttonRef}
           type="button"
+          aria-expanded={opened}
+          onClick={() => (opened ? setOpened(false) : place())}
           className={cn(
             'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap',
-            open ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+            current || opened ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
           )}
         >
           <MenuGlyph label={entry.label} />
           {label}
           <ChevronDown className="size-3.5 opacity-70" />
         </button>
-        <div className="invisible absolute left-0 top-full z-30 hidden min-w-48 pt-1 group-hover:visible group-hover:block group-focus-within:visible group-focus-within:block">
-          <div className="rounded-lg border border-border bg-card p-1 shadow-md">
+        {opened ? (
+        <div className="fixed z-40 min-w-48" style={{ top: box.top, left: box.left }}>
+          <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-md">
             {entry.children.map((child) => (
               <NavLink
                 key={child.to}
                 to={child.to}
-                onClick={onNavigate}
+                onClick={() => {
+                  setOpened(false)
+                  onNavigate()
+                }}
                 className={() =>
                   cn(
                     'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
@@ -98,11 +115,12 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
                 }
               >
                 <MenuGlyph label={child.label} />
-                {t(child.label)}
+                {menuLabel(child.label, locale, t)}
               </NavLink>
             ))}
           </div>
         </div>
+        ) : null}
       </div>
     )
   }
@@ -126,10 +144,10 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
 }
 
 function MobileMenu({ mod, pathname, search, onNavigate }: { mod: AppModule; pathname: string; search: string; onNavigate: () => void }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const links = mod.menu.flatMap((entry) => entry.children ?? (entry.to ? [{ label: entry.label, to: entry.to }] : []))
   return (
-    <div className="grid gap-1 border-t border-border px-4 py-3 md:hidden">
+    <div className="grid max-h-[70vh] gap-1 overflow-y-auto border-t border-border px-4 py-3 md:hidden">
       {links.map((link) => (
         <NavLink
           key={link.to}
@@ -143,7 +161,7 @@ function MobileMenu({ mod, pathname, search, onNavigate }: { mod: AppModule; pat
           }
         >
           <MenuGlyph label={link.label} />
-          {t(link.label)}
+          {menuLabel(link.label, locale, t)}
         </NavLink>
       ))}
     </div>
@@ -219,7 +237,7 @@ export function Shell() {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
   const me = useQuery({
     queryKey: ['me'],
@@ -327,7 +345,7 @@ export function Shell() {
             {section && section.to.split('?')[0] !== mod.home ? (
               <>
                 <span>/</span>
-                <span className="text-foreground">{t(section.label)}</span>
+                <span className="text-foreground">{menuLabel(section.label, locale, t)}</span>
               </>
             ) : null}
           </nav>
