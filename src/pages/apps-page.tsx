@@ -6,6 +6,7 @@ import type { MessageKey } from '../i18n/messages.ts'
 import { api } from '../lib/api.ts'
 import { launcherModules } from '../lib/modules.ts'
 import type { User } from '../lib/types.ts'
+import { workspaceFor } from '../lib/workspaces.ts'
 
 function greetingKey(hour: number): MessageKey {
   if (hour < 12) return 'apps.greeting.morning'
@@ -30,7 +31,7 @@ export function AppsPage() {
       </div>
       <div className="mx-auto grid max-w-[920px] grid-cols-3 justify-items-center gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-5">
         {modules.map((mod) => (
-          <LauncherTile key={mod.id} to={mod.home} label={t(mod.label)} icon={moduleIconId(mod.id)} accent={moduleAccent(mod.id)} />
+          <LauncherTile key={mod.id} to={workspaceFor(mod.id) ? `/go/${mod.id}` : mod.home} label={t(mod.label)} icon={moduleIconId(mod.id)} accent={moduleAccent(mod.id)} />
         ))}
       </div>
     </div>

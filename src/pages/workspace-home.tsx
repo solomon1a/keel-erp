@@ -10,7 +10,7 @@ import { menuLabel } from '../lib/menu-label.ts'
 import type { AppModule } from '../lib/modules.ts'
 import type { User } from '../lib/types.ts'
 import { cn } from '../lib/utils.ts'
-import type { Copy, Workspace, WsLabel, WsLink, WsPoint, WsSide } from '../lib/workspaces.ts'
+import type { Workspace, WsLabel, WsLink, WsPoint, WsSide } from '../lib/workspaces.ts'
 
 function text(label: WsLabel, locale: Locale, t: Translate) {
   if (typeof label === 'string') return menuLabel(label, locale, t)

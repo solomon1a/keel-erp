@@ -31,6 +31,18 @@ describe('workspaces', () => {
     }
   })
 
+  it('gives assets, projects, quality, subcontracting, and helpdesk a full card grid', () => {
+    for (const id of ['assets', 'projects', 'quality', 'subcontracting', 'helpdesk']) {
+      const workspace = workspaceFor(id)
+      expect(workspace, id).toBeTruthy()
+      if (!workspace) continue
+      expect(workspace.groups.length).toBeGreaterThanOrEqual(4)
+      expect(workspace.groups.reduce((count, group) => count + group.links.length, 0)).toBeGreaterThanOrEqual(12)
+      expect(workspace.steps.length).toBeGreaterThanOrEqual(6)
+      expect(workspace.sidebar.some((item) => item.to === `/app/${id}/dashboard`)).toBe(true)
+    }
+  })
+
   it('follows the manufacturing reference', () => {
     const workspace = workspaces.manufacturing
     expect(workspace?.groups.map((group) => title(group.title))).toEqual(['Production', 'Bill of Materials', 'Subcontracting', 'hub.reports', 'ws.tools', 'hub.settings'])
