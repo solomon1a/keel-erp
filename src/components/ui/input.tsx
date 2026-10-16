@@ -2,7 +2,7 @@ import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes 
 import { cn } from '../../lib/utils.ts'
 
 export const fieldControlClass =
-  'w-full rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-[3px] focus:ring-[var(--kl-color-semantic-focus-ring)]'
+  'w-full rounded-full border border-[var(--kl-glass-border)] bg-[var(--kl-glass-bg)] px-4 text-sm text-foreground shadow-xs outline-none backdrop-blur-md focus:border-[var(--kl-color-primary-fill)] focus:ring-[3px] focus:ring-[var(--kl-color-semantic-focus-ring)]'
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(fieldControlClass, 'h-10', className)} {...props} />
@@ -13,5 +13,5 @@ export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectE
 }
 
 export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cn(fieldControlClass, 'min-h-24 py-2', className)} {...props} />
+  return <textarea className={cn(fieldControlClass, 'min-h-24 rounded-3xl py-3', className)} {...props} />
 }

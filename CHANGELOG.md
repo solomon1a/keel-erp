@@ -1,5 +1,9 @@
 # Changelog
 
+## Soft glass desk
+
+The desk uses a lighter palette with teal `#0E6B5C` kept as the accent. Module tiles and status badges are pastel. Buttons, tabs, filters and the language switch are pills. The header, sidebar, cards, menus and launcher sit on frosted glass with a soft shadow and a larger radius. Light and dark both keep the ink contrast. The books are unchanged.
+
 ## Assets, projects, quality, subcontracting, and helpdesk
 
 Those five apps use the same workspace as Manufacturing: a sidebar, a twelve-month chart, three figures, a Reports & Masters grid, and a getting-started checklist. Assets adds locations, movements, disposals, a depreciation schedule, and a maintenance report. Projects adds updates, templates, activity types, profitability, delayed tasks, and a timesheet summary. Quality adds goals, teams, an inspection summary, and alert and product reports. Subcontracting adds pending receipts, a subcontract bill of materials, components sent, and cost. Helpdesk adds ticket types, priorities, canned replies, and SLA and team reports. Each list already has sample rows. The launcher opens an app on `/go/<app>` when that workspace exists.

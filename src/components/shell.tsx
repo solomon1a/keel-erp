@@ -88,7 +88,7 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
           aria-expanded={opened}
           onClick={() => (opened ? setOpened(false) : place())}
           className={cn(
-            'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap',
+            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap',
             current || opened ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
           )}
         >
@@ -98,7 +98,7 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
         </button>
         {opened ? (
         <div className="fixed z-40 min-w-48" style={{ top: box.top, left: box.left }}>
-          <div className="max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-md">
+          <div className="keel-glass max-h-[70vh] overflow-y-auto rounded-3xl p-1.5 shadow-lg">
             {entry.children.map((child) => (
               <NavLink
                 key={child.to}
@@ -109,7 +109,7 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
                 }}
                 className={() =>
                   cn(
-                    'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
+                    'flex items-center gap-2 rounded-full px-3 py-2 text-sm',
                     linkActive(child.to, pathname, search) ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                   )
                 }
@@ -132,7 +132,7 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
       onClick={onNavigate}
       className={() =>
         cn(
-          'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium whitespace-nowrap',
+          'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap',
           active ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
         )
       }
@@ -155,7 +155,7 @@ function MobileMenu({ mod, pathname, search, onNavigate }: { mod: AppModule; pat
           onClick={onNavigate}
           className={() =>
             cn(
-              'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium',
+              'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium',
               linkActive(link.to, pathname, search) ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
             )
           }
@@ -184,7 +184,7 @@ function ModulePulse({ mod }: { mod: AppModule }) {
   })
   if (rows.length === 0) return null
   return (
-    <section className="mb-6 rounded-lg border border-border bg-card p-4 shadow-sm">
+    <section className="keel-glass mb-6 rounded-[28px] p-4">
       <h2 className="mb-3 font-semibold">{t('chart.title')}</h2>
       <BarChart rows={rows} />
     </section>
@@ -273,14 +273,14 @@ export function Shell() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-border bg-card">
+      <header className="keel-glass sticky top-0 z-20 border-x-0 border-t-0">
         <div className="flex h-[52px] items-center gap-2 px-3 md:gap-3 md:px-4">
           {mod ? (
             <Button className="md:hidden" variant="ghost" size="sm" aria-label={menuOpen ? t('shell.close') : t('shell.menu')} onClick={() => setMenuOpen((open) => !open)}>
               <Menu className="size-4" />
             </Button>
           ) : null}
-          <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-md" aria-label={t('shell.apps')}>
+            <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-full" aria-label={t('shell.apps')}>
             <KeelMark className="size-7" />
             <span className="hidden font-semibold tracking-tight sm:inline">Keel</span>
           </Link>
@@ -302,12 +302,12 @@ export function Shell() {
             <LanguageSwitcher />
             <ThemeToggle />
             {me.data.role === 'admin' ? (
-              <Link className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden" to="/admin/users" aria-label={t('menu.people')}>
+              <Link className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden" to="/admin/users" aria-label={t('menu.people')}>
                 <Users className="size-4" />
               </Link>
             ) : null}
             {me.data.role === 'admin' ? (
-              <Link className="hidden rounded-md px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground md:inline" to="/admin/users">{t('menu.people')}</Link>
+              <Link className="hidden rounded-full px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground md:inline" to="/admin/users">{t('menu.people')}</Link>
             ) : null}
             <Link
               to="/settings"

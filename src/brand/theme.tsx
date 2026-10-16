@@ -51,7 +51,7 @@ export function ThemeToggle() {
   return (
     <button
       type="button"
-      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+      className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
       aria-label={t('theme.toggle')}
       title={value.theme === 'dark' ? t('theme.light') : t('theme.dark')}
       onClick={() => value.setTheme(next)}

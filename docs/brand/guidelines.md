@@ -8,8 +8,10 @@ Keel is calm, precise and dense enough for daily ERP work. Use the tokens in `to
 - **Accent (Brass):** `#C08A3E`. Use it sparingly: avatars, highlights and marketing. Never use it for interactive controls.
 - **Semantic:** success `#15803D`, warning `#B45309`, danger `#C42B2B`, info `#2563EB`. Each one has `-bg` and `-border` tints for badges and alerts.
 - **Module accents** are for launcher tiles and the module icon in the top bar only. Don't use them on buttons or in body text.
-- **Spacing:** 4px base (4, 8, 12, 16, 20, 24, 32, 40, 48, 64). **Radius:** 4/6/8/12/16. Controls use 8, cards use 12, launcher tiles use about 24% of the tile size.
-- **Shadows:** xs on buttons, sm on cards and tables, md on popovers, lg on modals.
+- **Spacing:** 4px base (4, 8, 12, 16, 20, 24, 32, 40, 48, 64). **Radius:** 8/12/16/20/28, and 999 for pills. Buttons, tabs, filters, badges and segmented controls are pills. Cards, modals and the launcher panel use 28. Tiles use 28.
+- **Shadows:** soft and wide. xs on fields, sm on cards, md on menus, lg on the sign-in panel.
+- **Glass:** header, sidebar, cards, menus, the launcher panel and the sign-in card use a translucent surface (`--kl-glass-bg`) with an 18px backdrop blur. The page background is a pale mint and brass wash (`--kl-gradient-app`). Text stays on the neutral ink scale so contrast holds on the frost.
+- **Module tiles** are pastel washes of the module colour, with the icon in that colour. Status badges use the same pastel treatment.
 
 ## Typography (EN + 简体中文)
 - Stack: `"Inter", "Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif`. Latin glyphs come from Inter and Hanzi fall through to Noto Sans SC, so a mixed string such as "订单 S00480" reads as one consistent text.
@@ -21,7 +23,7 @@ Keel is calm, precise and dense enough for daily ERP work. Use the tokens in `to
 - Load Noto Sans SC with `unicode-range` subsetting (Google Fonts handles this automatically) so that EN users don't download CJK glyphs.
 
 ## Buttons
-- Height is 34px (md), 28px (sm) or 40–42px (lg, for auth forms). Padding is 0 14px, radius 8, weight 600.
+- Height is 34px (md), 28px (sm) or 40–42px (lg, for auth forms). Padding is 0 14px, radius 999, weight 600.
 - **Primary:** teal fill with white text. Use only one per view, such as "New quotation" or "Confirm".
 - **Secondary:** white fill, neutral-200 border and neutral-800 text.
 - **Ghost:** no border. Use it in toolbars ("Filters", "Group by").
