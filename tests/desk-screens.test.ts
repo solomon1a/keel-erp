@@ -1,30 +1,14 @@
 import { afterAll, describe, expect, it } from 'vitest'
 import { seedDatabase, demoPasswords } from '../prisma/seed.ts'
-import { complianceHome, complianceMenu } from '../src/lib/module-menus.ts'
 import { prisma } from '../server/db.ts'
 import { call, signIn } from './http.ts'
 import { resetAndSeed } from './reset-db.ts'
-
-function pathsFor(country: string) {
-  return complianceMenu(country).flatMap((entry) => [entry.to, ...(entry.children ?? []).map((child) => child.to)].filter(Boolean))
-}
 
 afterAll(async () => {
   await prisma.$disconnect()
 })
 
 describe('desk screens', () => {
-  it('follows the company country on the compliance menu', () => {
-    expect(complianceHome('CN')).toBe('/app/compliance/fapiao')
-    expect(pathsFor('CN')).toContain('/app/compliance/fapiao-report')
-    expect(pathsFor('CN')).not.toContain('/app/compliance/fbr')
-    expect(complianceHome('GB')).toBe('/app/compliance/mtd')
-    expect(pathsFor('US')).toContain('/app/compliance/sales-tax')
-    expect(complianceHome('PK')).toBe('/app/compliance/fbr')
-    expect(pathsFor('PK')).toEqual(expect.arrayContaining(['/app/compliance/fbr', '/app/compliance/withholding', '/app/compliance/sales-tax-pk']))
-    expect(complianceHome('OTHER')).toBe('/app/compliance/summary')
-  })
-
   it('keeps seeded lists inside the company and does not copy them again', async () => {
     await resetAndSeed()
     const maya = await signIn('maya@northline.example', demoPasswords.maya)
@@ -70,36 +54,5 @@ describe('desk screens', () => {
     const amiraCodes = (await call('/api/accounts', amira)).body as unknown as Array<{ code: string; id: number }>
     const mayaCodes = accounts.body as unknown as Array<{ id: number }>
     expect(amiraCodes.every((row) => !mayaCodes.some((mayaRow) => mayaRow.id === row.id))).toBe(true)
-
-    const names = async (cookie: string, screen: string) => {
-      const response = await call(`/api/desk-records?module=compliance&screen=${screen}`, cookie)
-      expect(response.status).toBe(200)
-      return (response.body as unknown as Array<{ name: string }>).map((row) => row.name)
-    }
-    expect(await names(maya, 'fapiao')).toContain('FP20260411001')
-    expect(await names(maya, 'fbr')).toEqual([])
-    expect(await names(amira, 'mtd')).toContain('Q1 2026')
-    expect(await names(amira, 'fapiao')).toEqual([])
-    const chinaSettings = await call('/api/module-settings?module=compliance', maya)
-    expect((chinaSettings.body as unknown as Array<{ key: string; value: string }>).find((row) => row.key === 'authority')?.value).toBe('STA')
-
-    const signedUp = await call('/api/signup', '', {
-      method: 'POST',
-      headers: { 'x-forwarded-for': '203.0.113.64' },
-      body: JSON.stringify({
-        companyName: 'Ravi Textiles',
-        country: 'PK',
-        name: 'Sana Iqbal',
-        email: 'sana@ravitextiles.example',
-        password: 'keel-sana-desk',
-        loadSample: false,
-      }),
-    })
-    expect(signedUp.status).toBe(201)
-    const sana = signedUp.setCookie?.split(';')[0] ?? ''
-    expect(await names(sana, 'fbr')).toContain('INV-FBR-1042')
-    expect(await names(sana, 'withholding')).toContain('WHT 153(1)(a) goods')
-    expect(await names(sana, 'fapiao')).toEqual([])
-    expect((await call(`/api/desk-records?module=assets&screen=register`, sana)).status).toBe(200)
   })
 })

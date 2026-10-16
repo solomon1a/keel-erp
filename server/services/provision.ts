@@ -41,8 +41,6 @@ export function presetForCountry(country: SignupCountry): CountryPreset {
       return { currency: 'GBP', taxRate: 20, taxName: 'VAT', city: 'London', locale: 'en' }
     case 'US':
       return { currency: 'USD', taxRate: 8.875, taxName: 'NY Sales Tax', city: 'New York', locale: 'en' }
-    case 'PK':
-      return { currency: 'PKR', taxRate: 18, taxName: 'Sales tax 18%', city: 'Karachi', locale: 'en' }
     case 'OTHER':
       return { currency: 'EUR', taxRate: 0, taxName: 'No tax', city: '', locale: 'en' }
     default: {
@@ -97,7 +95,6 @@ export async function provisionCompany(input: {
         city: preset.city,
         currency: preset.currency,
         defaultTaxRate: preset.taxRate,
-        countryCode: input.country,
       },
     })
     const admin = await tx.user.create({
@@ -114,7 +111,7 @@ export async function provisionCompany(input: {
         email: true,
         role: true,
         companyId: true,
-        company: { select: { id: true, name: true, city: true, currency: true, defaultTaxRate: true, countryCode: true } },
+        company: { select: { id: true, name: true, city: true, currency: true, defaultTaxRate: true } },
       },
     })
     const warehouse = await tx.warehouse.create({

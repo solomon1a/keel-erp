@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { moduleAccent, moduleIconId, ModuleIcon } from '../brand/module-icon.tsx'
+import { moduleAccent, moduleIconId } from '../brand/module-icon.tsx'
+import { LauncherTile } from '../components/launcher-tile.tsx'
 import { useI18n } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
 import { api } from '../lib/api.ts'
@@ -30,18 +30,7 @@ export function AppsPage() {
       </div>
       <div className="mx-auto grid max-w-[920px] grid-cols-3 justify-items-center gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-5">
         {modules.map((mod) => (
-          <Link key={mod.id} to={mod.home} className="group flex w-[96px] flex-col items-center gap-2 text-center">
-            <span
-              className="grid size-[84px] place-items-center text-white shadow-md transition group-hover:-translate-y-0.5"
-              style={{
-                borderRadius: 20,
-                background: `linear-gradient(155deg, ${moduleAccent(mod.id)} 0%, color-mix(in srgb, ${moduleAccent(mod.id)} 78%, black) 100%)`,
-              }}
-            >
-              <ModuleIcon id={moduleIconId(mod.id)} className="size-10" />
-            </span>
-            <span className="text-sm font-medium leading-tight">{t(mod.label)}</span>
-          </Link>
+          <LauncherTile key={mod.id} to={mod.home} label={t(mod.label)} icon={moduleIconId(mod.id)} accent={moduleAccent(mod.id)} />
         ))}
       </div>
     </div>

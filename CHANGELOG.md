@@ -1,8 +1,10 @@
 # Changelog
 
-## Assets, projects, quality, and country compliance
+## App sections
 
-Six more apps sit on the launcher: Assets, Projects, Quality, Subcontracting, Helpdesk, and Compliance. Each has its own menu, lists, forms, a report, and settings, with sample rows in the company. Compliance follows the company’s country. China shows fapiao, the United Kingdom an MTD VAT return, the United States a sales tax report, and Pakistan FBR e-invoicing, sales tax, and withholding. A signup can pick Pakistan. Nothing on these pages is filed with a tax authority.
+Opening an app from the launcher shows that app’s sections as the same icon tiles. Sales opens on quotations, orders, customers, products, pricelists, reporting, and settings. Accounting opens on invoices, bills, payments, journal entries, the chart of accounts, reporting, and settings. A section that holds several pages, such as reports or the rest of configuration, opens another tile grid. The breadcrumb and the top menu still jump straight to a page.
+
+Assets, Projects, Quality, Subcontracting, and Helpdesk stay on the launcher. There is no country compliance app.
 
 ## Module menus
 

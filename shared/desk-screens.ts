@@ -16,7 +16,6 @@ export type DeskSetting = {
   labelEn: string
   labelZh: string
   value: string
-  byCountry?: Record<string, string>
 }
 
 export type DeskScreen = {
@@ -31,8 +30,6 @@ export type DeskScreen = {
   leadZh: string
   rows: DeskSeed[]
   settings: DeskSetting[]
-  /** When set, the seed writes these rows only for companies in these country codes. */
-  countries?: string[]
 }
 
 const day = (iso: string) => iso
@@ -73,10 +70,6 @@ function report(
     rows,
     settings: [],
   }
-}
-
-function inCountries(screen: DeskScreen, countries: string[]) {
-  return { ...screen, countries }
 }
 
 function settings(
@@ -565,57 +558,6 @@ export const deskScreens: DeskScreen[] = [
     { name: 'Billing', state: 'active', recordDate: day('2026-01-01') },
   ], false),
 
-  inCountries(list('compliance', 'fapiao', 'Fapiao', '发票', 'Sample fapiao for this company. Nothing is sent to the tax authority.', '这家公司的发票示例。不会提交给税务机关。', ['issued', 'waiting', 'void'], [
-    { name: 'FP20260411001', state: 'issued', partner: 'Orchard School', owner: 'Maya Chen', amount: 84.75, notes: 'Electronic, general. Buyer tax id on the order.', recordDate: day('2026-04-11') },
-    { name: 'FP20260416002', state: 'waiting', partner: 'Paper & Pine', owner: 'Jonah Ellis', amount: 27.12, notes: 'Draft. Not issued.', recordDate: day('2026-04-16') },
-    { name: 'FP20260302008', state: 'void', partner: 'Field Office', owner: 'Maya Chen', amount: 62.15, notes: 'Voided. A replacement was issued.', recordDate: day('2026-03-02') },
-  ]), ['CN']),
-  inCountries(report('compliance', 'fapiao-report', 'Fapiao report', '发票报表', 'Issued fapiao by month. A sample, not a filing.', '按月的已开发票。示例，不是申报。', [
-    { name: 'April', state: 'issued', bucket: 'April', amount: 111.87, recordDate: day('2026-04-16') },
-    { name: 'March', state: 'issued', bucket: 'March', amount: 240, recordDate: day('2026-03-31') },
-    { name: 'February', state: 'issued', bucket: 'February', amount: 180, recordDate: day('2026-02-28') },
-  ]), ['CN']),
-  inCountries(list('compliance', 'mtd', 'MTD VAT return', 'MTD 增值税申报', 'Making Tax Digital periods. Nothing is sent to HMRC.', 'Making Tax Digital 的申报期。不会提交给 HMRC。', ['open', 'submitted'], [
-    { name: 'Q1 2026', state: 'open', partner: 'HMRC', owner: 'Amira Shah', amount: 420, notes: 'Boxes are a sample. Not submitted.', recordDate: day('2026-03-31') },
-    { name: 'Q4 2025', state: 'submitted', partner: 'HMRC', owner: 'Amira Shah', amount: 380, notes: 'Marked submitted in this sample only.', recordDate: day('2025-12-31') },
-  ], false), ['GB']),
-  inCountries(report('compliance', 'mtd-report', 'VAT report', '增值税报表', 'Output and input tax for the open period.', '当前申报期的销项和进项税。', [
-    { name: 'Output tax', state: 'open', bucket: 'Output', amount: 640, recordDate: day('2026-03-31') },
-    { name: 'Input tax', state: 'open', bucket: 'Input', amount: 220, recordDate: day('2026-03-31') },
-    { name: 'Payable', state: 'open', bucket: 'Payable', amount: 420, recordDate: day('2026-03-31') },
-  ]), ['GB']),
-  inCountries(report('compliance', 'sales-tax', 'Sales tax report', '销售税报表', 'Sample sales tax by state. Nothing is filed.', '按州的销售税示例。不会申报。', [
-    { name: 'New York', state: 'open', bucket: 'New York', amount: 186.4, recordDate: day('2026-04-16') },
-    { name: 'New Jersey', state: 'open', bucket: 'New Jersey', amount: 42, recordDate: day('2026-04-16') },
-    { name: 'Other', state: 'open', bucket: 'Other', amount: 0, recordDate: day('2026-04-16') },
-  ]), ['US']),
-  inCountries(list('compliance', 'jurisdictions', 'Tax jurisdictions', '税区', 'Where this company collects sales tax.', '这家公司代收销售税的地方。', ['active'], [
-    { name: 'New York', state: 'active', amount: 8.875, notes: 'State and city sample rate.', recordDate: day('2026-01-01') },
-    { name: 'New Jersey', state: 'active', amount: 6.625, notes: 'State rate sample.', recordDate: day('2026-01-01') },
-  ], false), ['US']),
-  inCountries(list('compliance', 'fbr', 'FBR e-invoicing', 'FBR 电子发票', 'Sample invoices for the Federal Board of Revenue. Nothing is transmitted.', '联邦税务局的发票示例。不会发送。', ['waiting', 'validated', 'rejected'], [
-    { name: 'INV-FBR-1042', state: 'validated', partner: 'Lahore Cloth House', owner: 'Sana Iqbal', amount: 18500, notes: 'Sample IRN stored on the row. Not sent to FBR.', recordDate: day('2026-04-12') },
-    { name: 'INV-FBR-1048', state: 'waiting', partner: 'Karachi Uniforms', owner: 'Sana Iqbal', amount: 9200, notes: 'Queued in this sample.', recordDate: day('2026-04-16') },
-    { name: 'INV-FBR-1033', state: 'rejected', partner: 'Multan Dye', owner: 'Sana Iqbal', amount: 4100, notes: 'Sample rejection: buyer NTN missing.', recordDate: day('2026-04-02') },
-  ]), ['PK']),
-  inCountries(report('compliance', 'sales-tax-pk', 'Sales tax return', '销售税申报', 'Output and input sales tax. A sample return, not a filing.', '销项和进项销售税。示例申报，不是正式申报。', [
-    { name: 'Output tax', state: 'open', bucket: 'Output', amount: 4986, recordDate: day('2026-04-16') },
-    { name: 'Input tax', state: 'open', bucket: 'Input', amount: 1260, recordDate: day('2026-04-16') },
-    { name: 'Payable', state: 'open', bucket: 'Payable', amount: 3726, recordDate: day('2026-04-16') },
-  ]), ['PK']),
-  inCountries(list('compliance', 'withholding', 'Withholding tax', '预扣税', 'Sample withholding on payments to vendors.', '付给供应商时的预扣税示例。', ['draft', 'posted'], [
-    { name: 'WHT 153(1)(a) goods', state: 'posted', partner: 'Multan Dye', owner: 'Sana Iqbal', amount: 410, notes: 'Section 153 on a goods payment. Sample rate.', recordDate: day('2026-04-08') },
-    { name: 'WHT 153(1)(b) services', state: 'draft', partner: 'Karachi Stitch', owner: 'Sana Iqbal', amount: 220, notes: 'Not posted.', recordDate: day('2026-04-16') },
-  ], false), ['PK']),
-  inCountries(report('compliance', 'summary', 'Tax summary', '税务摘要', 'A short tax read for a company outside the prepared countries.', '未单独配置国家时的税务简表。', [
-    { name: 'Output tax', state: 'open', bucket: 'Output', amount: 0, recordDate: day('2026-04-16') },
-    { name: 'Input tax', state: 'open', bucket: 'Input', amount: 0, recordDate: day('2026-04-16') },
-  ]), ['OTHER']),
-  settings('compliance', 'Compliance settings', '合规设置', 'The registration this company would file under. Nothing is submitted.', '这家公司申报时使用的登记号。不会提交。', [
-    { key: 'authority', labelEn: 'Filing authority', labelZh: '申报机关', value: 'Local tax office', byCountry: { CN: 'STA', GB: 'HMRC', US: 'State department of revenue', PK: 'FBR', OTHER: 'Local tax office' } },
-    { key: 'registration', labelEn: 'Registration number', labelZh: '登记号', value: '—', byCountry: { CN: '91310000SAMPLE', GB: 'GB123456789', US: 'NY-45821', PK: '1234567-8', OTHER: '—' } },
-    { key: 'status', labelEn: 'Filing status', labelZh: '申报状态', value: 'Not submitted' },
-  ]),
 ]
 
 export function findDeskScreen(module: string, screen: string) {

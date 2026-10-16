@@ -182,15 +182,6 @@ export const appModules: AppModule[] = [
     match: ['/app/helpdesk'],
     menu: moduleMenus.helpdesk ?? [],
   },
-  {
-    id: 'compliance',
-    label: 'mod.compliance',
-    description: 'mod.compliance.desc',
-    home: '/app/compliance',
-    group: 'finance',
-    match: ['/app/compliance'],
-    menu: moduleMenus.compliance ?? [],
-  },
 ]
 
 const launcherOrder = [
@@ -207,13 +198,17 @@ const launcherOrder = [
   'website',
   'accounting',
   'assets',
-  'compliance',
   'expenses',
   'hr',
   'payroll',
   'projects',
   'helpdesk',
 ]
+
+for (const mod of appModules) {
+  mod.home = `/go/${mod.id}`
+  if (!mod.match.includes(mod.home)) mod.match.push(mod.home)
+}
 
 export function launcherModules() {
   return [...appModules].sort((a, b) => launcherOrder.indexOf(a.id) - launcherOrder.indexOf(b.id))
@@ -258,6 +253,14 @@ export function linkActive(to: string, pathname: string, search: string) {
 }
 
 export function sectionForPath(mod: AppModule, pathname: string, search: string): MenuLink | null {
+  if (pathname === `/go/${mod.id}`) return null
+  if (pathname.startsWith(`/go/${mod.id}/`)) {
+    const segment = decodeURIComponent(pathname.slice(`/go/${mod.id}/`.length).split('/')[0] ?? '')
+    const entry = mod.menu.find((item) => item.label === segment)
+    if (!entry) return null
+    const label = entry.label === 'menu.reporting' ? 'hub.reports' : entry.label
+    return { label, to: pathname }
+  }
   const links = mod.menu.flatMap((entry) => entry.children ?? (entry.to ? [{ label: entry.label, to: entry.to }] : []))
   return links.find((link) => linkActive(link.to, pathname, search)) ?? links[0] ?? null
 }

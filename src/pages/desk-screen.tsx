@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { BarChart } from '../components/bar-chart.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { useToast } from '../components/toast.tsx'
@@ -11,8 +11,6 @@ import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { dateInput, useMoney, useShortDate } from '../lib/format.ts'
 import { screenCopy } from '../lib/menu-label.ts'
-import { complianceHome } from '../lib/module-menus.ts'
-import type { User } from '../lib/types.ts'
 import type { DeskScreen } from '../../shared/desk-screens.ts'
 
 type DeskRow = {
@@ -152,13 +150,6 @@ function groupValue(row: DeskRow, group: GroupBy) {
 function groupLabel(group: GroupBy, value: string, t: Translate) {
   if (group === 'state') return stateText(value, t)
   return value
-}
-
-export function ComplianceHomePage() {
-  const { t } = useI18n()
-  const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me') })
-  if (!me.data) return <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p>
-  return <Navigate to={complianceHome(me.data.company.countryCode)} replace />
 }
 
 export function DeskScreenPage() {

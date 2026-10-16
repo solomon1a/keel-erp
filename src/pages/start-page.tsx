@@ -61,8 +61,6 @@ export function StartPage() {
         return t('start.country.GB')
       case 'US':
         return t('start.country.US')
-      case 'PK':
-        return t('start.country.PK')
       case 'OTHER':
         return t('start.country.OTHER')
       default: {

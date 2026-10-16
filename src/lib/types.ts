@@ -5,7 +5,7 @@ export type User = {
   name: string
   email: string
   role: Role
-  company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number; countryCode: string }
+  company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number }
 }
 
 export type DeskUser = {

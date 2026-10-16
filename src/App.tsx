@@ -10,7 +10,8 @@ import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
 import { AppsPage } from './pages/apps-page.tsx'
-import { ComplianceHomePage, DeskFormPage, DeskScreenPage } from './pages/desk-screen.tsx'
+import { DeskFormPage, DeskScreenPage } from './pages/desk-screen.tsx'
+import { ModuleHubPage } from './pages/module-hub.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
 import { WebsitePage } from './pages/website-page.tsx'
 import { EmployeePage, HrPage } from './pages/hr.tsx'
@@ -91,8 +92,8 @@ export default function App() {
           <Route path="/accounting/:id/print" element={<InvoicePrintPage />} />
           <Route element={<Shell />}>
             <Route path="/" element={<AppsPage />} />
+            <Route path="/go/:moduleId/:segment?" element={<ModuleHubPage />} />
             <Route path="/desk" element={<DeskPage />} />
-            <Route path="/app/compliance" element={<ComplianceHomePage />} />
             <Route path="/app/:module/:screen/new" element={<DeskFormPage />} />
             <Route path="/app/:module/:screen/:id" element={<DeskFormPage />} />
             <Route path="/app/:module/:screen" element={<DeskScreenPage />} />

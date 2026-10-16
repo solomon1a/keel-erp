@@ -220,60 +220,6 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: label('helpdesk', 'tags'), to: screen('helpdesk', 'tags') },
     ] },
   ],
-  compliance: complianceMenu('CN'),
-}
-
-export type CompanyCountry = 'CN' | 'GB' | 'US' | 'PK' | 'OTHER'
-
-export function complianceHome(country: string) {
-  switch (country) {
-    case 'CN':
-      return screen('compliance', 'fapiao')
-    case 'GB':
-      return screen('compliance', 'mtd')
-    case 'US':
-      return screen('compliance', 'sales-tax')
-    case 'PK':
-      return screen('compliance', 'fbr')
-    default:
-      return screen('compliance', 'summary')
-  }
-}
-
-export function complianceMenu(country: string): MenuEntry[] {
-  const settings = { label: 'desk.g.configuration', children: [{ label: label('compliance', 'settings'), to: screen('compliance', 'settings') }] }
-  switch (country) {
-    case 'CN':
-      return [
-        { label: label('compliance', 'fapiao'), to: screen('compliance', 'fapiao') },
-        { label: 'menu.reporting', children: [{ label: label('compliance', 'fapiao-report'), to: screen('compliance', 'fapiao-report') }] },
-        settings,
-      ]
-    case 'GB':
-      return [
-        { label: label('compliance', 'mtd'), to: screen('compliance', 'mtd') },
-        { label: 'menu.reporting', children: [{ label: label('compliance', 'mtd-report'), to: screen('compliance', 'mtd-report') }] },
-        settings,
-      ]
-    case 'US':
-      return [
-        { label: label('compliance', 'sales-tax'), to: screen('compliance', 'sales-tax') },
-        { label: label('compliance', 'jurisdictions'), to: screen('compliance', 'jurisdictions') },
-        settings,
-      ]
-    case 'PK':
-      return [
-        { label: label('compliance', 'fbr'), to: screen('compliance', 'fbr') },
-        { label: label('compliance', 'withholding'), to: screen('compliance', 'withholding') },
-        { label: 'menu.reporting', children: [{ label: label('compliance', 'sales-tax-pk'), to: screen('compliance', 'sales-tax-pk') }] },
-        settings,
-      ]
-    default:
-      return [
-        { label: 'menu.reporting', to: screen('compliance', 'summary') },
-        settings,
-      ]
-  }
 }
 
 export function menuPaths() {

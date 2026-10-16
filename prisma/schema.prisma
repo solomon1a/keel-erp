@@ -16,8 +16,6 @@ model Company {
   /// ISO 4217 code. One currency on the company until a later multi-currency slice.
   currency       String          @default("CNY")
   defaultTaxRate Float           @default(13)
-  /// CN, GB, US, PK, or OTHER. Chooses the Compliance menu.
-  countryCode    String          @default("CN")
   users     User[]
   contacts  Contact[]
   products  Product[]
