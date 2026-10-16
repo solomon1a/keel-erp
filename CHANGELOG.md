@@ -1,5 +1,9 @@
 # Changelog
 
+## App launcher
+
+Sign-in opens a grid of modules: Dashboard, Sales, CRM, Purchase, Inventory, Manufacturing, Point of Sale, eCommerce, Accounting, and Employees. Inside a module, the bar shows that module’s name and its own menu, with dropdowns where a section has more than one screen. Apps returns to the grid. Lists stay in memory after login, so moving between modules does not flash a loading page. Harbour & Line and Hudson Yard Goods now have a draft purchase, a bill of materials, a manufacturing order, a transfer, a register sale, and a second lead, in English.
+
 ## Payroll and English sample data
 
 Jiangbei Goods Co. stays in Shanghai, in CNY, with 13% VAT and fapiao fields. Its name, contacts, products, warehouses, orders, pipeline, and staff records are in English. A database that already has 江北良品 is rewritten in place. Companies that are not Jiangbei, Harbour & Line, or Hudson Yard Goods are removed, so a partial seed cannot leave duplicates. The seed is safe to run again.

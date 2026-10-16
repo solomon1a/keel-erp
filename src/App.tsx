@@ -1,13 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { keepPreviousData, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Shell } from './components/shell.tsx'
+import { ToastProvider } from './components/toast.tsx'
 import { LocaleProvider } from './i18n/locale.tsx'
 import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
+import { AppsPage } from './pages/apps-page.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
+import { WebsitePage } from './pages/website-page.tsx'
 import { EmployeePage, HrPage } from './pages/hr.tsx'
 import { ExpensesPage, PayrollPage, PayrollRunPage } from './pages/payroll.tsx'
 import { BomDetailPage } from './pages/bom-detail-page.tsx'
@@ -49,12 +52,23 @@ import { PurchasesPage } from './pages/purchases-page.tsx'
 import { SignInPage } from './pages/sign-in-page.tsx'
 import { VendorsPage } from './pages/vendors-page.tsx'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      refetchOnWindowFocus: false,
+      placeholderData: keepPreviousData,
+      retry: 1,
+    },
+  },
+})
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LocaleProvider>
+      <ToastProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/sign-in" element={<SignInPage />} />
@@ -71,7 +85,9 @@ export default function App() {
           <Route path="/pos/orders/:id/print" element={<PosReceiptPage />} />
           <Route path="/accounting/:id/print" element={<InvoicePrintPage />} />
           <Route element={<Shell />}>
-            <Route path="/" element={<DeskPage />} />
+            <Route path="/" element={<AppsPage />} />
+            <Route path="/desk" element={<DeskPage />} />
+            <Route path="/website" element={<WebsitePage />} />
             <Route path="/contacts" element={<ContactsPage />} />
             <Route path="/contacts/new" element={<ContactFormPage />} />
             <Route path="/contacts/:id" element={<ContactFormPage />} />
@@ -129,6 +145,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </ToastProvider>
       </LocaleProvider>
     </QueryClientProvider>
   )
