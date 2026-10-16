@@ -250,6 +250,7 @@ export const posRefundSchema = z.object({
 export const transferInputSchema = z.object({
   locationFromId: z.number().int().positive('Choose a source location'),
   locationToId: z.number().int().positive('Choose a destination location'),
+  routeId: z.number().int().positive().optional(),
   lines: z.array(transferLineSchema).min(1, 'Add at least one line'),
 })
 

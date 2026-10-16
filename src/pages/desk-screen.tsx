@@ -12,6 +12,7 @@ import { api, ApiError } from '../lib/api.ts'
 import { dateInput, useMoney, useShortDate } from '../lib/format.ts'
 import { screenCopy } from '../lib/menu-label.ts'
 import type { DeskScreen } from '../../shared/desk-screens.ts'
+import { deskListMeta, type DeskGroupBy } from '../../shared/views.ts'
 
 type DeskRow = {
   id: number
@@ -29,7 +30,16 @@ type SettingField = { key: string; labelEn: string; labelZh: string; value: stri
 
 type AccountRow = { id: number; code: string; name: string; type: string }
 
-type GroupBy = 'none' | 'state' | 'partner' | 'owner' | 'bucket'
+type GroupBy = DeskGroupBy
+type DeskPage = { rows: DeskRow[]; total: number; page: number; pageSize: number }
+type SavedFilter = { id: number; name: string; query: string; groupBy: string; state: string }
+type ChatterRow = { id: number; summary: string; createdAt: string; user: { name: string } | null }
+
+function asPage(data: DeskRow[] | DeskPage | undefined, pageSize: number) {
+  if (!data) return { rows: [] as DeskRow[], total: 0, page: 1, pageSize }
+  if (Array.isArray(data)) return { rows: data, total: data.length, page: 1, pageSize: data.length || pageSize }
+  return data
+}
 type Layout = 'list' | 'kanban'
 
 function stateText(state: string, t: Translate) {
@@ -211,16 +221,34 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
   const money = useMoney()
   const shortDate = useShortDate()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [q, setQ] = useState('')
   const [state, setState] = useState('all')
   const [group, setGroup] = useState<GroupBy>('none')
   const [layout, setLayout] = useState<Layout>(spec.kanban ? 'kanban' : 'list')
+  const [page, setPage] = useState(1)
+  const [filterName, setFilterName] = useState('')
   const rows = useQuery({
-    queryKey: ['desk-records', module, screen, q, state],
-    queryFn: () => api<DeskRow[]>(`/api/desk-records?module=${encodeURIComponent(module)}&screen=${encodeURIComponent(screen)}&q=${encodeURIComponent(q)}&state=${encodeURIComponent(state)}`),
+    queryKey: ['desk-records', module, screen, q, state, page],
+    queryFn: () => api<DeskRow[] | DeskPage>(`/api/desk-records?module=${encodeURIComponent(module)}&screen=${encodeURIComponent(screen)}&q=${encodeURIComponent(q)}&state=${encodeURIComponent(state)}&page=${page}&pageSize=${deskListMeta.pageSize}`),
+  })
+  const saved = useQuery({
+    queryKey: ['saved-filters', deskListMeta.model, module, screen],
+    queryFn: () => api<SavedFilter[]>(`/api/saved-filters?model=${encodeURIComponent(`${module}.${screen}`)}`),
+  })
+  const pageData = asPage(rows.data, deskListMeta.pageSize)
+  const saveFilter = useMutation({
+    mutationFn: () => api('/api/saved-filters', {
+      method: 'POST',
+      body: JSON.stringify({ model: `${module}.${screen}`, name: filterName, query: q, groupBy: group, state }),
+    }),
+    onSuccess: async () => {
+      setFilterName('')
+      await queryClient.invalidateQueries({ queryKey: ['saved-filters', deskListMeta.model, module, screen] })
+    },
   })
   const groups = useMemo(() => {
-    const data = rows.data ?? []
+    const data = pageData.rows
     if (group === 'none') return [{ key: '', rows: data }]
     const map = new Map<string, DeskRow[]>()
     for (const row of data) {
@@ -228,7 +256,7 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
       map.set(key, [...(map.get(key) ?? []), row])
     }
     return [...map.entries()].map(([key, grouped]) => ({ key, rows: grouped }))
-  }, [rows.data, group])
+  }, [pageData.rows, group])
 
   return (
     <div className="grid gap-6">
@@ -263,19 +291,37 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
             <Button size="sm" variant={layout === 'kanban' ? 'secondary' : 'outline'} onClick={() => setLayout('kanban')}>{t('desk.kanban')}</Button>
           </div>
         ) : null}
+        <Select
+          className="h-7 w-auto"
+          aria-label={t('desk.savedFilters')}
+          value=""
+          onChange={(event) => {
+            const picked = saved.data?.find((row) => String(row.id) === event.target.value)
+            if (!picked) return
+            setQ(picked.query)
+            setState(picked.state)
+            setGroup(picked.groupBy as GroupBy)
+            setPage(1)
+          }}
+        >
+          <option value="">{t('desk.savedFilters')}</option>
+          {(saved.data ?? []).map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+        </Select>
+        <Input className="w-full sm:w-40" value={filterName} placeholder={t('desk.filterName')} aria-label={t('desk.filterName')} onChange={(event) => setFilterName(event.target.value)} />
+        <Button size="sm" variant="outline" disabled={!filterName.trim() || saveFilter.isPending} onClick={() => saveFilter.mutate()}>{t('desk.saveFilter')}</Button>
       </div>
       {rows.isLoading ? <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p> : null}
       {rows.isError ? <p className="text-sm text-destructive">{rows.error.message}</p> : null}
-      {rows.data && rows.data.length === 0 ? (
+      {rows.data && pageData.rows.length === 0 ? (
         <EmptyState title={t('desk.emptyTitle')} body={t('desk.emptyBody')} action={{ to: `/app/${module}/${screen}/new`, label: t('desk.new') }} />
       ) : null}
-      {layout === 'kanban' && spec.kanban && rows.data && rows.data.length > 0 ? (
+      {layout === 'kanban' && spec.kanban && pageData.rows.length > 0 ? (
         <div className="flex gap-3 overflow-x-auto pb-2">
           {(state === 'all' ? spec.states : [state]).map((column) => (
             <section key={column} className="w-72 shrink-0 rounded-lg border border-border bg-secondary/40 p-2">
               <h2 className="px-2 py-1 text-sm font-semibold">{stateText(column, t)}</h2>
               <div className="grid gap-2">
-                {rows.data.filter((row) => row.state === column).map((row) => (
+                {pageData.rows.filter((row) => row.state === column).map((row) => (
                   <button key={row.id} type="button" className="rounded-lg border border-border bg-card p-3 text-left shadow-sm" onClick={() => navigate(`/app/${module}/${screen}/${row.id}`)}>
                     <p className="font-semibold">{row.name}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{row.partner || row.owner || '—'}</p>
@@ -287,7 +333,7 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
           ))}
         </div>
       ) : null}
-      {layout === 'list' && rows.data && rows.data.length > 0 ? groups.map((section) => (
+      {layout === 'list' && pageData.rows.length > 0 ? groups.map((section) => (
         <div key={section.key || 'all'} className="overflow-x-auto rounded-lg border border-border bg-card">
           {section.key ? <h2 className="border-b border-border px-4 py-2 text-sm font-semibold">{groupLabel(group, section.key, t)}</h2> : null}
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -316,6 +362,13 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
           </table>
         </div>
       )) : null}
+      {pageData.total > pageData.pageSize ? (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>{t('desk.prev')}</Button>
+          <span className="text-sm text-muted-foreground">{t('desk.page', { page })}</span>
+          <Button size="sm" variant="outline" disabled={page * pageData.pageSize >= pageData.total} onClick={() => setPage((current) => current + 1)}>{t('desk.next')}</Button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -401,7 +454,43 @@ function RecordForm({ module, screen, id, spec, title }: { module: string; scree
         </div>
       </div>
       <div><Button type="submit" disabled={save.isPending}>{t('desk.save')}</Button></div>
+      {!creating ? <Chatter model="desk.record" recordId={Number(id)} /> : null}
     </form>
+  )
+}
+
+function Chatter({ model, recordId }: { model: string; recordId: number }) {
+  const { t } = useI18n()
+  const queryClient = useQueryClient()
+  const [note, setNote] = useState('')
+  const log = useQuery({
+    queryKey: ['chatter', model, recordId],
+    queryFn: () => api<ChatterRow[]>(`/api/chatter?model=${encodeURIComponent(model)}&recordId=${recordId}`),
+    enabled: recordId > 0,
+  })
+  const add = useMutation({
+    mutationFn: () => api('/api/chatter', { method: 'POST', body: JSON.stringify({ model, recordId, summary: note }) }),
+    onSuccess: async () => {
+      setNote('')
+      await queryClient.invalidateQueries({ queryKey: ['chatter', model, recordId] })
+    },
+  })
+  return (
+    <section className="grid gap-3 rounded-lg border border-border bg-card p-4">
+      <h2 className="font-semibold">{t('desk.chatter')}</h2>
+      <ul className="grid gap-2 text-sm">
+        {(log.data ?? []).map((row) => (
+          <li key={row.id}>
+            <span className="text-muted-foreground">{row.user?.name ? `${row.user.name}: ` : ''}</span>
+            {row.summary}
+          </li>
+        ))}
+      </ul>
+      <Field label={t('desk.note')}>
+        <Textarea value={note} onChange={(event) => setNote(event.target.value)} />
+      </Field>
+      <div><Button type="button" variant="outline" disabled={!note.trim() || add.isPending} onClick={() => add.mutate()}>{t('desk.addNote')}</Button></div>
+    </section>
   )
 }
 

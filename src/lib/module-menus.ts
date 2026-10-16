@@ -20,6 +20,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: label('contacts', 'settings'), to: screen('contacts', 'settings') },
       { label: label('contacts', 'tags'), to: screen('contacts', 'tags') },
       { label: label('contacts', 'industries'), to: screen('contacts', 'industries') },
+      { label: label('contacts', 'titles'), to: screen('contacts', 'titles') },
     ] },
   ],
   sales: [
@@ -27,6 +28,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: 'menu.quotations', to: '/orders?state=draft' },
       { label: 'menu.orders', to: '/orders' },
       { label: 'menu.customers', to: '/contacts' },
+      { label: label('sales', 'follow-ups'), to: screen('sales', 'follow-ups') },
     ] },
     { label: 'desk.g.toInvoice', children: [
       { label: label('sales', 'to-invoice'), to: screen('sales', 'to-invoice') },
@@ -88,23 +90,27 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: 'menu.transfers', to: '/inventory/transfers' },
       { label: label('inventory', 'adjustments'), to: screen('inventory', 'adjustments') },
       { label: label('inventory', 'scrap'), to: screen('inventory', 'scrap') },
+      { label: label('inventory', 'putaway'), to: screen('inventory', 'putaway') },
     ] },
     { label: 'menu.products', to: '/products' },
     { label: 'menu.reporting', children: [
       { label: 'menu.onHand', to: '/inventory' },
       { label: 'menu.moves', to: '/inventory/moves' },
       { label: label('inventory', 'valuation'), to: screen('inventory', 'valuation') },
+      { label: 'menu.layers', to: '/inventory/valuation' },
     ] },
     { label: 'desk.g.configuration', children: [
       { label: label('inventory', 'settings'), to: screen('inventory', 'settings') },
       { label: 'menu.warehouses', to: '/inventory/warehouses' },
       { label: label('inventory', 'locations'), to: screen('inventory', 'locations') },
       { label: label('inventory', 'routes'), to: screen('inventory', 'routes') },
+      { label: 'menu.stockRoutes', to: '/inventory/routes' },
     ] },
   ],
   manufacturing: [
     { label: 'menu.operations', children: [
       { label: 'menu.mo', to: '/manufacturing' },
+      { label: label('manufacturing', 'work-orders'), to: screen('manufacturing', 'work-orders') },
       { label: label('manufacturing', 'unbuild'), to: screen('manufacturing', 'unbuild') },
     ] },
     { label: 'menu.products', children: [{ label: 'menu.boms', to: '/boms' }] },
@@ -119,6 +125,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
     { label: 'menu.orders', children: [
       { label: 'menu.sessions', to: '/pos' },
       { label: 'menu.posOrders', to: '/pos/orders' },
+      { label: label('pos', 'floors'), to: screen('pos', 'floors') },
     ] },
     { label: 'menu.products', to: '/products' },
     { label: 'menu.reporting', to: '/pos/report' },
@@ -131,7 +138,9 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
     { label: 'menu.websiteHome', to: '/website' },
     { label: 'menu.products', to: '/products' },
     { label: 'menu.storefront', to: '/shop' },
+    { label: label('website', 'pages'), to: screen('website', 'pages') },
     { label: label('website', 'coupons'), to: screen('website', 'coupons') },
+    { label: 'menu.reporting', children: [{ label: label('website', 'visitors'), to: screen('website', 'visitors') }] },
     { label: 'desk.g.configuration', children: [{ label: label('website', 'settings'), to: screen('website', 'settings') }] },
   ],
   accounting: [
@@ -150,6 +159,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: 'desk.g.entries', to: '/accounting/ledger' },
       { label: label('accounting', 'accounts'), to: screen('accounting', 'accounts') },
       { label: label('accounting', 'reconcile'), to: screen('accounting', 'reconcile') },
+      { label: 'menu.statements', to: '/accounting/statements' },
     ] },
     { label: label('accounting', 'bank'), to: screen('accounting', 'bank') },
     { label: label('accounting', 'budgets'), to: screen('accounting', 'budgets') },
@@ -224,6 +234,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
   payroll: [
     { label: 'menu.payroll', to: '/hr/payroll' },
     { label: label('payroll', 'batches'), to: screen('payroll', 'batches') },
+    { label: label('payroll', 'payslips'), to: screen('payroll', 'payslips') },
     { label: 'menu.reporting', children: [{ label: label('payroll', 'analysis'), to: screen('payroll', 'analysis') }] },
     { label: 'desk.g.configuration', children: [
       { label: label('payroll', 'settings'), to: screen('payroll', 'settings') },
@@ -234,6 +245,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
   expenses: [
     { label: 'menu.expenses', to: '/hr/expenses' },
     { label: label('expenses', 'reports'), to: screen('expenses', 'reports') },
+    { label: label('expenses', 'approvals'), to: screen('expenses', 'approvals') },
     { label: 'menu.reporting', children: [{ label: label('expenses', 'analysis'), to: screen('expenses', 'analysis') }] },
     { label: 'desk.g.configuration', children: [
       { label: label('expenses', 'settings'), to: screen('expenses', 'settings') },
@@ -255,6 +267,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
     { label: label('projects', 'tasks'), to: screen('projects', 'tasks') },
     { label: label('projects', 'timesheets'), to: screen('projects', 'timesheets') },
     { label: label('projects', 'billing'), to: screen('projects', 'billing') },
+    { label: label('projects', 'milestones'), to: screen('projects', 'milestones') },
     { label: 'menu.reporting', children: [{ label: label('projects', 'analysis'), to: screen('projects', 'analysis') }] },
     { label: 'desk.g.configuration', children: [{ label: label('projects', 'settings'), to: screen('projects', 'settings') }] },
   ],
@@ -262,12 +275,14 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
     { label: label('quality', 'inspections'), to: screen('quality', 'inspections') },
     { label: label('quality', 'nonconformance'), to: screen('quality', 'nonconformance') },
     { label: label('quality', 'procedures'), to: screen('quality', 'procedures') },
+    { label: label('quality', 'alerts'), to: screen('quality', 'alerts') },
     { label: 'menu.reporting', children: [{ label: label('quality', 'analysis'), to: screen('quality', 'analysis') }] },
     { label: 'desk.g.configuration', children: [{ label: label('quality', 'settings'), to: screen('quality', 'settings') }] },
   ],
   subcontracting: [
     { label: label('subcontracting', 'orders'), to: screen('subcontracting', 'orders') },
     { label: label('subcontracting', 'receipts'), to: screen('subcontracting', 'receipts') },
+    { label: label('subcontracting', 'resupply'), to: screen('subcontracting', 'resupply') },
     { label: 'menu.reporting', children: [{ label: label('subcontracting', 'analysis'), to: screen('subcontracting', 'analysis') }] },
     { label: 'desk.g.configuration', children: [{ label: label('subcontracting', 'settings'), to: screen('subcontracting', 'settings') }] },
   ],
@@ -279,6 +294,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: label('helpdesk', 'settings'), to: screen('helpdesk', 'settings') },
       { label: label('helpdesk', 'teams'), to: screen('helpdesk', 'teams') },
       { label: label('helpdesk', 'tags'), to: screen('helpdesk', 'tags') },
+      { label: label('helpdesk', 'stages'), to: screen('helpdesk', 'stages') },
     ] },
   ],
 }

@@ -1,10 +1,12 @@
 import { Prisma } from '@prisma/client'
 import type { Hono } from 'hono'
 import { findDeskScreen, settingsScreen } from '../shared/desk-screens.ts'
+import { deskListMeta } from '../shared/views.ts'
 import { deskRecordPatchSchema, deskRecordSchema, moduleSettingsSchema } from '../shared/schemas.ts'
 import type { AppEnv } from './auth.ts'
 import { prisma } from './db.ts'
 import { AppError } from './errors.ts'
+import { assertModelAccess, deskRuleWhere } from './services/access.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -21,13 +23,15 @@ function parseDate(value: string | undefined) {
 
 export function registerDeskRoutes(app: Hono<AppEnv>) {
   app.get('/api/desk-records', async (c) => {
-    const companyId = c.get('user').companyId
+    const user = c.get('user')
+    const companyId = user.companyId
+    const rules = await assertModelAccess(user, 'desk.record', 'read')
     const module = c.req.query('module') ?? ''
     const screen = c.req.query('screen') ?? ''
     if (!findDeskScreen(module, screen)) throw new AppError(404, 'That page is not on this desk.')
     const q = (c.req.query('q') ?? '').trim()
     const state = c.req.query('state') ?? ''
-    const where: Prisma.DeskRecordWhereInput = { companyId, module, screen }
+    const where: Prisma.DeskRecordWhereInput = { companyId, module, screen, ...deskRuleWhere(rules, user) }
     if (state && state !== 'all') where.state = state
     if (q) {
       where.OR = [
@@ -37,14 +41,24 @@ export function registerDeskRoutes(app: Hono<AppEnv>) {
         { notes: { contains: q, mode: 'insensitive' } },
       ]
     }
-    return c.json(await prisma.deskRecord.findMany({
-      where,
-      orderBy: [{ recordDate: 'desc' }, { id: 'desc' }],
-    }))
+    const orderBy = [{ recordDate: 'desc' as const }, { id: 'desc' as const }]
+    const pageRaw = c.req.query('page')
+    if (!pageRaw) {
+      return c.json(await prisma.deskRecord.findMany({ where, orderBy }))
+    }
+    const page = Math.max(1, Number(pageRaw) || 1)
+    const pageSize = Math.min(100, Math.max(1, Number(c.req.query('pageSize') ?? deskListMeta.pageSize) || deskListMeta.pageSize))
+    const [rows, total] = await Promise.all([
+      prisma.deskRecord.findMany({ where, orderBy, skip: (page - 1) * pageSize, take: pageSize }),
+      prisma.deskRecord.count({ where }),
+    ])
+    return c.json({ rows, total, page, pageSize })
   })
 
   app.post('/api/desk-records', async (c) => {
-    const companyId = c.get('user').companyId
+    const user = c.get('user')
+    const companyId = user.companyId
+    await assertModelAccess(user, 'desk.record', 'create')
     const input = parseBody(deskRecordSchema, await c.req.json())
     const screen = findDeskScreen(input.module, input.screen)
     if (!screen || screen.kind !== 'list') throw new AppError(404, 'That page is not on this desk.')
@@ -66,6 +80,16 @@ export function registerDeskRoutes(app: Hono<AppEnv>) {
           recordDate: parseDate(input.recordDate),
         },
       })
+      await prisma.chatterMessage.create({
+        data: {
+          companyId,
+          model: 'desk.record',
+          recordId: row.id,
+          userId: user.id,
+          kind: 'note',
+          summary: `${user.name} created ${row.name}.`,
+        },
+      })
       return c.json(row, 201)
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -76,17 +100,21 @@ export function registerDeskRoutes(app: Hono<AppEnv>) {
   })
 
   app.get('/api/desk-records/:id', async (c) => {
+    const user = c.get('user')
+    const rules = await assertModelAccess(user, 'desk.record', 'read')
     const row = await prisma.deskRecord.findFirst({
-      where: { id: Number(c.req.param('id')), companyId: c.get('user').companyId },
+      where: { id: Number(c.req.param('id')), companyId: user.companyId, ...deskRuleWhere(rules, user) },
     })
     if (!row) throw new AppError(404, 'That record is not in this company.')
     return c.json(row)
   })
 
   app.patch('/api/desk-records/:id', async (c) => {
-    const companyId = c.get('user').companyId
+    const user = c.get('user')
+    const companyId = user.companyId
+    const rules = await assertModelAccess(user, 'desk.record', 'write')
     const existing = await prisma.deskRecord.findFirst({
-      where: { id: Number(c.req.param('id')), companyId },
+      where: { id: Number(c.req.param('id')), companyId, ...deskRuleWhere(rules, user) },
     })
     if (!existing) throw new AppError(404, 'That record is not in this company.')
     const screen = findDeskScreen(existing.module, existing.screen)
@@ -108,6 +136,12 @@ export function registerDeskRoutes(app: Hono<AppEnv>) {
           recordDate: input.recordDate ? parseDate(input.recordDate) : existing.recordDate,
         },
       })
+      const summary = existing.state === row.state
+        ? `${user.name} updated ${row.name}.`
+        : `${user.name} moved ${row.name} from ${existing.state} to ${row.state}.`
+      await prisma.chatterMessage.create({
+        data: { companyId, model: 'desk.record', recordId: row.id, userId: user.id, kind: 'change', summary },
+      })
       return c.json(row)
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -117,8 +151,21 @@ export function registerDeskRoutes(app: Hono<AppEnv>) {
     }
   })
 
+  app.delete('/api/desk-records/:id', async (c) => {
+    const user = c.get('user')
+    const rules = await assertModelAccess(user, 'desk.record', 'delete')
+    const existing = await prisma.deskRecord.findFirst({
+      where: { id: Number(c.req.param('id')), companyId: user.companyId, ...deskRuleWhere(rules, user) },
+    })
+    if (!existing) throw new AppError(404, 'That record is not in this company.')
+    await prisma.deskRecord.delete({ where: { id: existing.id } })
+    return c.json({ ok: true })
+  })
+
   app.get('/api/module-settings', async (c) => {
-    const companyId = c.get('user').companyId
+    const user = c.get('user')
+    await assertModelAccess(user, 'desk.record', 'read')
+    const companyId = user.companyId
     const module = c.req.query('module') ?? ''
     const screen = settingsScreen(module)
     if (!screen) throw new AppError(404, 'That page is not on this desk.')
@@ -133,7 +180,9 @@ export function registerDeskRoutes(app: Hono<AppEnv>) {
   })
 
   app.put('/api/module-settings', async (c) => {
-    const companyId = c.get('user').companyId
+    const user = c.get('user')
+    await assertModelAccess(user, 'desk.record', 'write')
+    const companyId = user.companyId
     const input = parseBody(moduleSettingsSchema, await c.req.json())
     const screen = settingsScreen(input.module)
     if (!screen) throw new AppError(404, 'That page is not on this desk.')

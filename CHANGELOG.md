@@ -1,5 +1,17 @@
 # Changelog
 
+## Groups, books, costing, views, and workflows
+
+Access is no longer a single role string. Each company has Internal, Manager, and Settings groups, a read/write/create/delete grant on each model, and record rules. Settings bypasses those rules. An admin manages people, groups, and grants from Access rights. An internal user can work the lists and cannot delete them.
+
+Bank statements import as date, label, amount. A line can be matched to an invoice in parts, and the match posts the same payment as Pay. Lock dates and tax lock dates refuse a journal, a payment, or a stock valuation on or before that day.
+
+Stocked products use AVCO or FIFO. A receipt writes a valuation layer and debits inventory. An issue consumes the oldest FIFO layer, or the moving average, and posts cost of sales. Transfers can follow Receive → QC → store, or Pick → pack → ship. A transfer without a route still completes in one step.
+
+Every desk list uses the same search, status filters, saved filters, group-by, kanban or table, and pages. Orders, manufacturing orders, transfers, and invoices follow a state machine. A record keeps a chatter log of who changed it and when.
+
+Sales follow-ups, contact titles, putaway, work orders, register floors, shop pages, payslips, expense approvals, milestones, quality alerts, subcontract resupply, and helpdesk stages are on the menus, with sample rows in each company.
+
 ## HR, attendance, finance, procurement, and wastage
 
 HR opens on a dashboard, the roster, departments, designations, an org chart, contracts, jobs, an applicant pipeline, onboarding, appraisals, leave types, leave requests, and approvals. Attendance is its own app: check-in, shifts, rosters, a monthly sheet, late, absent, overtime, a leave calendar, and reports. Finance keeps the invoices, bills, payments, journal, and chart, and adds bank and cash, budgets, cost centres, a cash-flow report, expenses, and a dashboard. Procurement keeps requests and orders, and adds requisitions, quotation comparison, approvals, goods receipt, vendor bills, and vendor scores. Wastage records scrap from the shelf and the shop floor, with a reason, a quantity, a cost, and an approval, plus reports by product, reason, and month. Each company in the seed has these rows. Each app still opens on a tile grid.

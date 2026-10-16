@@ -4,6 +4,7 @@ import type { ShopCheckoutInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, onHand, roundQty, warehouseStockLocation } from './stock.ts'
+import { valueDoneMove } from './valuation.ts'
 
 const orderInclude = {
   customer: { select: { id: true, name: true, email: true, city: true } },
@@ -200,7 +201,7 @@ export async function checkoutShop(input: ShopCheckoutInput, shopCustomerId: num
       if (line.product.type !== 'product') continue
       await applyQuant(tx, line.product.id, source.location.id, -line.quantity)
       await applyQuant(tx, line.product.id, locations.customer.id, line.quantity)
-      await tx.stockMove.create({
+      const move = await tx.stockMove.create({
         data: {
           productId: line.product.id,
           locationFromId: source.location.id,
@@ -212,6 +213,7 @@ export async function checkoutShop(input: ShopCheckoutInput, shopCustomerId: num
           date: new Date(),
         },
       })
+      await valueDoneMove(tx, company.id, move.id)
     }
     return tx.salesOrder.findFirstOrThrow({ where: { id: order.id }, include: orderInclude })
   })

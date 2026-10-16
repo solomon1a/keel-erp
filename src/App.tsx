@@ -5,6 +5,7 @@ import { ToastProvider } from './components/toast.tsx'
 import { ThemeProvider } from './brand/theme.tsx'
 import { LocaleProvider } from './i18n/locale.tsx'
 import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
+import { AccessPage } from './pages/access-page.tsx'
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
@@ -21,6 +22,9 @@ import { BomFormPage } from './pages/bom-form-page.tsx'
 import { BomPrintPage } from './pages/bom-print-page.tsx'
 import { BomsPage } from './pages/boms-page.tsx'
 import { InventoryPage } from './pages/inventory-page.tsx'
+import { RoutesPage } from './pages/routes-page.tsx'
+import { StatementsPage } from './pages/statements-page.tsx'
+import { ValuationPage } from './pages/valuation-page.tsx'
 import { MovesPage } from './pages/moves-page.tsx'
 import { ReplenishPage } from './pages/replenish-page.tsx'
 import { TransferDetailPage } from './pages/transfer-detail-page.tsx'
@@ -151,6 +155,10 @@ export default function App() {
             <Route path="/account/password" element={<PasswordPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/settings/access" element={<AccessPage />} />
+            <Route path="/accounting/statements" element={<StatementsPage />} />
+            <Route path="/inventory/valuation" element={<ValuationPage />} />
+            <Route path="/inventory/routes" element={<RoutesPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -3,6 +3,8 @@ import type { LocationInput, ReorderRuleInput, TransferInput, WarehouseInput } f
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, onHand, roundQty } from './stock.ts'
+import { valueDoneMove } from './valuation.ts'
+import { guardWorkflow } from './workflow.ts'
 
 const transferInclude = {
   locationFrom: { select: { id: true, name: true, type: true, warehouse: { select: { id: true, name: true } } } },
@@ -19,6 +21,7 @@ const transferInclude = {
     },
     orderBy: { id: 'asc' as const },
   },
+  route: { select: { id: true, name: true, kind: true, steps: true } },
 }
 
 async function nextTransferName(tx: Tx): Promise<string> {
@@ -135,6 +138,10 @@ export async function createTransfer(companyId: number, userId: number, input: T
     await internalLocation(tx, companyId, input.locationFromId)
     await internalLocation(tx, companyId, input.locationToId)
     const lines = await buildTransferLines(tx, companyId, input.lines)
+    if (input.routeId) {
+      const route = await tx.stockRoute.findFirst({ where: { id: input.routeId, companyId } })
+      if (!route) throw new AppError(400, 'Choose a route in this company.')
+    }
     return tx.stockTransfer.create({
       data: {
         name: await nextTransferName(tx),
@@ -143,6 +150,7 @@ export async function createTransfer(companyId: number, userId: number, input: T
         locationFromId: input.locationFromId,
         locationToId: input.locationToId,
         createdById: userId,
+        routeId: input.routeId,
         lines: { create: lines },
       },
       include: transferInclude,
@@ -180,6 +188,19 @@ export async function readyTransfer(companyId: number, transferId: number) {
     })
     if (!transfer) throw new AppError(404, 'Transfer not found.')
     if (transfer.state !== 'draft') throw new AppError(409, 'Only a draft transfer can be marked ready.')
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'stock.transfer',
+      recordId: transfer.id,
+      from: transfer.state,
+      to: 'ready',
+      label: transfer.name,
+    })
+    let step: string | null = null
+    if (transfer.routeId) {
+      const route = await tx.stockRoute.findFirst({ where: { id: transfer.routeId, companyId } })
+      step = route?.steps.split(',')[0] ?? null
+    }
     const needed = new Map<number, { name: string; quantity: number }>()
     for (const line of transfer.lines) {
       const current = needed.get(line.productId)
@@ -211,7 +232,7 @@ export async function readyTransfer(companyId: number, transferId: number) {
     }
     return tx.stockTransfer.update({
       where: { id: transfer.id },
-      data: { state: 'ready' },
+      data: { state: 'ready', step },
       include: transferInclude,
     })
   })
@@ -225,10 +246,41 @@ export async function completeTransfer(companyId: number, transferId: number) {
     })
     if (!transfer) throw new AppError(404, 'Transfer not found.')
     if (transfer.state !== 'ready') throw new AppError(409, 'Mark the transfer ready before completing it.')
+    if (transfer.routeId && transfer.step) {
+      const route = await tx.stockRoute.findFirst({ where: { id: transfer.routeId, companyId } })
+      const steps = route?.steps.split(',').filter((step) => step.length > 0) ?? []
+      const index = steps.indexOf(transfer.step)
+      if (index >= 0 && index < steps.length - 1) {
+        const next = steps[index + 1] ?? transfer.step
+        await tx.chatterMessage.create({
+          data: {
+            companyId,
+            model: 'stock.transfer',
+            recordId: transfer.id,
+            kind: 'transition',
+            summary: `${transfer.name}: ${transfer.step} → ${next}`,
+          },
+        })
+        return tx.stockTransfer.update({
+          where: { id: transfer.id },
+          data: { step: next },
+          include: transferInclude,
+        })
+      }
+    }
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'stock.transfer',
+      recordId: transfer.id,
+      from: transfer.state,
+      to: 'done',
+      label: transfer.name,
+    })
     for (const move of transfer.moves.filter((row) => row.state === 'draft')) {
       await applyQuant(tx, move.productId, move.locationFromId, -move.quantity)
       await applyQuant(tx, move.productId, move.locationToId, move.quantity)
-      await tx.stockMove.update({ where: { id: move.id }, data: { state: 'done', date: new Date() } })
+      const done = await tx.stockMove.update({ where: { id: move.id }, data: { state: 'done', date: new Date() } })
+      await valueDoneMove(tx, companyId, done.id)
     }
     return tx.stockTransfer.update({
       where: { id: transfer.id },
@@ -246,6 +298,14 @@ export async function cancelTransfer(companyId: number, transferId: number) {
     if (transfer.state === 'cancel') {
       return tx.stockTransfer.findFirstOrThrow({ where: { id: transferId }, include: transferInclude })
     }
+    await guardWorkflow(tx, {
+      companyId,
+      model: 'stock.transfer',
+      recordId: transfer.id,
+      from: transfer.state,
+      to: 'cancel',
+      label: transfer.name,
+    })
     await tx.stockMove.updateMany({
       where: { transferId, state: 'draft' },
       data: { state: 'cancel' },

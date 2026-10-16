@@ -45,6 +45,7 @@ import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
+import { registerCoreRoutes } from './core-routes.ts'
 import { registerDeskRoutes } from './desk-routes.ts'
 import { registerPayrollRoutes } from './payroll-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
@@ -67,6 +68,7 @@ import {
   updateWarehouse,
 } from './services/inventory.ts'
 import { AppError } from './errors.ts'
+import { ensureMembership } from './services/access.ts'
 import {
   closePosSession,
   createPosOrder,
@@ -242,6 +244,7 @@ export function createApp() {
         },
         select: { id: true, name: true, email: true, role: true, createdAt: true },
       })
+      await ensureMembership(prisma, { id: created.id, companyId: user.companyId, role: input.role })
       return c.json(created, 201)
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -973,6 +976,7 @@ export function createApp() {
   registerHrRoutes(app)
   registerPayrollRoutes(app)
   registerDeskRoutes(app)
+  registerCoreRoutes(app)
 
   return app
 }

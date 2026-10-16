@@ -1,4 +1,5 @@
 import { seedDeskForCompany } from '../../prisma/seed-desk.ts'
+import { ensureCompanyAccess, ensureMembership } from './access.ts'
 import { signupCountries } from '../../shared/schemas.ts'
 import { hashPassword } from '../auth.ts'
 import { prisma, type Tx } from '../db.ts'
@@ -24,6 +25,8 @@ const books = [
   ['222102', 'Input tax', 'liability'],
   ['6001', 'Sales', 'income'],
   ['6401', 'Cost of sales', 'expense'],
+  ['2203', 'Goods received not invoiced', 'liability'],
+  ['1407', 'Work in progress', 'asset'],
 ] as const
 
 const journals = [
@@ -131,6 +134,8 @@ export async function provisionCompany(input: {
     await openBooks(tx, company.id)
     if (input.loadSample) await loadSample(tx, company.id, admin.id, preset)
     await seedDeskForCompany(tx, company.id)
+    await ensureCompanyAccess(tx, company.id)
+    await ensureMembership(tx, { id: admin.id, companyId: company.id, role: 'admin' })
     return { user: admin, locale: preset.locale }
   }, { maxWait: 20000, timeout: 120000 })
 }
