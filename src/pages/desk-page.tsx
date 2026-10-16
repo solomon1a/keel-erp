@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { BarChart } from '../components/bar-chart.tsx'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { orderStateLabel } from '../i18n/labels.ts'
@@ -30,10 +31,7 @@ export function DeskPage() {
   const money = useMoney()
   const shortDate = useShortDate()
   const desk = useQuery({ queryKey: ['desk'], queryFn: () => api<Desk>('/api/desk') })
-  if (desk.isLoading) return <p className="text-sm text-muted-foreground">{t('desk.loading')}</p>
-  if (desk.isError) return <p className="text-sm text-destructive">{desk.error.message}</p>
   const data = desk.data
-  if (!data) return null
 
   return (
     <div className="grid gap-8">
@@ -41,12 +39,28 @@ export function DeskPage() {
         <h1 className="font-serif text-4xl tracking-tight">{t('desk.title')}</h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">{t('desk.lead')}</p>
       </div>
+      {desk.isPending && !data ? <div className="h-40 animate-pulse rounded-lg bg-secondary/70" /> : null}
+      {desk.isError ? <p className="text-sm text-destructive">{desk.error.message}</p> : null}
+      {data ? (
+      <>
+      <section className="rounded-lg border border-border bg-card p-4">
+        <h2 className="mb-3 font-serif text-2xl">{t('chart.title')}</h2>
+        <BarChart
+          rows={[
+            { label: t('desk.openOrders'), value: data.openOrders, display: String(data.openOrders) },
+            { label: t('desk.pipeline'), value: data.pipelineCount, display: money(data.pipelineValue) },
+            { label: t('desk.shopOrders'), value: data.shopOrders, display: String(data.shopOrders) },
+            { label: t('desk.staff'), value: data.staff, display: String(data.staff) },
+            { label: t('desk.low'), value: data.lowStock.length, display: String(data.lowStock.length) },
+          ]}
+        />
+      </section>
       <div className="grid gap-3 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4">
         <Stat label={t('desk.openOrders')} value={String(data.openOrders)} to="/orders" />
         <Stat label={t('desk.pipeline')} value={money(data.pipelineValue)} hint={t('desk.pipelineCount', { count: data.pipelineCount })} to="/crm" />
         <Stat label={t('desk.receivable')} value={money(data.receivable)} to="/accounting" />
         <Stat label={t('desk.payable')} value={money(data.payable)} to="/accounting" />
-        <Stat label={t('desk.shopOrders')} value={String(data.shopOrders)} to="/shop" />
+        <Stat label={t('desk.shopOrders')} value={String(data.shopOrders)} to="/website" />
         <Stat label={t('desk.profit')} value={money(data.profit)} to="/accounting/reports" />
         <Stat label={t('desk.vat')} value={money(data.vatPayable)} to="/accounting/reports" />
         <Stat label={t('desk.staff')} value={String(data.staff)} hint={t('desk.leaveCount', { count: data.leaveWaiting })} to="/hr" />
@@ -108,6 +122,8 @@ export function DeskPage() {
           )}
         </section>
       </div>
+      </>
+      ) : null}
     </div>
   )
 }

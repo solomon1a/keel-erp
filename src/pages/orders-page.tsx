@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -24,11 +23,19 @@ export function OrdersPage() {
   const { t } = useI18n()
   const money = useMoney()
   const shortDate = useShortDate()
-  const [state, setState] = useState('all')
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const state = params.get('state') ?? 'all'
   const orders = useQuery({
     queryKey: ['orders', state],
     queryFn: () => api<SalesOrder[]>(`/api/orders?state=${state}`),
   })
+  function setState(value: string) {
+    const next = new URLSearchParams(params)
+    if (value === 'all') next.delete('state')
+    else next.set('state', value)
+    setParams(next)
+  }
 
   return (
     <div className="grid gap-6">
@@ -46,10 +53,10 @@ export function OrdersPage() {
           </Button>
         ))}
       </div>
-      {orders.isLoading ? <p className="text-sm text-muted-foreground">{t('orders.loading')}</p> : null}
       {orders.isError ? <p className="text-sm text-destructive">{orders.error.message}</p> : null}
+      {orders.isPending && !orders.data ? <div className="h-24 animate-pulse rounded-lg bg-secondary/70" /> : null}
       {orders.data && orders.data.length === 0 ? (
-        <EmptyState title={t('orders.emptyTitle')} body={t('orders.emptyBody')} />
+        <EmptyState title={t('orders.emptyTitle')} body={t('orders.emptyBody')} action={{ to: '/orders/new', label: t('orders.new') }} />
       ) : null}
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full min-w-[680px] text-left text-sm">
@@ -64,7 +71,7 @@ export function OrdersPage() {
           </thead>
           <tbody>
             {orders.data?.map((order) => (
-              <tr key={order.id} className="border-b border-border last:border-0">
+              <tr key={order.id} className="record-row border-b border-border last:border-0" onClick={() => navigate(`/orders/${order.id}`)}>
                 <td className="px-4 py-3">
                   <Link className="font-semibold hover:underline" to={`/orders/${order.id}`}>{order.name}</Link>
                   {order.origin === 'shop' ? <span className="ml-2 text-xs text-muted-foreground">{t('order.shopOrigin')}</span> : null}

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
+import { useToast } from '../components/toast.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
@@ -79,6 +80,7 @@ export function CrmPage() {
   const money = useMoney()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const [error, setError] = useState('')
   const [form, setForm] = useState({ name: '', contactName: '', email: '', phone: '', expectedRevenue: '' })
   const leads = useQuery({ queryKey: ['leads'], queryFn: () => api<Lead[]>('/api/leads') })
@@ -104,7 +106,10 @@ export function CrmPage() {
   const move = useMutation({
     mutationFn: ({ lead, stage }: { lead: Lead; stage: string }) =>
       api(`/api/leads/${lead.id}`, { method: 'PATCH', body: JSON.stringify(leadBody(lead, stage)) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] }),
+    onSuccess: () => {
+      toast(t('toast.moved'))
+      void queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('crm.failed')),
   })
 
@@ -148,7 +153,17 @@ export function CrmPage() {
         {stages.map((stage) => {
           const column = leads.data?.filter((lead) => lead.stage === stage) ?? []
           return (
-            <section key={stage} className="rounded-lg border border-border bg-secondary/40 p-3">
+            <section
+              key={stage}
+              className="rounded-lg border border-border bg-secondary/40 p-3"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault()
+                const id = Number(event.dataTransfer.getData('text/plain'))
+                const lead = leads.data?.find((row) => row.id === id)
+                if (lead && lead.stage !== stage) move.mutate({ lead, stage })
+              }}
+            >
               <h2 className="mb-3 text-sm font-semibold">{t(stageKey(stage))}</h2>
               {column.length === 0 ? <p className="text-xs text-muted-foreground">{t('crm.empty')}</p> : null}
               <div className="grid gap-2">
@@ -157,7 +172,12 @@ export function CrmPage() {
                   const earlier = index > 0 ? stages[index - 1] : null
                   const later = index < stages.length - 1 ? stages[index + 1] : null
                   return (
-                    <article key={lead.id} className="rounded-md border border-border bg-card p-3">
+                    <article
+                      key={lead.id}
+                      draggable
+                      onDragStart={(event) => event.dataTransfer.setData('text/plain', String(lead.id))}
+                      className="cursor-grab rounded-md border border-border bg-card p-3 transition hover:-translate-y-0.5 hover:border-primary/40 active:cursor-grabbing"
+                    >
                       <Link className="font-semibold hover:underline" to={`/crm/${lead.id}`}>{lead.name}</Link>
                       <p className="mt-1 text-sm text-muted-foreground">{lead.contactName}</p>
                       <p className="text-sm">{money(lead.expectedRevenue)}</p>

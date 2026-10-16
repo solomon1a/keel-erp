@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -24,6 +24,7 @@ export function PurchasesPage() {
   const { t } = useI18n()
   const money = useMoney()
   const shortDate = useShortDate()
+  const navigate = useNavigate()
   const [state, setState] = useState('all')
   const orders = useQuery({
     queryKey: ['purchases', state],
@@ -52,7 +53,7 @@ export function PurchasesPage() {
       {orders.isLoading ? <p className="text-sm text-muted-foreground">{t('purchases.loading')}</p> : null}
       {orders.isError ? <p className="text-sm text-destructive">{orders.error.message}</p> : null}
       {orders.data && orders.data.length === 0 ? (
-        <EmptyState title={t('purchases.emptyTitle')} body={t('purchases.emptyBody')} />
+        <EmptyState title={t('purchases.emptyTitle')} body={t('purchases.emptyBody')} action={{ to: '/purchases/new', label: t('purchases.new') }} />
       ) : null}
       {orders.data && orders.data.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-border bg-card">
@@ -68,7 +69,7 @@ export function PurchasesPage() {
             </thead>
             <tbody>
               {orders.data.map((order) => (
-                <tr key={order.id} className="border-b border-border last:border-0">
+                <tr key={order.id} className="record-row border-b border-border last:border-0" onClick={() => navigate(`/purchases/${order.id}`)}>
                   <td className="px-4 py-3">
                     <Link className="font-semibold hover:underline" to={`/purchases/${order.id}`}>{order.name}</Link>
                   </td>

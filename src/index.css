@@ -50,3 +50,31 @@ body {
 button, input, select, textarea {
   font: inherit;
 }
+
+.keel-page {
+  animation: keel-rise 160ms ease;
+}
+
+@keyframes keel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.keel-toast {
+  animation: keel-rise 160ms ease;
+}
+
+tbody tr.record-row {
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+tbody tr.record-row:hover {
+  background: color-mix(in srgb, var(--color-secondary) 70%, transparent);
+}

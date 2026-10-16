@@ -71,7 +71,7 @@ async function seedOne(client: PrismaClient, row: (typeof demoPay)[number]) {
           },
         },
       })
-    })
+    }, { maxWait: 20000, timeout: 120000 })
   }
   const reimbursed = await client.expenseClaim.findFirst({ where: { companyId: company.id, name: 'EX0001' } })
   if (!reimbursed) {
@@ -109,7 +109,7 @@ async function seedOne(client: PrismaClient, row: (typeof demoPay)[number]) {
           entryId: entry.id,
         },
       })
-    })
+    }, { maxWait: 20000, timeout: 120000 })
   }
   const waiting = await client.expenseClaim.findFirst({ where: { companyId: company.id, name: 'EX0002' } })
   if (!waiting) {

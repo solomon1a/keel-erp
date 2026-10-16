@@ -148,9 +148,227 @@ async function ensureTax(client: PrismaClient, name: string, rate: number) {
   return client.tax.create({ data: { name, rate, isDefault: false } })
 }
 
+async function enrichRegion(client: PrismaClient, companyId: number, region: Region) {
+  const admin = await client.user.findUnique({ where: { email: region.adminEmail } })
+  const warehouse = await client.warehouse.findFirst({ where: { companyId, code: region.warehouseCode } })
+  const product = await client.product.findFirst({ where: { companyId, sku: region.productSku } })
+  const vendor = await client.contact.findFirst({ where: { companyId, email: region.vendorEmail } })
+  const shelf = warehouse
+    ? await client.stockLocation.findFirst({ where: { companyId, warehouseId: warehouse.id, name: region.shelfName, type: 'internal' } })
+    : null
+  if (!admin || !warehouse || !product || !vendor || !shelf) return
+  const tax = await client.tax.findFirst({ where: { name: region.taxName } })
+  const priced = roundMoney(region.productPrice)
+  const cost = roundMoney(priced * 0.4)
+
+  const accessorySku = `${region.productSku}-B`
+  if (!(await client.product.findFirst({ where: { companyId, sku: accessorySku } }))) {
+    const accessory = await client.product.create({
+      data: {
+        name: `${region.productName} spare`,
+        sku: accessorySku,
+        type: 'product',
+        kind: 'finished',
+        listPrice: roundMoney(priced * 0.25),
+        costPrice: roundMoney(cost * 0.25),
+        purchasable: true,
+        websitePublished: true,
+        companyId,
+        description: `A spare sold beside the ${region.productName}.`,
+      },
+    })
+    await client.stockQuant.create({ data: { productId: accessory.id, locationId: shelf.id, quantity: 8 } })
+  }
+
+  const rawSku = `${region.productSku}-RM`
+  let raw = await client.product.findFirst({ where: { companyId, sku: rawSku } })
+  if (!raw) {
+    raw = await client.product.create({
+      data: {
+        name: `${region.productName} cloth`,
+        sku: rawSku,
+        type: 'product',
+        kind: 'raw',
+        listPrice: 0,
+        costPrice: roundMoney(cost * 0.5),
+        purchasable: true,
+        companyId,
+        description: `Cloth used to make the ${region.productName}.`,
+      },
+    })
+    await client.stockQuant.create({ data: { productId: raw.id, locationId: shelf.id, quantity: 40 } })
+  }
+
+  if (tax && !(await client.purchaseOrder.findFirst({ where: { companyId, name: 'PO0001' } }))) {
+    const subtotal = roundMoney(cost * 10)
+    const taxAmount = roundMoney(subtotal * (region.taxRate / 100))
+    await client.purchaseOrder.create({
+      data: {
+        name: 'PO0001',
+        state: 'draft',
+        vendorId: vendor.id,
+        companyId,
+        dateOrder: new Date('2026-04-18T09:00:00.000Z'),
+        amountUntaxed: subtotal,
+        amountTax: taxAmount,
+        amountTotal: roundMoney(subtotal + taxAmount),
+        warehouseId: warehouse.id,
+        createdById: admin.id,
+        lines: {
+          create: [{
+            productId: raw.id,
+            description: raw.name,
+            quantity: 10,
+            unitCost: cost,
+            taxId: tax.id,
+            subtotal,
+            taxAmount,
+          }],
+        },
+      },
+    })
+  }
+
+  let bom = await client.billOfMaterials.findFirst({ where: { companyId, productId: product.id } })
+  if (!bom) {
+    bom = await client.billOfMaterials.create({
+      data: {
+        productId: product.id,
+        companyId,
+        yieldQty: 1,
+        notes: `One ${region.productName} cut from ${raw.name}.`,
+        lines: { create: [{ productId: raw.id, quantity: 1 }] },
+      },
+    })
+  }
+  if (!(await client.manufacturingOrder.findFirst({ where: { companyId, name: 'MO0001' } }))) {
+    await client.manufacturingOrder.create({
+      data: {
+        name: 'MO0001',
+        state: 'draft',
+        productId: product.id,
+        bomId: bom.id,
+        companyId,
+        quantity: 4,
+        sourceWarehouseId: warehouse.id,
+        destWarehouseId: warehouse.id,
+        createdById: admin.id,
+        lines: { create: [{ productId: raw.id, quantity: 4 }] },
+      },
+    })
+  }
+
+  let reserve = await client.stockLocation.findFirst({ where: { companyId, warehouseId: warehouse.id, name: 'Reserve' } })
+  if (!reserve) {
+    reserve = await client.stockLocation.create({
+      data: { name: 'Reserve', type: 'internal', warehouseId: warehouse.id, companyId },
+    })
+  }
+  if (!(await client.stockTransfer.findFirst({ where: { companyId, name: 'INT0001' } }))) {
+    await client.stockTransfer.create({
+      data: {
+        name: 'INT0001',
+        state: 'draft',
+        companyId,
+        locationFromId: shelf.id,
+        locationToId: reserve.id,
+        createdById: admin.id,
+        lines: { create: [{ productId: product.id, quantity: 2 }] },
+      },
+    })
+  }
+  if (!(await client.reorderRule.findFirst({ where: { productId: product.id, warehouseId: warehouse.id } }))) {
+    await client.reorderRule.create({
+      data: { productId: product.id, warehouseId: warehouse.id, companyId, minQty: 20, maxQty: 30 },
+    })
+  }
+  const displayName = `${region.city} window display`
+  if (!(await client.lead.findFirst({ where: { companyId, name: displayName } }))) {
+    await client.lead.create({
+      data: {
+        name: displayName,
+        contactName: region.leadContact,
+        email: region.leadEmail,
+        expectedRevenue: 400,
+        stage: 'new',
+        companyId,
+        userId: admin.id,
+      },
+    })
+  }
+  if (!(await client.posSession.findFirst({ where: { companyId, name: 'SES0001' } }))) {
+    const opened = await client.posSession.create({
+      data: {
+        name: 'SES0001',
+        state: 'open',
+        warehouseId: warehouse.id,
+        companyId,
+        openingCash: region.currency === 'GBP' ? 80 : 100,
+        openedById: admin.id,
+        openedAt: new Date('2026-04-22T09:00:00.000Z'),
+      },
+    })
+    const taxAmount = roundMoney(priced * (region.taxRate / 100))
+    const total = roundMoney(priced + taxAmount)
+    const customers = await client.stockLocation.findFirst({ where: { companyId, type: 'customer' } })
+    await client.posOrder.create({
+      data: {
+        name: 'POS0001',
+        state: 'paid',
+        sessionId: opened.id,
+        companyId,
+        warehouseId: warehouse.id,
+        amountUntaxed: priced,
+        amountTax: taxAmount,
+        amountTotal: total,
+        createdById: admin.id,
+        createdAt: new Date('2026-04-22T11:00:00.000Z'),
+        lines: {
+          create: [{
+            productId: product.id,
+            description: product.name,
+            quantity: 1,
+            unitPrice: priced,
+            discount: 0,
+            taxRate: region.taxRate,
+            subtotal: priced,
+            taxAmount,
+          }],
+        },
+        payments: { create: [{ method: 'card', direction: 'payment', amount: total }] },
+      },
+    })
+    if (customers) {
+      await client.stockMove.create({
+        data: {
+          productId: product.id,
+          locationFromId: shelf.id,
+          locationToId: customers.id,
+          quantity: 1,
+          state: 'done',
+          reference: 'POS0001',
+          date: new Date('2026-04-22T11:00:00.000Z'),
+        },
+      })
+      const quant = await client.stockQuant.findUnique({
+        where: { productId_locationId: { productId: product.id, locationId: shelf.id } },
+      })
+      if (quant) {
+        await client.stockQuant.update({
+          where: { productId_locationId: { productId: product.id, locationId: shelf.id } },
+          data: { quantity: Math.max(0, quant.quantity - 1) },
+        })
+      }
+    }
+  }
+}
+
 async function seedRegion(client: PrismaClient, region: Region) {
   const existing = await client.company.findFirst({ where: { name: region.companyName } })
-  if (existing) return
+  if (existing) {
+    await enrichRegion(client, existing.id, region)
+    return
+  }
 
   const country = await ensureCountry(
     client,
@@ -466,6 +684,7 @@ async function seedRegion(client: PrismaClient, region: Region) {
       },
     },
   })
+  await enrichRegion(client, company.id, region)
 }
 
 export async function seedRegionalCompanies(client: PrismaClient) {
