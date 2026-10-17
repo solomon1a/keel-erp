@@ -30,10 +30,10 @@ export function KpiGrid({ children }: { children: ReactNode }) {
   return <div className="keel-kpis">{children}</div>
 }
 
-export function Kpi({ label, value, hint, tone = 'default' }: { label: string; value: string; hint?: string; tone?: 'default' | 'profit' }) {
+export function Kpi({ label, value, hint, tone = 'default', tour }: { label: string; value: string; hint?: string; tone?: 'default' | 'profit'; tour?: string }) {
   const Icon = tone === 'profit' ? TrendingUp : Wallet
   return (
-    <article className={cn('keel-kpi', tone === 'profit' && 'keel-kpi-profit')}>
+    <article className={cn('keel-kpi', tone === 'profit' && 'keel-kpi-profit')} data-tour={tour}>
       <div className="keel-kpi-top">
         <span className="keel-kpi-icon" aria-hidden>
           <Icon />

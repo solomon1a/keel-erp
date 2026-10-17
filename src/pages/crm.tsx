@@ -123,7 +123,7 @@ export function CrmPage() {
     <div className="grid gap-5">
       <PageHeader title={t('crm.title')} lead={t('crm.lead')} />
       {error ? <Notice message={error} /> : null}
-      <form onSubmit={onCreate} className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-6">
+      <form onSubmit={onCreate} data-tour="tour-lead" className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-6">
         <Field label={t('crm.name')}>
           <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
         </Field>
@@ -269,9 +269,9 @@ export function LeadPage() {
           <>
             <Link className="keel-back" to="/crm">{t('crm.back')}</Link>
             {current.orderId ? (
-              <Link to={`/orders/${current.orderId}`}><Button>{t('crm.quotation')}</Button></Link>
+              <Link to={`/orders/${current.orderId}`} data-tour="tour-lead"><Button>{t('crm.quotation')}</Button></Link>
             ) : (
-              <Button disabled={convert.isPending || current.stage === 'lost'} onClick={() => convert.mutate()}>
+              <Button data-tour="tour-lead" disabled={convert.isPending || current.stage === 'lost'} onClick={() => convert.mutate()}>
                 {convert.isPending ? t('crm.converting') : t('crm.convert')}
               </Button>
             )}

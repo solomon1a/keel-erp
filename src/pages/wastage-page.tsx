@@ -74,7 +74,7 @@ export function WastagePage() {
           <figcaption className="text-sm text-muted-foreground">{t('floor.scrapHeld')}</figcaption>
           <p className="font-serif text-3xl">{money(data.scrap)}</p>
         </figure>
-        <figure className="rounded-lg border border-border bg-card px-4 py-3">
+        <figure className="rounded-lg border border-border bg-card px-4 py-3" data-tour="tour-wastage">
           <figcaption className="text-sm text-muted-foreground">{t('floor.expected')} / {t('floor.actual')}</figcaption>
           <p className="font-serif text-3xl">{data.expected} / {data.actual}</p>
           <p className="text-sm text-muted-foreground">{data.variancePct}%</p>

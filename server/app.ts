@@ -49,6 +49,7 @@ import { dbTarget, prisma } from './db.ts'
 import { startQueryTiming } from './timing.ts'
 import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
+import { registerDemoTourRoutes } from './demo-tour-routes.ts'
 import { registerTradeRoutes } from './trade-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
@@ -1106,6 +1107,7 @@ export function createApp() {
 
   registerShopRoutes(app)
   registerTradeRoutes(app)
+  registerDemoTourRoutes(app)
   registerAccountingRoutes(app)
   registerCrmRoutes(app)
   registerHrRoutes(app)

@@ -153,12 +153,12 @@ export function OrderDetailPage() {
         </div>
       </div>
       {error ? <Notice message={error} /> : null}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" data-tour="tour-deliver">
         {editable ? <Link to={`/orders/${row.id}/edit`}><Button variant="outline">{t('order.edit')}</Button></Link> : null}
         {row.state === 'draft' ? <Button variant="secondary" disabled={act.isPending} onClick={() => act.mutate('send')}>{t('order.markSent')}</Button> : null}
-        {editable ? <Button disabled={act.isPending} onClick={() => act.mutate('confirm')}>{t('order.confirm')}</Button> : null}
+        {editable ? <Button data-tour="tour-confirm" disabled={act.isPending} onClick={() => act.mutate('confirm')}>{t('order.confirm')}</Button> : null}
         {row.state === 'sale' ? (
-          <Button disabled={act.isPending} onClick={() => act.mutate('deliver')}>
+          <Button data-tour="tour-deliver" disabled={act.isPending} onClick={() => act.mutate('deliver')}>
             {hasGoods ? t('order.deliver') : t('order.fulfill')}
           </Button>
         ) : null}

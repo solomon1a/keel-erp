@@ -1,5 +1,9 @@
 # Changelog
 
+## Guided demo
+
+A presenter can start a guided demo from the app launcher or the account menu and walk one order from a lead to the dashboard. Each step spotlights the real control. Do it for me runs that step through the same APIs a person would use, including the shortage when the finished good is not on the shelf yet. Progress is saved on the company, so the walk can be resumed, skipped, or started again. Reset demo data, which only an admin can run, deletes that company's demo documents and puts stock, cost, and the ledger back to the baseline captured when the first walk began. Other companies are left alone. A company with no bill, customer, and supplier does not see the tour.
+
 ## Seed survives a slow link to Singapore
 
 Interactive transactions on the app client and the seed client wait up to 15 seconds for a connection and run for up to 60 seconds. Posting or paying an invoice is about a dozen queries, so from the sin1 runtime (~30ms) it stays under a second. Producing a normal bill is longer and still a few seconds from sin1. The build seed runs in iad1, where the same confirm used to die at the old 5 second default.

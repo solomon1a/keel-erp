@@ -360,7 +360,7 @@ export function ReportsPage() {
           <KpiGrid>
             <Kpi label={t('acct.income')} value={money(income)} />
             <Kpi label={t('acct.expense')} value={money(expense)} />
-            <Kpi label={t('acct.profit')} value={money(profit)} hint={`${t('acct.margin')} ${margin}`} tone="profit" />
+            <Kpi label={t('acct.profit')} value={money(profit)} hint={`${t('acct.margin')} ${margin}`} tone="profit" tour="tour-profit" />
           </KpiGrid>
           <Panel>
             <BarChart rows={[

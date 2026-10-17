@@ -500,7 +500,7 @@ function LiveBoard({
   return (
     <div className="home-board mt-5" aria-busy={busy}>
       <div className="home-main">
-        <section className="home-kpis grid grid-cols-2 gap-3 min-[1100px]:grid-cols-4">
+        <section className="home-kpis grid grid-cols-2 gap-3 min-[1100px]:grid-cols-4" data-tour="tour-dashboard">
           <Kpi icon={<TrendingUp className="size-5" />} color="#0E6B5C" label={t('home.kpi.revenue')} value={money(data.kpis.revenue.amount)}>
             <span className={cn('home-pill', revenueTrend.tone)}>{revenueTrend.text}</span>
             <span className="text-xs text-muted-foreground">{t(compareKey(range))}</span>

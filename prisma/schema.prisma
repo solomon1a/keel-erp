@@ -73,6 +73,7 @@ model Company {
   receipts       PurchaseReceipt[]
   materialRequests MaterialRequest[]
   supplierQuotes SupplierQuotation[]
+  demoRuns       DemoRun[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -102,6 +103,7 @@ model User {
   memberships          GroupMember[]
   savedFilters         SavedFilter[]
   chatter              ChatterMessage[]
+  demoRuns             DemoRun[]
   createdAt            DateTime            @default(now())
 }
 
@@ -1583,4 +1585,33 @@ model SupplierQuotationLine {
   productId Int
   quantity  Float
   unitCost  Float
+}
+
+/// One guided-demo walk for a company. Document ids are plain numbers so a reset can delete the documents first.
+model DemoRun {
+  id                   Int      @id @default(autoincrement())
+  companyId            Int
+  company              Company  @relation(fields: [companyId], references: [id])
+  userId               Int
+  user                 User     @relation(fields: [userId], references: [id])
+  step                 Int      @default(0)
+  /// active, done, or skipped
+  status               String   @default("active")
+  serial               Int
+  leadId               Int?
+  quotationId          Int?
+  salesOrderId         Int?
+  purchaseOrderId      Int?
+  manufacturingOrderId Int?
+  invoiceId            Int?
+  contactId            Int?
+  finishedId           Int?
+  componentId          Int?
+  note                 String?
+  /// Baseline stock and the story (product, material, quantity) captured before the first change.
+  snapshot             Json
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([companyId])
 }

@@ -77,7 +77,7 @@ export function PurchaseDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">{shortDate(row.dateOrder)}</p>
-          <h1 className="font-serif text-4xl tracking-tight">{row.name}</h1>
+          <h1 className="font-serif text-4xl tracking-tight" data-tour="tour-receive">{row.name}</h1>
           <p className="mt-1">
             <Link className="font-medium hover:underline" to={`/contacts/${row.vendorId}`}>{row.vendor.name}</Link>
           </p>
@@ -177,6 +177,7 @@ export function PurchaseDetailPage() {
           <div className="flex flex-wrap gap-2">
             {draftMoves.length > 0 ? (
               <Button
+                data-tour="tour-receive"
                 disabled={receive.isPending}
                 onClick={() => {
                   const lines = draftMoves
@@ -193,7 +194,7 @@ export function PurchaseDetailPage() {
                 {t('purchase.receive')}
               </Button>
             ) : (
-              <Button disabled={receive.isPending} onClick={() => receive.mutate({})}>{t('purchase.receive')}</Button>
+              <Button data-tour="tour-receive" disabled={receive.isPending} onClick={() => receive.mutate({})}>{t('purchase.receive')}</Button>
             )}
             {draftMoves.length > 0 ? (
               <Button variant="secondary" disabled={receive.isPending} onClick={() => receive.mutate({})}>

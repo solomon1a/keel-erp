@@ -15,6 +15,7 @@ import { prefetchHref } from '../lib/prefetch.ts'
 import type { User } from '../lib/types.ts'
 import { cn } from '../lib/utils.ts'
 import { BarChart } from './bar-chart.tsx'
+import { DemoLaunch, DemoTour } from './demo-tour.tsx'
 import { LanguageSwitcher } from './language-switcher.tsx'
 import { Button } from './ui/button.tsx'
 
@@ -197,6 +198,7 @@ function AccountMenu({ user }: { user: User }) {
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
+          <DemoLaunch place="menu" />
           {user.role === 'admin' ? (
             <Link className="keel-chip mt-3 w-full justify-start" to="/admin/users" onClick={() => setOpen(false)}>
               <Users className="size-4" />
@@ -354,6 +356,7 @@ export function Shell() {
           )}
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <div className="hidden items-center gap-1 lg:flex">
+              <DemoLaunch place="header" />
               <LanguageSwitcher />
               <ThemeToggle />
               {me.data.role === 'admin' ? (
@@ -407,6 +410,7 @@ export function Shell() {
         {showPulse && mod ? <ModulePulse mod={mod} /> : null}
         <Outlet />
       </main>
+      <DemoTour />
     </div>
   )
 }
