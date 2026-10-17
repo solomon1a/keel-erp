@@ -11,7 +11,6 @@ import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
 import { AppsPage } from './pages/apps-page.tsx'
-import { HomePage } from './pages/home-page.tsx'
 import { DeskFormPage, DeskScreenPage } from './pages/desk-screen.tsx'
 import { ModuleHubPage } from './pages/module-hub.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
@@ -97,8 +96,8 @@ export default function App() {
           <Route path="/pos/orders/:id/print" element={<PosReceiptPage />} />
           <Route path="/accounting/:id/print" element={<InvoicePrintPage />} />
           <Route element={<Shell />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/apps" element={<AppsPage />} />
+            <Route path="/" element={<AppsPage />} />
+            <Route path="/apps" element={<Navigate to="/" replace />} />
             <Route path="/go/:moduleId/:segment?" element={<ModuleHubPage />} />
             <Route path="/desk" element={<DeskPage />} />
             <Route path="/app/:module/:screen/new" element={<DeskFormPage />} />

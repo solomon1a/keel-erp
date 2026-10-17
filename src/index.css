@@ -638,6 +638,8 @@ tbody tr.record-row:hover {
 }
 
 .home-kpis { order: 1; }
+.home-kpi { container-type: inline-size; }
+.home-kpi-value { font-size: clamp(15px, 10cqi, 26px); }
 .home-bank { order: 2; }
 .home-chart { order: 3; }
 .home-attention { order: 4; }
@@ -776,6 +778,7 @@ tbody tr.record-row:hover {
     align-items: start;
     grid-template-areas:
       'kpis kpis side'
+      'bank bank side'
       'chart pipeline side'
       'orders orders side';
   }
@@ -788,10 +791,10 @@ tbody tr.record-row:hover {
     grid-area: side;
   }
   .home-kpis { grid-area: kpis; order: 0; }
+  .home-bank { grid-area: bank; order: 0; }
   .home-chart { grid-area: chart; order: 0; }
   .home-pipeline { grid-area: pipeline; order: 0; }
   .home-orders { grid-area: orders; order: 0; }
-  .home-bank { display: none; }
   .home-attention,
   .home-stock,
   .home-apps { order: 0; }

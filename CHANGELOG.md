@@ -2,7 +2,7 @@
 
 ## Home overview
 
-The page after sign-in is the company dashboard. The glass bar searches orders, contacts, and products, and shows the bank balance for cash and bank. Today, week, month, and year change the revenue and profit comparison. Receivables, payables, the pipeline, recent orders, low stock, and the attention list are rows from that company only. A self-serve company with no orders and no journals gets the six-step setup instead of empty charts. The app launcher is at `/apps`.
+Sign-in opens the app launcher. The Dashboard tile opens the company overview, with the same glass top bar as the other apps and a breadcrumb back to Apps. Today, week, month, and year change the revenue and profit comparison. Receivables, payables, the pipeline, recent orders, low stock, and the attention list are rows from that company only. A self-serve company with no orders and no journals gets the six-step setup instead of empty charts. `/apps` returns to the launcher.
 
 ## Selling and buying
 
