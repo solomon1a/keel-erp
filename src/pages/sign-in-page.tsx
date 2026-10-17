@@ -10,7 +10,7 @@ import { api, ApiError } from '../lib/api.ts'
 import type { User } from '../lib/types.ts'
 
 const demos = [
-  ['Jiangbei Goods Co.', 'Maya Chen', 'maya@northline.example', 'keel-maya-desk'],
+  ['Jiangbei Goods Co.', 'August', 'maya@northline.example', 'keel-maya-desk'],
   ['Jiangbei Goods Co.', 'Jonah Ellis', 'jonah@northline.example', 'keel-jonah-desk'],
   ['Harbour & Line', 'Amira Shah', 'amira@harbourline.example', 'keel-amira-desk'],
   ['Harbour & Line', 'Priya Nair', 'priya@harbourline.example', 'keel-priya-shop'],

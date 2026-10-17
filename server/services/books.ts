@@ -17,26 +17,28 @@ type FrameDb = Pick<typeof prisma, 'fiscalYear' | 'costCentre' | 'chargeTemplate
 export async function ensureCompanyFrame(db: FrameDb, companyId: number) {
   const year = new Date().getUTCFullYear()
   const name = `FY${year}`
-  await ignoreDuplicate(() => db.fiscalYear.upsert({
-    where: { companyId_name: { companyId, name } },
-    update: {},
-    create: {
-      companyId,
-      name,
-      startsOn: new Date(Date.UTC(year, 0, 1)),
-      endsOn: new Date(Date.UTC(year, 11, 31, 23, 59, 59)),
-    },
-  }))
-  await ignoreDuplicate(() => db.costCentre.upsert({
-    where: { companyId_code: { companyId, code: 'HQ' } },
-    update: {},
-    create: { companyId, code: 'HQ', name: 'Operations' },
-  }))
-  await ignoreDuplicate(() => db.chargeTemplate.upsert({
-    where: { companyId_name: { companyId, name: 'Handling' } },
-    update: {},
-    create: { companyId, name: 'Handling', side: 'sales', rate: 2 },
-  }))
+  await Promise.all([
+    ignoreDuplicate(() => db.fiscalYear.upsert({
+      where: { companyId_name: { companyId, name } },
+      update: {},
+      create: {
+        companyId,
+        name,
+        startsOn: new Date(Date.UTC(year, 0, 1)),
+        endsOn: new Date(Date.UTC(year, 11, 31, 23, 59, 59)),
+      },
+    })),
+    ignoreDuplicate(() => db.costCentre.upsert({
+      where: { companyId_code: { companyId, code: 'HQ' } },
+      update: {},
+      create: { companyId, code: 'HQ', name: 'Operations' },
+    })),
+    ignoreDuplicate(() => db.chargeTemplate.upsert({
+      where: { companyId_name: { companyId, name: 'Handling' } },
+      update: {},
+      create: { companyId, name: 'Handling', side: 'sales', rate: 2 },
+    })),
+  ])
 }
 
 export async function assertYearOpen(tx: Tx, companyId: number, date: Date) {
@@ -183,7 +185,12 @@ export async function agingReport(companyId: number, asOf: string) {
 export async function centreReport(companyId: number) {
   const items = await prisma.journalItem.findMany({
     where: { entry: { companyId }, costCentreId: { not: null } },
-    include: { costCentre: true, account: true },
+    select: {
+      debit: true,
+      credit: true,
+      costCentre: { select: { code: true, name: true } },
+      account: { select: { type: true } },
+    },
   })
   const rows = new Map<string, { code: string; name: string; amount: number }>()
   for (const item of items) {

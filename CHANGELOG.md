@@ -1,5 +1,13 @@
 # Changelog
 
+## Opaque menus, a calmer dashboard, and faster reads
+
+Navigation menus, the account menu, chart tips, and toasts use a solid surface so the page underneath does not show through. Selects use the same solid fill in light and dark. The dashboard attention card shows four items in groups, with more space between rows, stock lines, and app shortcuts.
+
+The home overview reads income and expense once for the chart and both comparison periods. Opening the books no longer looks up each account on its own. Lists ask for the columns they show. Reports load from one `/api/reports/pack` call. Heavy aggregates stay cached for 15 seconds. On Vercel the pooled Neon URL keeps `connection_limit=1` and `pgbouncer=true`. Hovering a link prefetches that page’s data. New indexes cover journal lines, invoice dates, order dates, leave, and desk lists.
+
+The Jiangbei admin’s display name is August. The login stays `maya@northline.example` / `keel-maya-desk`. A later seed renames the existing user and the demo rows that still say Maya Chen.
+
 ## Home overview
 
 Sign-in opens the app launcher. The Dashboard tile opens the company overview, with the same glass top bar as the other apps and a breadcrumb back to Apps. Today, week, month, and year change the revenue and profit comparison. Receivables, payables, the pipeline, recent orders, low stock, and the attention list are rows from that company only. A self-serve company with no orders and no journals gets the six-step setup instead of empty charts. `/apps` returns to the launcher.

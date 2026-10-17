@@ -93,6 +93,16 @@ button, input, select, textarea {
   -webkit-backdrop-filter: blur(var(--kl-glass-blur)) saturate(1.35);
 }
 
+.keel-menu {
+  background: var(--kl-color-semantic-surface);
+  color: var(--kl-color-semantic-text);
+  border: 1px solid var(--kl-color-semantic-border);
+  box-shadow: var(--kl-shadow-lg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  opacity: 1;
+}
+
 header.keel-glass {
   border-width: 0 0 1px;
   border-radius: 0;
@@ -591,6 +601,15 @@ tbody tr.record-row:hover {
   box-shadow: var(--kl-shadow-xs);
 }
 
+.keel-page select,
+.keel-menu select,
+select option {
+  background-color: var(--kl-color-semantic-surface);
+  color: var(--kl-color-semantic-text);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 @media (max-width: 640px) {
   .keel-page h1,
   .keel-heading h1 {
@@ -787,7 +806,7 @@ tbody tr.record-row:hover {
   .home-side {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
     grid-area: side;
   }
   .home-kpis { grid-area: kpis; order: 0; }

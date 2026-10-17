@@ -23,7 +23,7 @@ Sign in with email and password. The session is an httpOnly cookie, and it is ma
 
 | Company | Name | Role | Email | Password |
 | --- | --- | --- | --- | --- |
-| Jiangbei Goods Co. | Maya Chen | admin | maya@northline.example | keel-maya-desk |
+| Jiangbei Goods Co. | August | admin | maya@northline.example | keel-maya-desk |
 | Jiangbei Goods Co. | Jonah Ellis | user | jonah@northline.example | keel-jonah-desk |
 | Jiangbei Goods Co. shop | Lin Xiao | shop | lin@northline.example | keel-lin-shop |
 | Harbour & Line | Amira Shah | admin | amira@harbourline.example | keel-amira-desk |
@@ -31,7 +31,7 @@ Sign in with email and password. The session is an httpOnly cookie, and it is ma
 | Hudson Yard Goods | Jordan Hale | admin | jordan@hudsonyard.example | keel-jordan-desk |
 | Hudson Yard Goods shop | Sam Ortiz | shop | sam@hudsonyard.example | keel-sam-shop |
 
-Maya, Amira, and Jordan are admins and can add people or reset passwords inside their own company. Anyone signed in can change their own password. The public shop at `/shop` is Jiangbei Goods Co. Staff includes payroll and expenses. Deduction rules are a labelled demo approximation for China, the UK, and New York.
+August, Amira, and Jordan are admins and can add people or reset passwords inside their own company. Anyone signed in can change their own password. The public shop at `/shop` is Jiangbei Goods Co. Staff includes payroll and expenses. Deduction rules are a labelled demo approximation for China, the UK, and New York.
 
 To wipe the database in `DATABASE_URL_UNPOOLED` and load the sample companies again:
 

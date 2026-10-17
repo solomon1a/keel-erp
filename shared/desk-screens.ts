@@ -102,7 +102,7 @@ function settings(
 
 export const deskScreens: DeskScreen[] = [
   list('dashboard', 'activities', 'Activities', '活动', 'Calls, meetings, and to-dos across the company.', '公司里的电话、会议和待办。', ['open', 'done'], [
-    { name: 'Call Cedar & Co', state: 'open', partner: 'Cedar & Co', owner: 'Maya Chen', bucket: 'Call', notes: 'Confirm the April blanket order.', recordDate: day('2026-04-16') },
+    { name: 'Call Cedar & Co', state: 'open', partner: 'Cedar & Co', owner: 'August', bucket: 'Call', notes: 'Confirm the April blanket order.', recordDate: day('2026-04-16') },
     { name: 'Workshop count', state: 'open', partner: 'Jiangbei Goods Co.', owner: 'He Gong', bucket: 'To-do', notes: 'Count greige canvas before the next cutting order.', recordDate: day('2026-04-15') },
     { name: 'Harbour pricing review', state: 'done', partner: 'Harbour & Line', owner: 'Amira Shah', bucket: 'Meeting', notes: 'Wholesale prices for the spring tote.', recordDate: day('2026-04-02') },
   ]),
@@ -118,14 +118,14 @@ export const deskScreens: DeskScreen[] = [
   ]),
 
   list('sales', 'to-invoice', 'Orders to invoice', '待开票订单', 'Confirmed orders that still need a customer invoice.', '已确认、尚未给客户开票的订单。', ['to_invoice', 'invoiced'], [
-    { name: 'SO1108', state: 'to_invoice', partner: 'Orchard School', owner: 'Maya Chen', amount: 84.75, notes: 'Delivered. Invoice not posted.', recordDate: day('2026-04-11') },
+    { name: 'SO1108', state: 'to_invoice', partner: 'Orchard School', owner: 'August', amount: 84.75, notes: 'Delivered. Invoice not posted.', recordDate: day('2026-04-11') },
     { name: 'SO1110', state: 'to_invoice', partner: 'Paper & Pine', owner: 'Jonah Ellis', amount: 27.12, notes: 'Shop delivery, waiting on the invoice.', recordDate: day('2026-04-10') },
-    { name: 'SO1104', state: 'invoiced', partner: 'Field Office', owner: 'Maya Chen', amount: 62.15, notes: 'Invoice posted.', recordDate: day('2026-04-07') },
+    { name: 'SO1104', state: 'invoiced', partner: 'Field Office', owner: 'August', amount: 62.15, notes: 'Invoice posted.', recordDate: day('2026-04-07') },
   ]),
   list('sales', 'to-upsell', 'Orders to upsell', '可追加销售', 'Delivered orders where a second offer still makes sense.', '已交付、仍适合追加报价的订单。', ['open', 'done'], [
     { name: 'SO0002 blanket care', state: 'open', partner: 'Lin Xiao', owner: 'Jonah Ellis', amount: 36, notes: 'Offer a second throw after the WeChat order.', recordDate: day('2026-04-12') },
-    { name: 'SO1121 notebook refill', state: 'open', partner: 'Field Office', owner: 'Maya Chen', amount: 18, notes: 'Refill pack for the field notebook.', recordDate: day('2026-04-12') },
-    { name: 'SO1101 closed', state: 'done', partner: 'Cedar & Co', owner: 'Maya Chen', amount: 0, notes: 'Customer declined a second quote.', recordDate: day('2026-03-20') },
+    { name: 'SO1121 notebook refill', state: 'open', partner: 'Field Office', owner: 'August', amount: 18, notes: 'Refill pack for the field notebook.', recordDate: day('2026-04-12') },
+    { name: 'SO1101 closed', state: 'done', partner: 'Cedar & Co', owner: 'August', amount: 0, notes: 'Customer declined a second quote.', recordDate: day('2026-03-20') },
   ]),
   list('sales', 'variants', 'Product variants', '产品变体', 'Size and colour variants behind the published goods.', '在售商品下的尺码和颜色。', ['active', 'archived'], [
     { name: 'Field notebook / A5 ruled', state: 'active', partner: 'Field notebook', owner: 'Sales', amount: 18, bucket: 'A5', notes: 'Default shop variant.', recordDate: day('2026-01-08') },
@@ -133,8 +133,8 @@ export const deskScreens: DeskScreen[] = [
     { name: 'Greige canvas / 1.5m', state: 'active', partner: 'Greige canvas', owner: 'Sales', amount: 12, bucket: 'Roll', notes: 'Sold by the metre to the workshop.', recordDate: day('2026-01-08') },
   ], false),
   list('sales', 'pricelists', 'Pricelists', '价格表', 'Customer prices. The public shop still uses the product list price.', '客户价格。网店仍使用产品标价。', ['active', 'draft'], [
-    { name: 'Public', state: 'active', partner: 'All customers', owner: 'Maya Chen', amount: 0, notes: 'List price. Used on the shop.', recordDate: day('2026-01-01') },
-    { name: 'Wholesale 15%', state: 'active', partner: 'Cedar & Co', owner: 'Maya Chen', amount: 15, notes: 'Fifteen percent off list for the house account.', recordDate: day('2026-02-01') },
+    { name: 'Public', state: 'active', partner: 'All customers', owner: 'August', amount: 0, notes: 'List price. Used on the shop.', recordDate: day('2026-01-01') },
+    { name: 'Wholesale 15%', state: 'active', partner: 'Cedar & Co', owner: 'August', amount: 15, notes: 'Fifteen percent off list for the house account.', recordDate: day('2026-02-01') },
     { name: 'Spring sample', state: 'draft', partner: 'Harbour & Line', owner: 'Jonah Ellis', amount: 10, notes: 'Not applied yet.', recordDate: day('2026-04-01') },
   ]),
   report('sales', 'analysis', 'Sales analysis', '销售分析', 'Invoiced and open sales by month. Figures follow the sample book.', '按月的已开票和未结销售。数字来自示例账。', [
@@ -149,7 +149,7 @@ export const deskScreens: DeskScreen[] = [
     { key: 'online', labelEn: 'Online payment on quotations', labelZh: '报价单上的在线付款', value: 'off' },
   ]),
   list('sales', 'teams', 'Sales teams', '销售团队', 'Who owns new quotations.', '新报价单归谁。', ['active', 'archived'], [
-    { name: 'Direct', state: 'active', owner: 'Maya Chen', partner: 'Shanghai', notes: 'House accounts and the shop.', recordDate: day('2026-01-01') },
+    { name: 'Direct', state: 'active', owner: 'August', partner: 'Shanghai', notes: 'House accounts and the shop.', recordDate: day('2026-01-01') },
     { name: 'Wholesale', state: 'active', owner: 'Jonah Ellis', partner: 'Shanghai', notes: 'Cedar & Co and the schools.', recordDate: day('2026-01-01') },
     { name: 'Pop-up', state: 'archived', owner: 'Lin Xiao', partner: 'Shanghai', notes: 'Last winter market. Closed.', recordDate: day('2026-02-01') },
   ], false),
@@ -165,9 +165,9 @@ export const deskScreens: DeskScreen[] = [
   ], false),
 
   list('crm', 'activities', 'Activities', '活动', 'Follow-ups sitting on open leads.', '挂在未结线索上的跟进。', ['open', 'done'], [
-    { name: 'Call Chen Wei', state: 'open', partner: 'Chen Wei', owner: 'Maya Chen', bucket: 'Call', notes: 'Tote opportunity, still in qualified.', recordDate: day('2026-04-14') },
+    { name: 'Call Chen Wei', state: 'open', partner: 'Chen Wei', owner: 'August', bucket: 'Call', notes: 'Tote opportunity, still in qualified.', recordDate: day('2026-04-14') },
     { name: 'Send the school lookbook', state: 'open', partner: 'Orchard School', owner: 'Jonah Ellis', bucket: 'Email', notes: 'After the April delivery.', recordDate: day('2026-04-18') },
-    { name: 'Lost: winter market', state: 'done', partner: 'Sunday Market', owner: 'Maya Chen', bucket: 'Note', notes: 'Marked lost. No second quote.', recordDate: day('2026-03-12') },
+    { name: 'Lost: winter market', state: 'done', partner: 'Sunday Market', owner: 'August', bucket: 'Note', notes: 'Marked lost. No second quote.', recordDate: day('2026-03-12') },
   ]),
   report('crm', 'pipeline-analysis', 'Pipeline analysis', '管道分析', 'Open leads by stage.', '按阶段的未结线索。', [
     { name: 'New', state: 'open', bucket: 'New', amount: 2, recordDate: day('2026-04-16') },
@@ -176,7 +176,7 @@ export const deskScreens: DeskScreen[] = [
     { name: 'Won', state: 'done', bucket: 'Won', amount: 2, recordDate: day('2026-04-16') },
   ]),
   report('crm', 'leads-analysis', 'Leads analysis', '线索分析', 'Expected revenue by owner.', '按负责人的预计收入。', [
-    { name: 'Maya Chen', state: 'open', bucket: 'Maya Chen', owner: 'Maya Chen', amount: 4200, recordDate: day('2026-04-16') },
+    { name: 'August', state: 'open', bucket: 'August', owner: 'August', amount: 4200, recordDate: day('2026-04-16') },
     { name: 'Jonah Ellis', state: 'open', bucket: 'Jonah Ellis', owner: 'Jonah Ellis', amount: 2000, recordDate: day('2026-04-16') },
   ]),
   settings('crm', 'CRM settings', '客户关系设置', 'How new leads are assigned.', '新线索如何分配。', [
@@ -184,7 +184,7 @@ export const deskScreens: DeskScreen[] = [
     { key: 'assign', labelEn: 'Assign new leads to', labelZh: '新线索分配给', value: 'Direct' },
   ]),
   list('crm', 'teams', 'Sales teams', '销售团队', 'Teams that own leads.', '负责线索的团队。', ['active'], [
-    { name: 'Direct', state: 'active', owner: 'Maya Chen', notes: 'Default team on new leads.', recordDate: day('2026-01-01') },
+    { name: 'Direct', state: 'active', owner: 'August', notes: 'Default team on new leads.', recordDate: day('2026-01-01') },
     { name: 'Wholesale', state: 'active', owner: 'Jonah Ellis', notes: 'Schools and house accounts.', recordDate: day('2026-01-01') },
   ], false),
   list('crm', 'tags', 'Lead tags', '线索标签', 'Tags on the pipeline.', '管道上的标签。', ['active'], [
@@ -296,15 +296,15 @@ export const deskScreens: DeskScreen[] = [
   ], false),
 
   list('accounting', 'credit-notes', 'Credit notes', '贷项通知单', 'Customer refunds against an invoice.', '冲减客户发票的贷项。', ['draft', 'posted'], [
-    { name: 'RINV1101', state: 'draft', partner: 'Quiet Room', owner: 'Maya Chen', amount: 12, notes: 'One notebook returned. Not posted.', recordDate: day('2026-04-18') },
-    { name: 'RINV1001', state: 'posted', partner: 'Sunday Market', owner: 'Maya Chen', amount: 24, notes: 'Posted in March.', recordDate: day('2026-03-19') },
+    { name: 'RINV1101', state: 'draft', partner: 'Quiet Room', owner: 'August', amount: 12, notes: 'One notebook returned. Not posted.', recordDate: day('2026-04-18') },
+    { name: 'RINV1001', state: 'posted', partner: 'Sunday Market', owner: 'August', amount: 24, notes: 'Posted in March.', recordDate: day('2026-03-19') },
   ]),
   list('accounting', 'customer-payments', 'Customer payments', '客户收款', 'Money received against customer invoices.', '收到的客户货款。', ['posted', 'draft'], [
     { name: 'PAY/1101', state: 'posted', partner: 'Cedar & Co', owner: 'Bank', amount: 113, notes: 'Clears INV1101.', recordDate: day('2026-04-08') },
     { name: 'PAY/1102', state: 'draft', partner: 'Field Office', owner: 'Bank', amount: 62.15, notes: 'Not matched yet.', recordDate: day('2026-04-16') },
   ]),
   list('accounting', 'vendor-refunds', 'Vendor refunds', '供应商退款', 'Credit from a vendor.', '供应商给的贷项。', ['draft', 'posted'], [
-    { name: 'RBILL1101', state: 'draft', partner: 'Thread House', owner: 'Maya Chen', amount: 6.4, notes: 'Two cones returned.', recordDate: day('2026-04-12') },
+    { name: 'RBILL1101', state: 'draft', partner: 'Thread House', owner: 'August', amount: 6.4, notes: 'Two cones returned.', recordDate: day('2026-04-12') },
   ]),
   list('accounting', 'vendor-payments', 'Vendor payments', '供应商付款', 'Money sent to vendors.', '付给供应商的钱。', ['posted', 'draft'], [
     { name: 'BILLPAY/1101', state: 'posted', partner: 'West Mill', owner: 'Bank', amount: 90.4, notes: 'Part of the cloth bill.', recordDate: day('2026-04-06') },
@@ -386,9 +386,9 @@ export const deskScreens: DeskScreen[] = [
   ]),
 
   list('payroll', 'batches', 'Pay batches', '工资批次', 'A month of payslips, beside the live payroll runs.', '一个月的工资单，与正式工资运行并列。', ['draft', 'posted', 'paid'], [
-    { name: 'February 2026', state: 'paid', owner: 'Maya Chen', amount: 48000, notes: 'Posted and paid.', recordDate: day('2026-02-28') },
-    { name: 'March 2026', state: 'posted', owner: 'Maya Chen', amount: 48000, notes: 'Posted. Payment recorded on the run.', recordDate: day('2026-03-31') },
-    { name: 'May 2026 draft', state: 'draft', owner: 'Maya Chen', amount: 0, notes: 'Not created as a run yet.', recordDate: day('2026-05-01') },
+    { name: 'February 2026', state: 'paid', owner: 'August', amount: 48000, notes: 'Posted and paid.', recordDate: day('2026-02-28') },
+    { name: 'March 2026', state: 'posted', owner: 'August', amount: 48000, notes: 'Posted. Payment recorded on the run.', recordDate: day('2026-03-31') },
+    { name: 'May 2026 draft', state: 'draft', owner: 'August', amount: 0, notes: 'Not created as a run yet.', recordDate: day('2026-05-01') },
   ]),
   report('payroll', 'analysis', 'Payroll analysis', '工资分析', 'Gross pay by month. Deductions are the demo approximation.', '按月的应发工资。扣除额是示例近似值。', [
     { name: 'February', state: 'paid', bucket: 'Feb', amount: 48000, recordDate: day('2026-02-28') },
@@ -411,9 +411,9 @@ export const deskScreens: DeskScreen[] = [
   ], false),
 
   list('expenses', 'reports', 'Expense reports', '费用报告', 'Claims grouped for approval. An admin approves and reimburses.', '待审批的报销汇总。管理员审批并付款。', ['submitted', 'approved', 'reimbursed', 'refused'], [
-    { name: 'EX1102 City travel', state: 'approved', partner: 'Jonah Ellis', owner: 'Maya Chen', amount: 46, notes: 'Approved. Not reimbursed yet.', recordDate: day('2026-04-09') },
-    { name: 'EX1101 Client lunch', state: 'reimbursed', partner: 'Maya Chen', owner: 'Maya Chen', amount: 28, notes: 'Paid back.', recordDate: day('2026-04-03') },
-    { name: 'EX1103 Late taxi', state: 'refused', partner: 'Lin Xiao', owner: 'Maya Chen', amount: 18, notes: 'Refused. Not a company trip.', recordDate: day('2026-04-11') },
+    { name: 'EX1102 City travel', state: 'approved', partner: 'Jonah Ellis', owner: 'August', amount: 46, notes: 'Approved. Not reimbursed yet.', recordDate: day('2026-04-09') },
+    { name: 'EX1101 Client lunch', state: 'reimbursed', partner: 'August', owner: 'August', amount: 28, notes: 'Paid back.', recordDate: day('2026-04-03') },
+    { name: 'EX1103 Late taxi', state: 'refused', partner: 'Lin Xiao', owner: 'August', amount: 18, notes: 'Refused. Not a company trip.', recordDate: day('2026-04-11') },
   ]),
   report('expenses', 'analysis', 'Expense analysis', '费用分析', 'Claims by state.', '按状态的报销。', [
     { name: 'Submitted', state: 'submitted', bucket: 'Submitted', amount: 1, recordDate: day('2026-04-16') },
@@ -435,7 +435,7 @@ export const deskScreens: DeskScreen[] = [
     { name: 'Loom 02', state: 'running', partner: 'Jiangbei Goods Co.', owner: 'He Gong', bucket: 'Machinery', amount: 18600, notes: 'Rapier loom. Straight-line, 8 years.', recordDate: day('2024-03-01') },
     { name: 'Delivery van', state: 'running', partner: 'Jiangbei Goods Co.', owner: 'Lin Xiao', bucket: 'Vehicles', amount: 4200, notes: 'Shop deliveries inside the city.', recordDate: day('2023-11-12') },
     { name: 'Cutting table', state: 'progress', partner: 'Harbour & Line', owner: 'Amira Shah', bucket: 'Machinery', amount: 980, notes: 'Out for a blade change.', recordDate: day('2025-06-02') },
-    { name: 'Office laptops', state: 'disposed', owner: 'Maya Chen', bucket: 'IT', amount: 0, notes: 'Sold as a lot in March.', recordDate: day('2022-01-15') },
+    { name: 'Office laptops', state: 'disposed', owner: 'August', bucket: 'IT', amount: 0, notes: 'Sold as a lot in March.', recordDate: day('2022-01-15') },
   ]),
   list('assets', 'depreciation', 'Depreciation', '折旧', 'Posted depreciation runs. Figures are samples.', '已过账的折旧。数字是示例。', ['draft', 'posted'], [
     { name: 'DEP/2026/04', state: 'posted', bucket: 'April', amount: 246.5, notes: 'Loom 02 and the van.', recordDate: day('2026-04-30') },
@@ -463,7 +463,7 @@ export const deskScreens: DeskScreen[] = [
   ], false),
 
   list('projects', 'projects', 'Projects', '项目', 'Jobs the company is running for itself or a customer.', '公司为自己或客户进行的工作。', ['planned', 'progress', 'done'], [
-    { name: 'Spring tote run', state: 'progress', partner: 'Orchard School', owner: 'Maya Chen', amount: 2400, notes: 'Cut, sew, and deliver 200 totes.', recordDate: day('2026-04-02') },
+    { name: 'Spring tote run', state: 'progress', partner: 'Orchard School', owner: 'August', amount: 2400, notes: 'Cut, sew, and deliver 200 totes.', recordDate: day('2026-04-02') },
     { name: 'Shop refit', state: 'planned', partner: 'Jiangbei Goods Co.', owner: 'Lin Xiao', amount: 800, notes: 'New shelves before May.', recordDate: day('2026-04-18') },
     { name: 'Harbour wholesale kit', state: 'done', partner: 'Harbour & Line', owner: 'Amira Shah', amount: 1600, notes: 'Delivered in March.', recordDate: day('2026-03-12') },
   ]),
@@ -477,7 +477,7 @@ export const deskScreens: DeskScreen[] = [
     { name: 'Jonah Ellis week 16', state: 'draft', partner: 'Spring tote run', owner: 'Jonah Ellis', amount: 6, notes: 'Buyer calls.', recordDate: day('2026-04-17') },
   ], false),
   list('projects', 'billing', 'To bill', '待开票', 'Project work that can become a customer invoice.', '可以开给客户的项目工作。', ['to_bill', 'billed'], [
-    { name: 'Spring tote milestone', state: 'to_bill', partner: 'Orchard School', owner: 'Maya Chen', amount: 1200, notes: 'Half the run is cut.', recordDate: day('2026-04-16') },
+    { name: 'Spring tote milestone', state: 'to_bill', partner: 'Orchard School', owner: 'August', amount: 1200, notes: 'Half the run is cut.', recordDate: day('2026-04-16') },
     { name: 'Harbour kit', state: 'billed', partner: 'Harbour & Line', owner: 'Amira Shah', amount: 1600, notes: 'Invoiced in March.', recordDate: day('2026-03-20') },
   ], false),
   report('projects', 'analysis', 'Project analysis', '项目分析', 'Open project value by status.', '按状态的未完项目金额。', [
@@ -496,7 +496,7 @@ export const deskScreens: DeskScreen[] = [
     { name: 'QC1116 shop count', state: 'draft', partner: 'Shop', owner: 'Lin Xiao', bucket: 'Final', notes: 'Not started.', recordDate: day('2026-04-16') },
   ]),
   list('quality', 'nonconformance', 'Non-conformance', '不合格', 'Something that failed a check.', '未通过检查的事项。', ['open', 'progress', 'done'], [
-    { name: 'NCR-014 loose stitch', state: 'open', partner: 'Spring tote run', owner: 'Maya Chen', amount: 6, notes: 'Six totes pulled from the lot.', recordDate: day('2026-04-15') },
+    { name: 'NCR-014 loose stitch', state: 'open', partner: 'Spring tote run', owner: 'August', amount: 6, notes: 'Six totes pulled from the lot.', recordDate: day('2026-04-15') },
     { name: 'NCR-011 shade drift', state: 'done', partner: 'Harbour Dye', owner: 'Jonah Ellis', amount: 1, notes: 'Vendor replaced the roll.', recordDate: day('2026-03-28') },
   ]),
   list('quality', 'procedures', 'Procedures', '规程', 'The written checks.', '书面检验规程。', ['active', 'draft'], [
@@ -516,7 +516,7 @@ export const deskScreens: DeskScreen[] = [
 
   list('subcontracting', 'orders', 'Subcontracting orders', '委外订单', 'Work sent to another workshop.', '发给其他车间的加工。', ['draft', 'confirmed', 'received'], [
     { name: 'SC1102 dye lot', state: 'confirmed', partner: 'Harbour Dye', owner: 'Jonah Ellis', amount: 640, notes: '40 rolls. Not back yet.', recordDate: day('2026-04-09') },
-    { name: 'SC1104 embroidery', state: 'draft', partner: 'West Stitch', owner: 'Maya Chen', amount: 180, notes: 'Quote for the school logo.', recordDate: day('2026-04-16') },
+    { name: 'SC1104 embroidery', state: 'draft', partner: 'West Stitch', owner: 'August', amount: 180, notes: 'Quote for the school logo.', recordDate: day('2026-04-16') },
     { name: 'SC1098 hemming', state: 'received', partner: 'West Stitch', owner: 'He Gong', amount: 220, notes: 'Received in full.', recordDate: day('2026-03-30') },
   ]),
   list('subcontracting', 'receipts', 'Subcontract receipts', '委外收货', 'Goods coming back from a subcontractor.', '从委外方收回的货物。', ['ready', 'done'], [
@@ -534,14 +534,14 @@ export const deskScreens: DeskScreen[] = [
   ]),
 
   list('helpdesk', 'tickets', 'Tickets', '工单', 'Questions and problems from customers.', '客户的问题和请求。', ['open', 'progress', 'done', 'cancel'], [
-    { name: 'T1108 late delivery', state: 'progress', partner: 'Orchard School', owner: 'Maya Chen', bucket: 'Delivery', notes: 'Tote run is a week behind.', recordDate: day('2026-04-14') },
+    { name: 'T1108 late delivery', state: 'progress', partner: 'Orchard School', owner: 'August', bucket: 'Delivery', notes: 'Tote run is a week behind.', recordDate: day('2026-04-14') },
     { name: 'T1110 shade question', state: 'open', partner: 'Paper & Pine', owner: 'Jonah Ellis', bucket: 'Product', notes: 'Photo looks darker than the sample.', recordDate: day('2026-04-16') },
-    { name: 'T1102 invoice copy', state: 'done', partner: 'Field Office', owner: 'Maya Chen', bucket: 'Billing', notes: 'Copy sent.', recordDate: day('2026-04-08') },
+    { name: 'T1102 invoice copy', state: 'done', partner: 'Field Office', owner: 'August', bucket: 'Billing', notes: 'Copy sent.', recordDate: day('2026-04-08') },
     { name: 'T1099 spam', state: 'cancel', partner: 'Unknown', owner: 'Lin Xiao', bucket: 'Other', notes: 'Not a customer.', recordDate: day('2026-04-01') },
   ]),
   list('helpdesk', 'sla', 'SLA', '服务级别', 'Whether a ticket met its time.', '工单是否按时处理。', ['met', 'breached'], [
-    { name: 'Delivery — 2 days', state: 'breached', partner: 'T1108 late delivery', owner: 'Maya Chen', amount: 2, notes: 'Still open after two days.', recordDate: day('2026-04-16') },
-    { name: 'Billing — 1 day', state: 'met', partner: 'T1102 invoice copy', owner: 'Maya Chen', amount: 1, notes: 'Answered the same day.', recordDate: day('2026-04-08') },
+    { name: 'Delivery — 2 days', state: 'breached', partner: 'T1108 late delivery', owner: 'August', amount: 2, notes: 'Still open after two days.', recordDate: day('2026-04-16') },
+    { name: 'Billing — 1 day', state: 'met', partner: 'T1102 invoice copy', owner: 'August', amount: 1, notes: 'Answered the same day.', recordDate: day('2026-04-08') },
     { name: 'Product — 1 day', state: 'met', partner: 'T1110 shade question', owner: 'Jonah Ellis', notes: 'Clock still running.', recordDate: day('2026-04-16') },
   ], false),
   report('helpdesk', 'analysis', 'Ticket analysis', '工单分析', 'Open tickets by topic.', '按主题的未关闭工单。', [
@@ -554,7 +554,7 @@ export const deskScreens: DeskScreen[] = [
     { key: 'hours', labelEn: 'Working hours', labelZh: '工作时间', value: '09:00–18:00' },
   ]),
   list('helpdesk', 'teams', 'Helpdesk teams', '服务团队', 'Who answers.', '谁来回复。', ['active'], [
-    { name: 'Desk', state: 'active', owner: 'Maya Chen', notes: 'Orders and billing.', recordDate: day('2026-01-01') },
+    { name: 'Desk', state: 'active', owner: 'August', notes: 'Orders and billing.', recordDate: day('2026-01-01') },
     { name: 'Shop', state: 'active', owner: 'Lin Xiao', notes: 'The counter.', recordDate: day('2026-01-01') },
   ], false),
   list('helpdesk', 'tags', 'Ticket tags', '工单标签', 'Topics on a ticket.', '工单上的主题。', ['active'], [

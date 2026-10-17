@@ -76,7 +76,7 @@ export const workspaceScreens: DeskScreen[] = [
     row('Week 12 — blankets', 'done', { partner: 'Wool blanket', owner: 'He Gong', amount: 24, recordDate: day('2026-03-22') }),
   ]),
   list('manufacturing', 'forecast', 'Sales Forecast', '销售预测', 'What sales expects to ship, used by planning.', '销售预计要发出的数量，供计划使用。', ['draft', 'confirmed'], [
-    row('Cedar — Q2 totes', 'confirmed', { partner: 'Cedar & Co', owner: 'Maya Chen', amount: 60, notes: 'Wholesale blanket order plus totes.' }),
+    row('Cedar — Q2 totes', 'confirmed', { partner: 'Cedar & Co', owner: 'August', amount: 60, notes: 'Wholesale blanket order plus totes.' }),
     row('Shop — April notebooks', 'confirmed', { partner: 'The shop', owner: 'Lin Xiao', amount: 40, notes: 'Counter and the website.' }),
     row('Harbour — sample totes', 'draft', { partner: 'Harbour & Line', owner: 'Jonah Ellis', amount: 12, notes: 'Not confirmed.' }),
   ]),
