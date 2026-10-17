@@ -1,5 +1,13 @@
 # Changelog
 
+## Manufacturing and wastage
+
+Bills of materials keep a version, an active flag, expected loss on each component, operations with a workstation hour rate, and by-products. The unit cost is material plus operating cost, less the by-product credit, including a child bill when the component is itself made. A new version copies the current bill and leaves the old one in place.
+
+A work order can start from stock, a sales order, or a material request. Confirming it opens a job card per operation. Starting an order that names a work-in-progress warehouse moves the components there. Partial production values finished goods at the material issued, the labour logged on the job cards, and any wastage already relieved. Process loss posts to wastage expense. Scrap and rejected quantity move into the scrap warehouse at cost. A short subcontract path sends components to the supplier and receives the finished good at the value that was sent.
+
+Production planning explodes open sales orders through active bills, nets on-hand stock, and raises draft work orders and one material request. The wastage report groups cost by item, operation, and reason, and compares quantity with the expected loss. Manufacturing and Wastage workspace figures come from those rows. Seeding the three demo companies adds the floor documents without posting journals, so the existing profit and the balance sheet stay as they were. Running the seed again skips a company that already has the cutting bench.
+
 ## Live read path
 
 GET requests no longer open or write the chart of accounts. Profit and loss is one journal query. The balance sheet loads that query and the asset query together. Session rows are remembered in the function for 60 seconds and dropped on logout or a password change. Each API response sends `Server-Timing` with `total`, `db`, `queries`, `region`, and `nearest`. The region is the Neon host’s cloud region, never the connection string. On a `*.neon.tech` database the client uses the Neon HTTP driver for queries and a websocket only for transactions. Local Postgres stays on the standard Prisma engine.

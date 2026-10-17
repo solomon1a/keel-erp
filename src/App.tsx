@@ -37,6 +37,8 @@ import { ManufacturingDetailPage } from './pages/manufacturing-detail-page.tsx'
 import { ManufacturingFormPage } from './pages/manufacturing-form-page.tsx'
 import { ManufacturingPage } from './pages/manufacturing-page.tsx'
 import { ManufacturingPrintPage } from './pages/manufacturing-print-page.tsx'
+import { ProductionPlanPage } from './pages/production-plan-page.tsx'
+import { WastagePage } from './pages/wastage-page.tsx'
 import { OrderDetailPage } from './pages/order-detail-page.tsx'
 import { PricingPage } from './pages/pricing-page.tsx'
 import { OrderFormPage } from './pages/order-form-page.tsx'
@@ -132,6 +134,8 @@ export default function App() {
             <Route path="/purchases/:id/edit" element={<PurchaseFormPage />} />
             <Route path="/vendors" element={<VendorsPage />} />
             <Route path="/manufacturing" element={<ManufacturingPage />} />
+            <Route path="/manufacturing/plan" element={<ProductionPlanPage />} />
+            <Route path="/manufacturing/wastage" element={<WastagePage />} />
             <Route path="/manufacturing/new" element={<ManufacturingFormPage />} />
             <Route path="/manufacturing/:id" element={<ManufacturingDetailPage />} />
             <Route path="/manufacturing/:id/edit" element={<ManufacturingFormPage />} />

@@ -17,6 +17,10 @@ import {
   posSessionCloseSchema,
   posSessionOpenSchema,
   produceSchema,
+  jobCompleteSchema,
+  jobLogSchema,
+  subcontractReceiveSchema,
+  wastageSchema,
   productInputSchema,
   purchaseInputSchema,
   receivePurchaseSchema,
@@ -105,10 +109,25 @@ import {
   getManufacturing,
   listBoms,
   produceManufacturing,
+  reviseBom,
   startManufacturing,
+  stopManufacturing,
   updateBom,
   updateManufacturing,
 } from './services/manufacturing.ts'
+import {
+  completeJobCard,
+  createProductionPlan,
+  getProductionPlan,
+  listProductionPlans,
+  logJobTime,
+  raiseProductionPlan,
+  receiveSubcontract,
+  recordWastage,
+  sendSubcontract,
+  wastageReport,
+  workspacePulse,
+} from './services/floor.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -757,6 +776,43 @@ export function createApp() {
     return c.json(await applyBomCost(user.companyId, Number(c.req.param('id'))))
   })
 
+  app.post('/api/boms/:id/revise', async (c) => {
+    const user = c.get('user')
+    return c.json(await reviseBom(user.companyId, Number(c.req.param('id'))), 201)
+  })
+
+  app.get('/api/manufacturing/plans', async (c) => {
+    const user = c.get('user')
+    return c.json(await listProductionPlans(user.companyId))
+  })
+
+  app.post('/api/manufacturing/plans', async (c) => {
+    const user = c.get('user')
+    return c.json(await createProductionPlan(user.companyId), 201)
+  })
+
+  app.get('/api/manufacturing/plans/:id', async (c) => {
+    const user = c.get('user')
+    return c.json(await getProductionPlan(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing/plans/:id/raise', async (c) => {
+    const user = c.get('user')
+    return c.json(await raiseProductionPlan(user.companyId, user.id, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/manufacturing/wastage', async (c) => {
+    const user = c.get('user')
+    return c.json(await wastageReport(user.companyId))
+  })
+
+  app.get('/api/workspaces/:moduleId', async (c) => {
+    const user = c.get('user')
+    const pulse = await workspacePulse(user.companyId, c.req.param('moduleId'))
+    if (!pulse) return c.json({ kpis: [], chart: [] })
+    return c.json(pulse)
+  })
+
   app.get('/api/manufacturing', async (c) => {
     const user = c.get('user')
     const state = c.req.query('state')
@@ -809,6 +865,40 @@ export function createApp() {
   app.post('/api/manufacturing/:id/cancel', async (c) => {
     const user = c.get('user')
     return c.json(await cancelManufacturing(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing/:id/stop', async (c) => {
+    const user = c.get('user')
+    return c.json(await stopManufacturing(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing/:id/wastage', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(wastageSchema, await c.req.json())
+    return c.json(await recordWastage(user.companyId, Number(c.req.param('id')), input), 201)
+  })
+
+  app.post('/api/manufacturing/:id/subcontract/send', async (c) => {
+    const user = c.get('user')
+    return c.json(await sendSubcontract(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing/:id/subcontract/receive', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(subcontractReceiveSchema, await c.req.json().catch(() => ({})))
+    return c.json(await receiveSubcontract(user.companyId, Number(c.req.param('id')), input.quantity))
+  })
+
+  app.post('/api/job-cards/:id/log', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(jobLogSchema, await c.req.json())
+    return c.json(await logJobTime(user.companyId, Number(c.req.param('id')), input), 201)
+  })
+
+  app.post('/api/job-cards/:id/complete', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(jobCompleteSchema, await c.req.json())
+    return c.json(await completeJobCard(user.companyId, Number(c.req.param('id')), input))
   })
 
   app.get('/api/stock', async (c) => {

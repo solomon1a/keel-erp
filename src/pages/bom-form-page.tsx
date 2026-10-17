@@ -10,7 +10,7 @@ import { api, ApiError } from '../lib/api.ts'
 import { useMoney } from '../lib/format.ts'
 import type { BillOfMaterials, Product } from '../lib/types.ts'
 
-type DraftLine = { productId: string; quantity: string }
+type DraftLine = { productId: string; quantity: string; lossPercent: string }
 
 export function BomFormPage() {
   const { id } = useParams()
@@ -22,7 +22,7 @@ export function BomFormPage() {
   const [productId, setProductId] = useState('')
   const [yieldQty, setYieldQty] = useState('1')
   const [notes, setNotes] = useState('')
-  const [lines, setLines] = useState<DraftLine[]>([{ productId: '', quantity: '1' }])
+  const [lines, setLines] = useState<DraftLine[]>([{ productId: '', quantity: '1', lossPercent: '0' }])
   const [error, setError] = useState('')
 
   const products = useQuery({ queryKey: ['products'], queryFn: () => api<Product[]>('/api/products') })
@@ -37,7 +37,11 @@ export function BomFormPage() {
     setProductId(String(bom.data.productId))
     setYieldQty(String(bom.data.yieldQty))
     setNotes(bom.data.notes ?? '')
-    setLines(bom.data.lines.map((line) => ({ productId: String(line.productId), quantity: String(line.quantity) })))
+    setLines(bom.data.lines.map((line) => ({
+      productId: String(line.productId),
+      quantity: String(line.quantity),
+      lossPercent: String(line.lossPercent ?? 0),
+    })))
   }, [bom.data])
 
   const finished = products.data?.filter((product) => product.active && product.type === 'product' && product.kind === 'finished') ?? []
@@ -61,7 +65,11 @@ export function BomFormPage() {
           productId: Number(productId),
           yieldQty: Number(yieldQty),
           notes,
-          lines: lines.map((line) => ({ productId: Number(line.productId), quantity: Number(line.quantity) })),
+          lines: lines.map((line) => ({
+            productId: Number(line.productId),
+            quantity: Number(line.quantity),
+            lossPercent: Number(line.lossPercent) || 0,
+          })),
         }),
       }),
     onSuccess: async (saved) => {
@@ -108,6 +116,7 @@ export function BomFormPage() {
             <tr>
               <th className="px-3 py-3 font-medium">{t('bom.component')}</th>
               <th className="px-3 py-3 font-medium">{t('bom.qty')}</th>
+              <th className="px-3 py-3 font-medium">{t('floor.loss')}</th>
               <th className="px-3 py-3 font-medium">{t('bom.perUnit')}</th>
               <th className="px-3 py-3 font-medium"></th>
             </tr>
@@ -132,6 +141,9 @@ export function BomFormPage() {
                   <td className="px-3 py-2">
                     <Input type="number" min="0" step="0.001" value={line.quantity} onChange={(event) => updateLine(index, { quantity: event.target.value })} />
                   </td>
+                  <td className="px-3 py-2">
+                    <Input type="number" min="0" step="0.01" value={line.lossPercent} onChange={(event) => updateLine(index, { lossPercent: event.target.value })} aria-label={t('floor.loss')} />
+                  </td>
                   <td className="px-3 py-2">{Math.round(perUnit * 1000) / 1000}</td>
                   <td className="px-3 py-2">
                     <Button type="button" variant="ghost" size="sm" onClick={() => setLines(lines.filter((_, lineIndex) => lineIndex !== index))}>{t('common.remove')}</Button>
@@ -143,7 +155,7 @@ export function BomFormPage() {
         </table>
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <Button type="button" variant="outline" onClick={() => setLines([...lines, { productId: '', quantity: '1' }])}>{t('bom.addLine')}</Button>
+        <Button type="button" variant="outline" onClick={() => setLines([...lines, { productId: '', quantity: '1', lossPercent: '0' }])}>{t('bom.addLine')}</Button>
         <p className="text-sm">
           <span className="text-muted-foreground">{t('bom.cost')}</span>{' '}
           <span className="font-semibold">{money(unitCost)}</span>

@@ -125,7 +125,7 @@ export const appModules: AppModule[] = [
     description: 'mod.wastage.desc',
     home: '/app/wastage/records',
     group: 'supply',
-    match: ['/app/wastage'],
+    match: ['/app/wastage', '/manufacturing/wastage'],
     menu: moduleMenus.wastage ?? [],
   },
   {

@@ -155,6 +155,20 @@ export const receivePurchaseSchema = z.object({
 export const bomLineSchema = z.object({
   productId: z.number().int().positive('Choose a component'),
   quantity: z.number().positive('Quantity must be greater than zero'),
+  lossPercent: z.number().min(0).max(100).optional(),
+})
+
+export const bomOperationSchema = z.object({
+  name: z.string().trim().min(1, 'Name the operation').max(80),
+  workstationId: z.number().int().positive('Choose a workstation'),
+  hours: z.number().positive('Hours must be greater than zero'),
+  lossPercent: z.number().min(0).max(100).optional(),
+  sequence: z.number().int().positive().optional(),
+})
+
+export const bomByproductSchema = z.object({
+  productId: z.number().int().positive('Choose a by-product'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
 })
 
 export const bomInputSchema = z.object({
@@ -162,6 +176,8 @@ export const bomInputSchema = z.object({
   yieldQty: z.number().positive('Yield must be greater than zero'),
   notes: optionalText,
   lines: z.array(bomLineSchema).min(1, 'Add at least one component'),
+  operations: z.array(bomOperationSchema).optional(),
+  byproducts: z.array(bomByproductSchema).optional(),
 })
 
 export const manufacturingInputSchema = z.object({
@@ -169,6 +185,37 @@ export const manufacturingInputSchema = z.object({
   quantity: z.number().positive('Quantity must be greater than zero'),
   sourceWarehouseId: optionalWarehouseId,
   destWarehouseId: optionalWarehouseId,
+  wipWarehouseId: optionalWarehouseId,
+  scrapWarehouseId: optionalWarehouseId,
+  purpose: z.enum(['stock', 'order', 'subcontract']).optional(),
+  salesOrderId: z.number().int().positive().optional(),
+  materialRequestId: z.number().int().positive().optional(),
+  supplierId: z.number().int().positive().optional(),
+})
+
+export const jobLogSchema = z.object({
+  operatorName: z.string().trim().min(1, 'Name the operator').max(80),
+  minutes: z.number().positive('Minutes must be greater than zero'),
+  note: optionalText,
+})
+
+export const jobCompleteSchema = z.object({
+  completedQty: z.number().min(0),
+  processLoss: z.number().min(0).optional(),
+  rejectedQty: z.number().min(0).optional(),
+})
+
+export const wastageSchema = z.object({
+  productId: z.number().int().positive('Choose a product'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  reason: z.string().trim().min(1, 'Give a reason').max(160),
+  kind: z.enum(['process_loss', 'scrap', 'rejected']),
+  unitCost: z.number().min(0).optional(),
+  jobCardId: z.number().int().positive().optional(),
+})
+
+export const subcontractReceiveSchema = z.object({
+  quantity: z.number().positive('Quantity must be greater than zero').optional(),
 })
 
 export const produceSchema = z.object({
@@ -265,6 +312,9 @@ export type OrderInput = z.infer<typeof orderInputSchema>
 export type PurchaseInput = z.infer<typeof purchaseInputSchema>
 export type ReceivePurchaseInput = z.infer<typeof receivePurchaseSchema>
 export type BomInput = z.infer<typeof bomInputSchema>
+export type JobLogInput = z.infer<typeof jobLogSchema>
+export type JobCompleteInput = z.infer<typeof jobCompleteSchema>
+export type WastageInput = z.infer<typeof wastageSchema>
 export type ManufacturingInput = z.infer<typeof manufacturingInputSchema>
 export type ProduceInput = z.infer<typeof produceSchema>
 export type StockAdjustInput = z.infer<typeof stockAdjustSchema>
