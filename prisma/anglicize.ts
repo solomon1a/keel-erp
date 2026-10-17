@@ -5,6 +5,30 @@ async function renameLocation(client: PrismaClient, companyId: number, from: str
 }
 
 export async function anglicizeJiangbei(client: PrismaClient, companyId: number) {
+  const chineseGoods = ['本色帆布', '羊毛纱']
+  const [company, category, tax, location, lead, department, contact, bom, invoice, leave, saleLine, purchaseLine, posLine, billLine, employee] = await Promise.all([
+    client.company.findUnique({ where: { id: companyId }, select: { name: true, city: true } }),
+    client.productCategory.findFirst({ where: { companyId, name: { in: ['文具', '家居'] } }, select: { id: true } }),
+    client.tax.findFirst({ where: { name: '增值税' }, select: { id: true } }),
+    client.stockLocation.findFirst({ where: { companyId, name: { in: ['主库', '成品区', '店面'] } }, select: { id: true } }),
+    client.lead.findFirst({ where: { companyId, name: { in: ['春季展会 — 帆布袋', '门店补货咨询'] } }, select: { id: true } }),
+    client.department.findFirst({ where: { companyId, name: { in: ['销售部', '生产部'] } }, select: { id: true } }),
+    client.contact.findFirst({ where: { companyId, name: '散客' }, select: { id: true } }),
+    client.billOfMaterials.findFirst({ where: { companyId, notes: { contains: '帆布' } }, select: { id: true } }),
+    client.invoice.findFirst({ where: { companyId, buyerName: '林晓' }, select: { id: true } }),
+    client.leaveRequest.findFirst({ where: { employee: { companyId }, reason: { in: ['发烧', '劳动节'] } }, select: { id: true } }),
+    client.salesOrderLine.findFirst({ where: { order: { companyId }, description: { in: chineseGoods } }, select: { id: true } }),
+    client.purchaseOrderLine.findFirst({ where: { order: { companyId }, description: { in: chineseGoods } }, select: { id: true } }),
+    client.posOrderLine.findFirst({ where: { order: { companyId }, description: { in: chineseGoods } }, select: { id: true } }),
+    client.invoiceLine.findFirst({ where: { invoice: { companyId }, description: { in: chineseGoods } }, select: { id: true } }),
+    client.employee.findFirst({ where: { companyId, name: '何工' }, select: { id: true } }),
+  ])
+  const alreadyEnglish = company?.name === 'Jiangbei Goods Co.'
+    && company.city === 'Shanghai'
+    && !category && !tax && !location && !lead && !department && !contact && !bom && !invoice && !leave
+    && !saleLine && !purchaseLine && !posLine && !billLine && !employee
+  if (alreadyEnglish) return
+
   await client.company.update({
     where: { id: companyId },
     data: {

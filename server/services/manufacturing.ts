@@ -1,6 +1,6 @@
 import { roundMoney } from '../../src/domain/money.ts'
 import type { BomInput, ManufacturingInput, ProduceInput } from '../../shared/schemas.ts'
-import { prisma, type Tx } from '../db.ts'
+import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
 import { postValuationJournal, valueDoneMove } from './valuation.ts'
@@ -685,7 +685,7 @@ export async function produceManufacturing(companyId: number, orderId: number, i
       },
       include: orderInclude,
     })
-  }).then((order) => attachOnHand(companyId, order))
+  }, transactionOptions).then((order) => attachOnHand(companyId, order))
 }
 
 export async function cancelManufacturing(companyId: number, orderId: number) {

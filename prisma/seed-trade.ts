@@ -3,6 +3,7 @@ import { lineAmounts, roundMoney } from '../src/domain/money.ts'
 import { postInvoice, invoiceFromPurchase } from '../server/services/accounting.ts'
 import { confirmOrder, deliverOrder } from '../server/services/orders.ts'
 import { confirmPurchase, receivePurchase } from '../server/services/purchases.ts'
+import { transactionOptions } from '../server/db.ts'
 import { applyQuant, roundQty } from '../server/services/stock.ts'
 import { applyReceiptLanded, deliverPartial } from '../server/services/trade.ts'
 import { valueDoneMove } from '../server/services/valuation.ts'
@@ -53,13 +54,6 @@ async function stockShelf(client: PrismaClient, companyId: number, warehouseId: 
   return locations.find((row) => row.isDefault) ?? locations[0] ?? null
 }
 
-async function ensureVirtual(client: PrismaClient, companyName: string, companyId: number, type: 'customer' | 'supplier' | 'inventory' | 'production') {
-  const existing = await client.stockLocation.findFirst({ where: { companyId, type } })
-  if (existing) return
-  console.error(`seed-trade: ${companyName} had no ${type} stock location. One was created so the demo documents can post.`)
-  await client.stockLocation.create({ data: { name: type, type, companyId } })
-}
-
 async function ensureOnHand(
   client: PrismaClient,
   companyName: string,
@@ -83,19 +77,12 @@ async function ensureOnHand(
 }
 
 async function tradeApplied(client: PrismaClient, companyId: number) {
-  const order = await client.salesOrder.findFirst({
-    where: { companyId, name: 'SO-TRADE' },
-    include: { lines: true },
-  })
-  const back = await client.salesOrder.findFirst({
-    where: { companyId, name: 'SO-RETURN' },
-    include: { lines: true },
-  })
-  const credit = await client.invoice.findFirst({ where: { companyId, name: 'CN-TRADE', state: 'posted' } })
-  const purchase = await client.purchaseOrder.findFirst({
-    where: { companyId, name: 'PO-TRADE' },
-    include: { lines: true },
-  })
+  const [order, back, credit, purchase] = await Promise.all([
+    client.salesOrder.findFirst({ where: { companyId, name: 'SO-TRADE' }, include: { lines: true } }),
+    client.salesOrder.findFirst({ where: { companyId, name: 'SO-RETURN' }, include: { lines: true } }),
+    client.invoice.findFirst({ where: { companyId, name: 'CN-TRADE', state: 'posted' } }),
+    client.purchaseOrder.findFirst({ where: { companyId, name: 'PO-TRADE' }, include: { lines: true } }),
+  ])
   if (!order || !back || !credit || !purchase) return false
   const sold = order.lines[0]
   const returned = back.lines[0]
@@ -104,13 +91,13 @@ async function tradeApplied(client: PrismaClient, companyId: number) {
   if (sold.qtyDelivered + 0.0001 < deliverQty || sold.qtyInvoiced + 0.0001 < invoiceQty) return false
   if (back.state !== 'done' || returned.qtyInvoiced + 0.0001 < returnQty) return false
   if (bought.qtyReceived + 0.0001 < buyQty || bought.qtyBilled + 0.0001 < buyQty) return false
-  const bill = await client.invoice.findFirst({
-    where: { companyId, purchaseOrderId: purchase.id, moveType: 'in_invoice', state: { in: ['posted', 'paid'] } },
-  })
-  const receipt = await client.purchaseReceipt.findFirst({ where: { companyId, purchaseOrderId: purchase.id } })
-  const returnedStock = await client.stockMove.findFirst({
-    where: { reference: 'CN-TRADE', orderId: back.id, state: 'done' },
-  })
+  const [bill, receipt, returnedStock] = await Promise.all([
+    client.invoice.findFirst({
+      where: { companyId, purchaseOrderId: purchase.id, moveType: 'in_invoice', state: { in: ['posted', 'paid'] } },
+    }),
+    client.purchaseReceipt.findFirst({ where: { companyId, purchaseOrderId: purchase.id } }),
+    client.stockMove.findFirst({ where: { reference: 'CN-TRADE', orderId: back.id, state: 'done' } }),
+  ])
   return Boolean(bill && receipt && receipt.landedCost + 0.0001 >= 4 && returnedStock)
 }
 
@@ -120,25 +107,23 @@ async function seedCompany(client: PrismaClient, companyId: number, companyName:
     return
   }
 
-  const company = await client.company.findUnique({ where: { id: companyId } })
-  const warehouse = await client.warehouse.findFirst({ where: { companyId, isDefault: true }, orderBy: { id: 'asc' } })
+  const [company, warehouse, goodsFirst, boughtFirst, customer, suppliersFirst] = await Promise.all([
+    client.company.findUnique({ where: { id: companyId } }),
+    client.warehouse.findFirst({ where: { companyId, isDefault: true }, orderBy: { id: 'asc' } }),
+    client.product.findFirst({ where: { companyId, sku: 'NB-01', type: 'product' } }),
+    client.product.findFirst({ where: { companyId, sku: 'TO-11', purchasable: true } }),
+    client.contact.findFirst({ where: { companyId, isCustomer: true, isCompany: true }, orderBy: { id: 'asc' } }),
+    client.contact.findMany({ where: { companyId, isSupplier: true }, orderBy: { id: 'asc' }, take: 2 }),
+  ])
   const shelf = warehouse ? await stockShelf(client, companyId, warehouse.id) : null
-  const goods = await client.product.findFirst({ where: { companyId, sku: 'NB-01', type: 'product' } })
+  const goods = goodsFirst
     ?? await client.product.findFirst({ where: { companyId, type: 'product', kind: 'finished' }, orderBy: { id: 'asc' } })
-  const bought = await client.product.findFirst({ where: { companyId, sku: 'TO-11', purchasable: true } })
+  const bought = boughtFirst
     ?? await client.product.findFirst({
       where: { companyId, type: 'product', purchasable: true, ...(goods ? { id: { not: goods.id } } : {}) },
       orderBy: { id: 'asc' },
     })
-  const customer = await client.contact.findFirst({
-    where: { companyId, isCustomer: true, isCompany: true },
-    orderBy: { id: 'asc' },
-  })
-  let suppliers = await client.contact.findMany({
-    where: { companyId, isSupplier: true },
-    orderBy: { id: 'asc' },
-    take: 2,
-  })
+  let suppliers = suppliersFirst
   const tax = company ? await client.tax.findFirst({ where: { rate: company.defaultTaxRate }, orderBy: { id: 'asc' } }) : null
   if (!company || !warehouse || !shelf || !goods || !bought || !customer || !tax || suppliers.length === 0) {
     const missing = [
@@ -154,8 +139,20 @@ async function seedCompany(client: PrismaClient, companyId: number, companyName:
     throw new Error(`${companyName} is missing ${missing.join(', ')}. Trade documents were not posted.`)
   }
 
-  for (const type of ['customer', 'supplier', 'inventory', 'production'] as const) {
-    await ensureVirtual(client, companyName, companyId, type)
+  const virtualTypes = ['customer', 'supplier', 'inventory', 'production'] as const
+  const virtuals = await client.stockLocation.findMany({
+    where: { companyId, type: { in: [...virtualTypes] } },
+    select: { type: true },
+  })
+  const present = new Set(virtuals.map((row) => row.type))
+  const missingVirtuals = virtualTypes.filter((type) => !present.has(type))
+  if (missingVirtuals.length > 0) {
+    await client.stockLocation.createMany({
+      data: missingVirtuals.map((type) => ({ name: type, type, companyId })),
+    })
+    for (const type of missingVirtuals) {
+      console.error(`seed-trade: ${companyName} had no ${type} stock location. One was created so the demo documents can post.`)
+    }
   }
 
   if (suppliers.length < 2) {
@@ -457,7 +454,7 @@ async function seedCompany(client: PrismaClient, companyId: number, companyName:
         },
       })
       await valueDoneMove(tx, companyId, move.id)
-    })
+    }, transactionOptions)
   }
   const creditExisting = await client.invoice.findFirst({ where: { companyId, name: 'CN-TRADE' } })
   const creditNote = creditExisting ?? await client.invoice.create({

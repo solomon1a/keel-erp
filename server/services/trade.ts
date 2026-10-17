@@ -1,6 +1,6 @@
 import { lineAmounts, roundMoney, sumLines } from '../../src/domain/money.ts'
 import { fulfillmentStatus, resolveUnitPrice, type FulfillmentStatus } from '../../src/domain/trade.ts'
-import { prisma, type Tx } from '../db.ts'
+import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, roundQty } from './stock.ts'
 import { landedCost, valueDoneMove } from './valuation.ts'
@@ -151,7 +151,7 @@ export async function deliverPartial(
         deliveries: { select: { id: true, name: true, state: true } },
       },
     })
-  })
+  }, transactionOptions)
 }
 
 export async function recordReceipt(tx: Tx, companyId: number, orderId: number, completed: CompletedMove[]) {

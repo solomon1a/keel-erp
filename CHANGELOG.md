@@ -1,5 +1,11 @@
 # Changelog
 
+## Seed survives a slow link to Singapore
+
+Interactive transactions on the app client and the seed client wait up to 15 seconds for a connection and run for up to 60 seconds. Posting or paying an invoice is about a dozen queries, so from the sin1 runtime (~30ms) it stays under a second. Producing a normal bill is longer and still a few seconds from sin1. The build seed runs in iad1, where the same confirm used to die at the old 5 second default.
+
+Confirming a sale or a purchase loads the shelf and the virtual locations in one query, checks on-hand stock in one query, and inserts the draft moves together. A repeat seed skips the Jiangbei rename when the English names are already in place, loads access grants in a handful of queries, and reads each region's existing documents together. Each seed stage runs on its own: a trade failure is logged as `KEEL SEED FAILED` and the floor seed still runs. The process still exits with a failure after every stage has had its turn.
+
 ## Floor seed on an existing database
 
 The manufacturing demo no longer stops at the first Cutting bench. Each named bill, work order, job card, plan, and wastage row is added only when that name is missing, and quantities already on the shelf are left alone. A failed build seed prints `KEEL SEED FAILED` with the error, then the deploy continues.

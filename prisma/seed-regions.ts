@@ -149,21 +149,37 @@ async function ensureTax(client: PrismaClient, name: string, rate: number) {
 }
 
 async function enrichRegion(client: PrismaClient, companyId: number, region: Region) {
-  const admin = await client.user.findUnique({ where: { email: region.adminEmail } })
-  const warehouse = await client.warehouse.findFirst({ where: { companyId, code: region.warehouseCode } })
-  const product = await client.product.findFirst({ where: { companyId, sku: region.productSku } })
-  const vendor = await client.contact.findFirst({ where: { companyId, email: region.vendorEmail } })
+  const [admin, warehouse, product, vendor, tax] = await Promise.all([
+    client.user.findUnique({ where: { email: region.adminEmail } }),
+    client.warehouse.findFirst({ where: { companyId, code: region.warehouseCode } }),
+    client.product.findFirst({ where: { companyId, sku: region.productSku } }),
+    client.contact.findFirst({ where: { companyId, email: region.vendorEmail } }),
+    client.tax.findFirst({ where: { name: region.taxName } }),
+  ])
   const shelf = warehouse
     ? await client.stockLocation.findFirst({ where: { companyId, warehouseId: warehouse.id, name: region.shelfName, type: 'internal' } })
     : null
   if (!admin || !warehouse || !product || !vendor || !shelf) return
-  const tax = await client.tax.findFirst({ where: { name: region.taxName } })
   const priced = roundMoney(region.productPrice)
   const cost = roundMoney(priced * 0.4)
 
   const accessorySku = `${region.productSku}-B`
-  if (!(await client.product.findFirst({ where: { companyId, sku: accessorySku } }))) {
-    const accessory = await client.product.create({
+  const rawSku = `${region.productSku}-RM`
+  const displayName = `${region.city} window display`
+  const [accessory, rawFound, purchase, bomFound, manufacturing, reserveFound, transfer, reorder, lead, session] = await Promise.all([
+    client.product.findFirst({ where: { companyId, sku: accessorySku } }),
+    client.product.findFirst({ where: { companyId, sku: rawSku } }),
+    client.purchaseOrder.findFirst({ where: { companyId, name: 'PO0001' } }),
+    client.billOfMaterials.findFirst({ where: { companyId, productId: product.id } }),
+    client.manufacturingOrder.findFirst({ where: { companyId, name: 'MO0001' } }),
+    client.stockLocation.findFirst({ where: { companyId, warehouseId: warehouse.id, name: 'Reserve' } }),
+    client.stockTransfer.findFirst({ where: { companyId, name: 'INT0001' } }),
+    client.reorderRule.findFirst({ where: { productId: product.id, warehouseId: warehouse.id } }),
+    client.lead.findFirst({ where: { companyId, name: displayName } }),
+    client.posSession.findFirst({ where: { companyId, name: 'SES0001' } }),
+  ])
+  if (!accessory) {
+    const created = await client.product.create({
       data: {
         name: `${region.productName} spare`,
         sku: accessorySku,
@@ -177,11 +193,10 @@ async function enrichRegion(client: PrismaClient, companyId: number, region: Reg
         description: `A spare sold beside the ${region.productName}.`,
       },
     })
-    await client.stockQuant.create({ data: { productId: accessory.id, locationId: shelf.id, quantity: 8 } })
+    await client.stockQuant.create({ data: { productId: created.id, locationId: shelf.id, quantity: 8 } })
   }
 
-  const rawSku = `${region.productSku}-RM`
-  let raw = await client.product.findFirst({ where: { companyId, sku: rawSku } })
+  let raw = rawFound
   if (!raw) {
     raw = await client.product.create({
       data: {
@@ -199,7 +214,7 @@ async function enrichRegion(client: PrismaClient, companyId: number, region: Reg
     await client.stockQuant.create({ data: { productId: raw.id, locationId: shelf.id, quantity: 40 } })
   }
 
-  if (tax && !(await client.purchaseOrder.findFirst({ where: { companyId, name: 'PO0001' } }))) {
+  if (tax && !purchase) {
     const subtotal = roundMoney(cost * 10)
     const taxAmount = roundMoney(subtotal * (region.taxRate / 100))
     await client.purchaseOrder.create({
@@ -229,7 +244,7 @@ async function enrichRegion(client: PrismaClient, companyId: number, region: Reg
     })
   }
 
-  let bom = await client.billOfMaterials.findFirst({ where: { companyId, productId: product.id } })
+  let bom = bomFound
   if (!bom) {
     bom = await client.billOfMaterials.create({
       data: {
@@ -241,7 +256,7 @@ async function enrichRegion(client: PrismaClient, companyId: number, region: Reg
       },
     })
   }
-  if (!(await client.manufacturingOrder.findFirst({ where: { companyId, name: 'MO0001' } }))) {
+  if (!manufacturing) {
     await client.manufacturingOrder.create({
       data: {
         name: 'MO0001',
@@ -258,13 +273,13 @@ async function enrichRegion(client: PrismaClient, companyId: number, region: Reg
     })
   }
 
-  let reserve = await client.stockLocation.findFirst({ where: { companyId, warehouseId: warehouse.id, name: 'Reserve' } })
+  let reserve = reserveFound
   if (!reserve) {
     reserve = await client.stockLocation.create({
       data: { name: 'Reserve', type: 'internal', warehouseId: warehouse.id, companyId },
     })
   }
-  if (!(await client.stockTransfer.findFirst({ where: { companyId, name: 'INT0001' } }))) {
+  if (!transfer) {
     await client.stockTransfer.create({
       data: {
         name: 'INT0001',
@@ -277,13 +292,12 @@ async function enrichRegion(client: PrismaClient, companyId: number, region: Reg
       },
     })
   }
-  if (!(await client.reorderRule.findFirst({ where: { productId: product.id, warehouseId: warehouse.id } }))) {
+  if (!reorder) {
     await client.reorderRule.create({
       data: { productId: product.id, warehouseId: warehouse.id, companyId, minQty: 20, maxQty: 30 },
     })
   }
-  const displayName = `${region.city} window display`
-  if (!(await client.lead.findFirst({ where: { companyId, name: displayName } }))) {
+  if (!lead) {
     await client.lead.create({
       data: {
         name: displayName,
@@ -296,7 +310,7 @@ async function enrichRegion(client: PrismaClient, companyId: number, region: Reg
       },
     })
   }
-  if (!(await client.posSession.findFirst({ where: { companyId, name: 'SES0001' } }))) {
+  if (!session) {
     const opened = await client.posSession.create({
       data: {
         name: 'SES0001',

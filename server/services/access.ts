@@ -22,44 +22,61 @@ const routes = [
 ] as const
 
 export async function ensureRoutes(db: Db, companyId: number) {
-  for (const route of routes) {
-    await db.stockRoute.upsert({
-      where: { companyId_name: { companyId, name: route.name } },
-      update: {},
-      create: { companyId, name: route.name, kind: route.kind, steps: route.steps },
-    })
+  const existing = await db.stockRoute.findMany({
+    where: { companyId, name: { in: routes.map((route) => route.name) } },
+    select: { name: true },
+  })
+  const have = new Set(existing.map((row) => row.name))
+  const missing = routes.filter((route) => !have.has(route.name))
+  if (missing.length === 0) return
+  await db.stockRoute.createMany({
+    data: missing.map((route) => ({ companyId, name: route.name, kind: route.kind, steps: route.steps })),
+    skipDuplicates: true,
+  })
+}
+
+function grantFlags(key: string) {
+  if (!isGroupKey(key)) return null
+  return {
+    canRead: grantFor(key, 'read'),
+    canWrite: grantFor(key, 'write'),
+    canCreate: grantFor(key, 'create'),
+    canDelete: grantFor(key, 'delete'),
   }
 }
 
 export async function ensureCompanyAccess(db: Db, companyId: number) {
-  for (const key of groupKeys) {
-    const group = await db.accessGroup.upsert({
-      where: { companyId_key: { companyId, key } },
-      update: {},
-      create: { companyId, key, name: groupName(key) },
+  let groups = await db.accessGroup.findMany({
+    where: { companyId, key: { in: [...groupKeys] } },
+    include: { grants: { select: { model: true } }, rules: { select: { model: true, name: true } } },
+  })
+  const missingKeys = groupKeys.filter((key) => !groups.some((group) => group.key === key))
+  if (missingKeys.length > 0) {
+    await db.accessGroup.createMany({
+      data: missingKeys.map((key) => ({ companyId, key, name: groupName(key) })),
+      skipDuplicates: true,
     })
+    groups = await db.accessGroup.findMany({
+      where: { companyId, key: { in: [...groupKeys] } },
+      include: { grants: { select: { model: true } }, rules: { select: { model: true, name: true } } },
+    })
+  }
+
+  const grantRows: Array<{ groupId: number; model: string; canRead: boolean; canWrite: boolean; canCreate: boolean; canDelete: boolean }> = []
+  const ruleRows: Array<{ groupId: number; model: string; name: string; field: string; op: string; value: string }> = []
+  for (const group of groups) {
+    const flags = grantFlags(group.key)
+    if (!flags) continue
+    const haveGrants = new Set(group.grants.map((grant) => grant.model))
+    const haveRules = new Set(group.rules.filter((rule) => rule.name === 'Same company').map((rule) => rule.model))
     for (const model of accessModels) {
-      const flags = {
-        canRead: grantFor(key, 'read'),
-        canWrite: grantFor(key, 'write'),
-        canCreate: grantFor(key, 'create'),
-        canDelete: grantFor(key, 'delete'),
-      }
-      await db.modelAccess.upsert({
-        where: { groupId_model: { groupId: group.id, model } },
-        update: {},
-        create: { groupId: group.id, model, ...flags },
-      })
-    }
-    if (key === 'settings') continue
-    for (const model of accessModels) {
-      const rule = await db.recordRule.findFirst({ where: { groupId: group.id, model, name: 'Same company' } })
-      if (rule) continue
-      await db.recordRule.create({
-        data: { groupId: group.id, model, name: 'Same company', field: 'companyId', op: 'eq', value: '$company' },
-      })
+      if (!haveGrants.has(model)) grantRows.push({ groupId: group.id, model, ...flags })
+      if (group.key === 'settings' || haveRules.has(model)) continue
+      ruleRows.push({ groupId: group.id, model, name: 'Same company', field: 'companyId', op: 'eq', value: '$company' })
     }
   }
+  if (grantRows.length > 0) await db.modelAccess.createMany({ data: grantRows, skipDuplicates: true })
+  if (ruleRows.length > 0) await db.recordRule.createMany({ data: ruleRows })
   await ensureRoutes(db, companyId)
 }
 
@@ -95,15 +112,17 @@ export async function ensureMembership(db: Db, user: { id: number; companyId: nu
 
 export async function seedAccess(client: Tx | typeof prisma) {
   const companies = await client.company.findMany({ select: { id: true } })
-  for (const company of companies) {
-    await ensureCompanyAccess(client, company.id)
-    const users = await client.user.findMany({
-      where: { companyId: company.id },
-      select: { id: true, companyId: true, role: true },
-    })
-    for (const user of users) {
-      await ensureMembership(client, { id: user.id, companyId: user.companyId, role: parseRole(user.role) ?? 'user' })
-    }
+  for (const company of companies) await ensureCompanyAccess(client, company.id)
+  const users = await client.user.findMany({ select: { id: true, companyId: true, role: true } })
+  if (users.length === 0) return
+  const memberships = await client.groupMember.findMany({
+    where: { userId: { in: users.map((user) => user.id) } },
+    select: { userId: true },
+  })
+  const joined = new Set(memberships.map((row) => row.userId))
+  for (const user of users) {
+    if (joined.has(user.id)) continue
+    await ensureMembership(client, { id: user.id, companyId: user.companyId, role: parseRole(user.role) ?? 'user' })
   }
 }
 

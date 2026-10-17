@@ -1,8 +1,8 @@
 import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { PurchaseInput, ReceivePurchaseInput } from '../../shared/schemas.ts'
-import { prisma, type Tx } from '../db.ts'
+import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { applyQuant, companyLocations, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
+import { applyQuant, resolveWarehouseId, roundQty } from './stock.ts'
 import { noteChatter, recordReceipt } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
@@ -169,21 +169,41 @@ export async function confirmPurchase(companyId: number, orderId: number) {
       throw new AppError(400, 'Add a line before confirming.')
     }
 
-    const locations = await companyLocations(tx, companyId)
-    const destination = await warehouseStockLocation(tx, companyId, order.warehouseId)
-    for (const line of order.lines) {
-      if (line.product.type !== 'product') continue
-      await tx.stockMove.create({
-        data: {
+    const sourceWarehouseId = order.warehouseId ?? (await resolveWarehouseId(tx, companyId, null))
+    const rows = await tx.stockLocation.findMany({
+      where: {
+        companyId,
+        OR: [{ warehouseId: null }, { warehouseId: sourceWarehouseId, type: 'internal' }],
+      },
+      orderBy: { id: 'asc' },
+    })
+    const supplier = rows.find((row) => row.warehouseId == null && row.type === 'supplier')
+    const customer = rows.find((row) => row.warehouseId == null && row.type === 'customer')
+    const adjustment = rows.find((row) => row.warehouseId == null && row.type === 'inventory')
+    const production = rows.find((row) => row.warehouseId == null && row.type === 'production')
+    if (!supplier || !customer || !adjustment || !production) {
+      throw new AppError(500, 'Stock locations are not set up for this company.')
+    }
+    const shelves = rows.filter((row) => row.warehouseId === sourceWarehouseId && row.type === 'internal')
+    const shelf = shelves.find((row) => row.isDefault) ?? shelves[0]
+    if (!shelf) {
+      const warehouse = await tx.warehouse.findFirst({ where: { id: sourceWarehouseId } })
+      throw new AppError(400, `${warehouse?.name ?? 'Warehouse'} has no stock location.`)
+    }
+    const stocked = order.lines.filter((line) => line.product.type === 'product')
+    if (stocked.length > 0) {
+      const postedAt = new Date()
+      await tx.stockMove.createMany({
+        data: stocked.map((line) => ({
           productId: line.productId,
-          locationFromId: locations.supplier.id,
-          locationToId: destination.location.id,
+          locationFromId: supplier.id,
+          locationToId: shelf.id,
           quantity: line.quantity,
           state: 'draft',
           reference: order.name,
           purchaseOrderId: order.id,
-          date: new Date(),
-        },
+          date: postedAt,
+        })),
       })
     }
 
@@ -200,7 +220,7 @@ export async function confirmPurchase(companyId: number, orderId: number) {
       data: { state: 'purchase' },
       include: purchaseInclude,
     })
-  })
+  }, transactionOptions)
 }
 
 export async function receivePurchase(companyId: number, orderId: number, input: ReceivePurchaseInput) {
@@ -288,7 +308,7 @@ export async function receivePurchase(companyId: number, orderId: number, input:
       data: { state: next },
       include: purchaseInclude,
     })
-  })
+  }, transactionOptions)
 }
 
 export async function cancelPurchase(companyId: number, orderId: number) {

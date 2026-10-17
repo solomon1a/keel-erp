@@ -1,5 +1,5 @@
 import { lineAmounts, roundMoney } from '../../src/domain/money.ts'
-import { prisma, type Tx } from '../db.ts'
+import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { assertYearOpen, ensureCompanyFrame } from './books.ts'
 import { assertBooksOpen } from './locks.ts'
@@ -516,12 +516,12 @@ export async function postInvoiceTx(tx: Tx, companyId: number, invoiceId: number
 
 export async function postInvoice(companyId: number, invoiceId: number) {
   await ensureBooks(companyId)
-  return prisma.$transaction((tx) => postInvoiceTx(tx, companyId, invoiceId))
+  return prisma.$transaction((tx) => postInvoiceTx(tx, companyId, invoiceId), transactionOptions)
 }
 
 export async function payInvoice(companyId: number, invoiceId: number, amount: number, method: string) {
   await ensureBooks(companyId)
-  return prisma.$transaction((tx) => payInvoiceTx(tx, companyId, invoiceId, amount, method))
+  return prisma.$transaction((tx) => payInvoiceTx(tx, companyId, invoiceId, amount, method), transactionOptions)
 }
 
 export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number, amount: number, method: string) {

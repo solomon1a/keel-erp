@@ -54,6 +54,17 @@ export function databaseTarget(url = process.env.DATABASE_URL): DatabaseTarget {
   }
 }
 
+/**
+ * Interactive transactions from the app and the seed.
+ * Runtime in sin1 is next to Neon (~30ms): posting an invoice or a payment is about a
+ * dozen queries, and producing a normal bill is a few seconds. The build seed runs in
+ * iad1 (~200–400ms per query), so the old 5s default closed confirm before it finished.
+ */
+export const transactionOptions = {
+  maxWait: 15_000,
+  timeout: 60_000,
+} satisfies NonNullable<Prisma.PrismaClientOptions['transactionOptions']>
+
 function runtimeDatabaseUrl() {
   const url = process.env.DATABASE_URL
   if (!url) return undefined
@@ -67,12 +78,18 @@ function runtimeDatabaseUrl() {
   return parsed.toString()
 }
 
+function pgClient() {
+  const url = runtimeDatabaseUrl()
+  return new PrismaClient({
+    transactionOptions,
+    ...(url ? { datasourceUrl: url } : {}),
+  })
+}
+
 function createClient() {
   const target = databaseTarget()
   const url = process.env.DATABASE_URL
-  const base = target.driver === 'neon-http' && url
-    ? neonClient(url)
-    : new PrismaClient(runtimeDatabaseUrl() ? { datasourceUrl: runtimeDatabaseUrl() } : undefined)
+  const base = target.driver === 'neon-http' && url ? neonClient(url) : pgClient()
   return base.$extends({
     query: {
       $allModels: {
@@ -93,7 +110,7 @@ function neonClient(url: string) {
   neonConfig.poolQueryViaFetch = true
   neonConfig.webSocketConstructor = ws
   const adapter = new PrismaNeon({ connectionString: url, max: 3 })
-  return new PrismaClient({ adapter })
+  return new PrismaClient({ adapter, transactionOptions })
 }
 
 export const dbTarget = databaseTarget()
