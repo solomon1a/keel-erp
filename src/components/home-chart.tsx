@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { Locale } from '../i18n/locale.tsx'
 
 type Month = { month: string; income: number; expense: number }
@@ -25,13 +26,39 @@ function curve(points: { x: number; y: number }[]) {
   return path
 }
 
+function chartHeight(width: number) {
+  if (width < 720) return Math.max(260, Math.round(width * 0.72))
+  return Math.min(460, Math.max(380, Math.round(width * 0.32)))
+}
+
 export function HomeChart({ months, locale }: { months: Month[]; locale: Locale }) {
-  const width = 640
-  const height = 196
-  const left = 40
-  const right = 12
-  const top = 14
-  const bottom = 24
+  const frame = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState({ width: 960, height: 380 })
+  useLayoutEffect(() => {
+    const node = frame.current
+    if (!node || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const width = node.clientWidth
+      if (width <= 0) return
+      setBox((current) => {
+        const height = chartHeight(width)
+        if (current.width === width && current.height === height) return current
+        return { width, height }
+      })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+  const width = Math.max(320, Math.round(box.width))
+  const height = Math.max(220, Math.round(box.height))
+  const narrow = width < 640
+  const left = narrow ? 40 : 56
+  const right = narrow ? 8 : 16
+  const top = 16
+  const bottom = 32
+  const labelSize = narrow ? 11 : 13
   const plotWidth = width - left - right
   const plotHeight = height - top - bottom
   const peak = niceMax(Math.max(...months.map((month) => Math.max(month.income, month.expense)), 0))
@@ -51,7 +78,8 @@ export function HomeChart({ months, locale }: { months: Month[]; locale: Locale 
   const ticks = [0, 0.33, 0.66, 1]
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 h-auto w-full" role="img">
+    <div ref={frame} className="mt-4">
+    <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full" role="img" style={{ height: box.height }}>
       <defs>
         <linearGradient id="home-rev-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="var(--home-rev)" stopOpacity="0.26" />
@@ -68,7 +96,7 @@ export function HomeChart({ months, locale }: { months: Month[]; locale: Locale 
         return (
           <g key={tick}>
             <line x1={left} x2={width - right} y1={y} y2={y} stroke="var(--home-grid)" />
-            <text x={left - 8} y={y + 4} textAnchor="end" fontSize="11" fill="var(--home-axis)">
+            <text x={left - 8} y={y + 4} textAnchor="end" fontSize={labelSize} fill="var(--home-axis)">
               {formatter.format(value)}
             </text>
           </g>
@@ -76,20 +104,23 @@ export function HomeChart({ months, locale }: { months: Month[]; locale: Locale 
       })}
       {firstIncome && lastIncome ? <path d={`${incomeLine} L${lastIncome.x},${baseline} L${firstIncome.x},${baseline} Z`} fill="url(#home-rev-fill)" /> : null}
       {firstExpense && lastExpense ? <path d={`${expenseLine} L${lastExpense.x},${baseline} L${firstExpense.x},${baseline} Z`} fill="url(#home-exp-fill)" /> : null}
-      <path d={incomeLine} fill="none" stroke="var(--home-rev)" strokeWidth="2.5" />
-      <path d={expenseLine} fill="none" stroke="var(--home-exp)" strokeWidth="2" />
+      <path d={incomeLine} fill="none" stroke="var(--home-rev)" strokeWidth="3" />
+      <path d={expenseLine} fill="none" stroke="var(--home-exp)" strokeWidth="2.5" />
       {months.map((month, index) => (
-        <text key={month.month} x={xFor(index)} y={height - 6} textAnchor="middle" fontSize="11" fill="var(--home-axis)">
-          {monthLabel.format(new Date(`${month.month}-01T00:00:00.000Z`))}
-        </text>
+        narrow && index % 2 === 1 ? null : (
+          <text key={month.month} x={xFor(index)} y={height - 8} textAnchor="middle" fontSize={labelSize} fill="var(--home-axis)">
+            {monthLabel.format(new Date(`${month.month}-01T00:00:00.000Z`))}
+          </text>
+        )
       ))}
       {lastIncome && lastExpense ? (
         <>
           <line x1={lastIncome.x} x2={lastIncome.x} y1={top} y2={baseline} stroke="var(--home-rev)" strokeOpacity="0.35" strokeDasharray="3 3" />
-          <circle cx={lastIncome.x} cy={lastIncome.y} r="5" fill="var(--kl-glass-bg)" stroke="var(--home-rev)" strokeWidth="2.5" />
-          <circle cx={lastExpense.x} cy={lastExpense.y} r="4" fill="var(--kl-glass-bg)" stroke="var(--home-exp)" strokeWidth="2" />
+          <circle cx={lastIncome.x} cy={lastIncome.y} r="6" fill="var(--kl-glass-bg)" stroke="var(--home-rev)" strokeWidth="3" />
+          <circle cx={lastExpense.x} cy={lastExpense.y} r="5" fill="var(--kl-glass-bg)" stroke="var(--home-exp)" strokeWidth="2.5" />
         </>
       ) : null}
     </svg>
+    </div>
   )
 }

@@ -533,7 +533,7 @@ function LiveBoard({
           <span className={cn('home-pill', bankTrend.tone)}>{bankTrend.text}</span>
           <span className="text-xs text-muted-foreground">{t('home.accounts', { count: data.bank.accounts })}</span>
         </section>
-        <section className="home-chart keel-glass min-w-0 rounded-[22px] p-4 sm:p-5">
+        <section className="home-chart keel-glass min-w-0 rounded-[22px] p-5 sm:p-6">
           <div className="flex flex-wrap items-start gap-3">
             <div>
               <h2 className="text-[15px] font-semibold">{t('home.chart.title')}</h2>
@@ -545,7 +545,7 @@ function LiveBoard({
             </div>
           </div>
           {chartReady(data.chart.months) ? <HomeChart months={data.chart.months} locale={locale} /> : (
-            <p className="py-16 text-center text-sm text-muted-foreground">{t('home.chart.empty')}</p>
+            <p className="py-24 text-center text-sm text-muted-foreground">{t('home.chart.empty')}</p>
           )}
         </section>
         <PipelineCard pipeline={data.pipeline} money={money} t={t} />
@@ -576,7 +576,7 @@ function Kpi({ icon, color, label, value, children }: { icon: ReactNode; color: 
 function PipelineCard({ pipeline, money, t }: { pipeline: HomeData['pipeline']; money: (value: number) => string; t: Translate }) {
   const max = Math.max(...pipeline.stages.map((stage) => stage.count), 1)
   return (
-    <section className="home-pipeline keel-glass rounded-[22px] p-4 sm:p-5">
+    <section className="home-pipeline keel-glass rounded-[22px] p-5 sm:p-6">
       <div className="flex items-start gap-2">
         <div>
           <h2 className="text-[15px] font-semibold">{t('home.pipeline.title')}</h2>
@@ -586,30 +586,29 @@ function PipelineCard({ pipeline, money, t }: { pipeline: HomeData['pipeline']; 
         </div>
         <span className="home-pill home-teal ml-auto">{t('home.pipeline.win', { rate: pipeline.winRate })}</span>
       </div>
-      <div className="mt-4 grid gap-3">
+      <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {pipeline.stages.map((stage) => (
-          <div key={stage.stage} className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-2">
-            <span className="truncate text-xs text-muted-foreground">{t(stageKey(stage.stage))}</span>
-            <div className="h-4 rounded-full bg-[var(--home-track)]">
+          <div key={stage.stage} className="home-chip !rounded-2xl px-3 py-3">
+            <p className="truncate text-xs text-muted-foreground">{t(stageKey(stage.stage))}</p>
+            <p className="mt-1 text-xl font-bold tabular-nums">{stage.count}</p>
+            <div className="mt-2 h-2 rounded-full bg-[var(--home-track)]">
               <div
-                className="flex h-full items-center rounded-full bg-[color-mix(in_srgb,var(--home-rev)_55%,#d4ede7)] pl-2 text-[11px] font-bold text-[#0A4F45]"
-                style={{ width: `${Math.max(stage.count === 0 ? 0 : 18, (stage.count / max) * 100)}%` }}
-              >
-                {stage.count > 0 ? stage.count : ''}
-              </div>
+                className="h-full rounded-full bg-[var(--home-rev)]"
+                style={{ width: `${stage.count === 0 ? 0 : Math.max(12, (stage.count / max) * 100)}%` }}
+              />
             </div>
-            <span className="text-right text-xs tabular-nums text-muted-foreground">{money(stage.amount)}</span>
+            <p className="mt-2 text-xs tabular-nums text-muted-foreground">{money(stage.amount)}</p>
           </div>
         ))}
       </div>
-      <div className="mt-4 grid gap-2">
-        <div className="home-chip rounded-2xl px-3 py-2">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="home-chip !rounded-2xl px-4 py-3">
           <p className="text-xs text-muted-foreground">{t('home.pipeline.value')}</p>
-          <p className="mt-0.5 font-bold tabular-nums">{money(pipeline.openValue)}</p>
+          <p className="mt-0.5 text-lg font-bold tabular-nums">{money(pipeline.openValue)}</p>
         </div>
-        <div className="home-chip rounded-2xl px-3 py-2">
+        <div className="home-chip !rounded-2xl px-4 py-3">
           <p className="text-xs text-muted-foreground">{t('home.pipeline.avg')}</p>
-          <p className="mt-0.5 font-bold tabular-nums">{money(pipeline.avgDeal)}</p>
+          <p className="mt-0.5 text-lg font-bold tabular-nums">{money(pipeline.avgDeal)}</p>
         </div>
       </div>
     </section>
@@ -621,7 +620,7 @@ function OrdersCard({ orders, locale, money, t }: { orders: HomeOrder[]; locale:
   const rows = orders.filter((order) => matchesTab(order.status, tab)).slice(0, 5)
   const tabs: OrderTab[] = ['all', 'quotes', 'invoice']
   return (
-    <section className="home-orders keel-glass min-w-0 rounded-[22px] px-4 py-4 sm:px-5">
+    <section className="home-orders keel-glass h-full min-w-0 rounded-[22px] px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-[15px] font-semibold">{t('home.orders')}</h2>
         <div className="home-tabs" role="tablist">
@@ -693,7 +692,7 @@ function AttentionCard({
   t: Translate
 }) {
   return (
-    <section id="home-attention" className="home-attention keel-glass rounded-[22px] px-4 py-5 sm:px-5">
+    <section id="home-attention" className="home-attention keel-glass h-full rounded-[22px] px-4 py-5 sm:px-5">
       <div className="flex items-center gap-3">
         <h2 className="text-[15px] font-semibold">{t('home.attention')}</h2>
         <span className={cn('home-pill ml-auto', count > 0 ? 'home-warn' : 'home-ok')}>{count}</span>
@@ -774,7 +773,7 @@ function attentionDetail(item: Attention, money: (value: number) => string, loca
 
 function StockCard({ rows, t }: { rows: HomeData['lowStock']; t: Translate }) {
   return (
-    <section className="home-stock keel-glass rounded-[22px] px-4 py-5 sm:px-5">
+    <section className="home-stock keel-glass h-full rounded-[22px] px-4 py-5 sm:px-5">
       <div className="flex items-center gap-2">
         <h2 className="text-[15px] font-semibold">{t('home.stock')}</h2>
         <span className={cn('home-pill ml-auto', rows.length > 0 ? 'home-bad' : 'home-ok')}>{t('home.stock.count', { count: rows.length })}</span>
@@ -799,7 +798,7 @@ function StockCard({ rows, t }: { rows: HomeData['lowStock']; t: Translate }) {
 
 function AppsCard({ t, installed = false }: { t: Translate; installed?: boolean }) {
   return (
-    <section className="home-apps keel-glass rounded-[22px] px-4 py-5 sm:px-5">
+    <section className="home-apps keel-glass h-full rounded-[22px] px-4 py-5 sm:px-5">
       <div className="flex items-center gap-2">
         <h2 className="text-[15px] font-semibold">{t('home.apps')}</h2>
         {installed ? <span className="text-xs text-muted-foreground">{t('home.apps.installed', { count: shortcuts.length })}</span> : null}

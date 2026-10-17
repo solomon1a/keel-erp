@@ -661,9 +661,9 @@ select option {
 .home-kpi-value { font-size: clamp(15px, 10cqi, 26px); }
 .home-bank { order: 2; }
 .home-chart { order: 3; }
-.home-attention { order: 4; }
+.home-pipeline { order: 4; }
 .home-orders { order: 5; }
-.home-pipeline { order: 6; }
+.home-attention { order: 6; }
 .home-stock { order: 7; }
 .home-apps { order: 8; }
 
@@ -789,32 +789,42 @@ select option {
   color: #ffffff;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 800px) {
   .home-board {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 300px) minmax(280px, 360px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 18px;
-    align-items: start;
+    align-items: stretch;
     grid-template-areas:
-      'kpis kpis side'
-      'bank bank side'
-      'chart pipeline side'
-      'orders orders side';
+      'kpis kpis'
+      'bank bank'
+      'chart chart'
+      'pipeline pipeline'
+      'orders orders'
+      'attention attention'
+      'stock apps';
   }
 
-  .home-main { display: contents; }
-  .home-side {
-    display: flex;
-    flex-direction: column;
+  .home-kpis { grid-area: kpis; }
+  .home-bank { grid-area: bank; }
+  .home-chart { grid-area: chart; }
+  .home-pipeline { grid-area: pipeline; }
+  .home-orders { grid-area: orders; }
+  .home-attention { grid-area: attention; }
+  .home-stock { grid-area: stock; }
+  .home-apps { grid-area: apps; }
+}
+
+@media (min-width: 1100px) {
+  .home-board {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 20px;
-    grid-area: side;
+    grid-template-areas:
+      'kpis kpis kpis kpis kpis kpis'
+      'bank bank bank bank bank bank'
+      'chart chart chart chart chart chart'
+      'pipeline pipeline pipeline pipeline pipeline pipeline'
+      'orders orders orders orders orders orders'
+      'attention attention stock stock apps apps';
   }
-  .home-kpis { grid-area: kpis; order: 0; }
-  .home-bank { grid-area: bank; order: 0; }
-  .home-chart { grid-area: chart; order: 0; }
-  .home-pipeline { grid-area: pipeline; order: 0; }
-  .home-orders { grid-area: orders; order: 0; }
-  .home-attention,
-  .home-stock,
-  .home-apps { order: 0; }
 }

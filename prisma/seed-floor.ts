@@ -1,155 +1,343 @@
 import type { PrismaClient } from '@prisma/client'
 
 // Documents and quantities only. No journals, so the seeded profit and balance sheet stay put.
+// Each named document is created only when that name is missing. A workstation that already
+// exists does not skip the bills, work orders, job cards, plan, or wastage.
 export async function seedFloor(client: PrismaClient) {
   const companies = await client.company.findMany({ select: { id: true, name: true } })
   for (const company of companies) {
-    if (await client.workstation.findFirst({ where: { companyId: company.id, name: 'Cutting bench' } })) continue
-    const admin = await client.user.findFirst({ where: { companyId: company.id, role: 'admin' } })
-    const warehouse = await client.warehouse.findFirst({ where: { companyId: company.id, isDefault: true } })
-    const shelf = warehouse
-      ? await client.stockLocation.findFirst({ where: { companyId: company.id, warehouseId: warehouse.id, type: 'internal' } })
-      : null
-    if (!admin || !warehouse || !shelf) continue
+    try {
+      await seedCompanyFloor(client, company)
+    } catch (error) {
+      console.error(`seed-floor: ${company.name} failed`)
+      throw error
+    }
+  }
+}
 
-    const tag = `FL${company.id}`
-    const cloth = await client.product.create({
-      data: { companyId: company.id, name: 'Floor cloth', sku: `${tag}-RM`, type: 'product', kind: 'raw', listPrice: 0, costPrice: 8, purchasable: true },
-    })
-    const panel = await client.product.create({
-      data: { companyId: company.id, name: 'Cut panel', sku: `${tag}-PANEL`, type: 'product', kind: 'finished', listPrice: 18, costPrice: 10, purchasable: false },
-    })
-    const apron = await client.product.create({
-      data: { companyId: company.id, name: 'Shop apron', sku: `${tag}-APRON`, type: 'product', kind: 'finished', listPrice: 68, costPrice: 30, purchasable: false },
-    })
-    const offcut = await client.product.create({
-      data: { companyId: company.id, name: 'Cloth offcut', sku: `${tag}-OFF`, type: 'product', kind: 'raw', listPrice: 0, costPrice: 1, purchasable: false },
-    })
-    await client.stockQuant.create({ data: { productId: cloth.id, locationId: shelf.id, quantity: 40 } })
-    await client.stockQuant.create({ data: { productId: panel.id, locationId: shelf.id, quantity: 10 } })
+async function seedCompanyFloor(client: PrismaClient, company: { id: number; name: string }) {
+  const added: string[] = []
+  const admin = await client.user.findFirst({ where: { companyId: company.id, role: 'admin' } })
+  const warehouse = await client.warehouse.findFirst({ where: { companyId: company.id, isDefault: true } })
+  const shelf = warehouse
+    ? await client.stockLocation.findFirst({ where: { companyId: company.id, warehouseId: warehouse.id, type: 'internal' } })
+    : null
+  if (!admin || !warehouse || !shelf) {
+    console.log(`seed-floor: ${company.name} has no default shelf, so floor documents were not added.`)
+    return
+  }
 
-    const bench = await client.workstation.create({
-      data: { companyId: company.id, name: 'Cutting bench', hourRate: 60 },
-    })
-    const panelBom = await client.billOfMaterials.create({
-      data: {
-        companyId: company.id,
-        productId: panel.id,
-        yieldQty: 1,
-        version: 1,
-        active: true,
-        notes: 'One panel from floor cloth, with a little expected loss at the knife.',
-        lines: { create: [{ productId: cloth.id, quantity: 1.2, lossPercent: 5 }] },
-      },
-    })
-    const apronBom = await client.billOfMaterials.create({
-      data: {
-        companyId: company.id,
-        productId: apron.id,
-        yieldQty: 1,
-        version: 1,
-        active: true,
-        notes: 'An apron is one cut panel, a short bench operation, and a cloth offcut.',
-        lines: { create: [{ productId: panel.id, quantity: 1, lossPercent: 0 }] },
-        operations: { create: [{ sequence: 1, name: 'Cut and hem', workstationId: bench.id, hours: 0.5, lossPercent: 0 }] },
-        byproducts: { create: [{ productId: offcut.id, quantity: 0.2 }] },
-      },
-    })
+  const tag = `FL${company.id}`
+  const cloth = await ensureProduct(client, company.id, {
+    name: 'Floor cloth',
+    sku: `${tag}-RM`,
+    kind: 'raw',
+    listPrice: 0,
+    costPrice: 8,
+    purchasable: true,
+  }, added)
+  const panel = await ensureProduct(client, company.id, {
+    name: 'Cut panel',
+    sku: `${tag}-PANEL`,
+    kind: 'finished',
+    listPrice: 18,
+    costPrice: 10,
+    purchasable: false,
+  }, added)
+  const apron = await ensureProduct(client, company.id, {
+    name: 'Shop apron',
+    sku: `${tag}-APRON`,
+    kind: 'finished',
+    listPrice: 68,
+    costPrice: 30,
+    purchasable: false,
+  }, added)
+  const offcut = await ensureProduct(client, company.id, {
+    name: 'Cloth offcut',
+    sku: `${tag}-OFF`,
+    kind: 'raw',
+    listPrice: 0,
+    costPrice: 1,
+    purchasable: false,
+  }, added)
+  await ensureQuant(client, cloth.id, shelf.id, 40, added, cloth.sku)
+  const bench = await ensureWorkstation(client, company.id, added)
 
-    const wip = await client.warehouse.create({
-      data: { companyId: company.id, name: 'Work in progress', code: `WIP${company.id}`, isDefault: false },
-    })
-    const scrap = await client.warehouse.create({
-      data: { companyId: company.id, name: 'Scrap', code: `SCR${company.id}`, isDefault: false },
-    })
-    const wipShelf = await client.stockLocation.create({
-      data: { companyId: company.id, warehouseId: wip.id, name: 'WIP shelf', type: 'internal' },
-    })
-    await client.stockLocation.create({
-      data: { companyId: company.id, warehouseId: scrap.id, name: 'Scrap bin', type: 'internal' },
-    })
-    await client.stockQuant.update({
-      where: { productId_locationId: { productId: panel.id, locationId: shelf.id } },
-      data: { quantity: 6 },
-    })
-    await client.stockQuant.create({ data: { productId: panel.id, locationId: wipShelf.id, quantity: 3 } })
+  const panelBom = await ensureBom(client, company.id, panel.id, {
+    notes: 'One panel from floor cloth, with a little expected loss at the knife.',
+    lines: [{ productId: cloth.id, quantity: 1.2, lossPercent: 5 }],
+  }, added, 'Cut panel bill')
+  const apronBom = await ensureBom(client, company.id, apron.id, {
+    notes: 'An apron is one cut panel, a short bench operation, and a cloth offcut.',
+    lines: [{ productId: panel.id, quantity: 1, lossPercent: 0 }],
+    operations: [{ sequence: 1, name: 'Cut and hem', workstationId: bench.id, hours: 0.5, lossPercent: 0 }],
+    byproducts: [{ productId: offcut.id, quantity: 0.2 }],
+  }, added, 'Shop apron bill')
 
-    const order = await client.manufacturingOrder.create({
-      data: {
-        companyId: company.id,
-        name: `MO-WIP-${company.id}`,
-        state: 'progress',
-        purpose: 'stock',
-        productId: apron.id,
-        bomId: apronBom.id,
-        quantity: 4,
-        quantityDone: 1,
-        transferred: true,
-        sourceWarehouseId: warehouse.id,
-        destWarehouseId: warehouse.id,
-        wipWarehouseId: wip.id,
-        scrapWarehouseId: scrap.id,
-        createdById: admin.id,
-        lines: { create: [{ productId: panel.id, quantity: 4, consumed: 1, lossPercent: 0 }] },
-      },
+  const wip = await ensureWarehouse(client, company.id, 'Work in progress', `WIP${company.id}`, added)
+  const scrap = await ensureWarehouse(client, company.id, 'Scrap', `SCR${company.id}`, added)
+  const wipShelf = await ensureLocation(client, company.id, wip.id, 'WIP shelf', added)
+  await ensureLocation(client, company.id, scrap.id, 'Scrap bin', added)
+  await ensureQuant(client, panel.id, shelf.id, 6, added, `${panel.sku} shelf`)
+  await ensureQuant(client, panel.id, wipShelf.id, 3, added, `${panel.sku} WIP`)
+
+  const order = await ensureOrder(client, {
+    companyId: company.id,
+    name: `MO-WIP-${company.id}`,
+    state: 'progress',
+    purpose: 'stock',
+    productId: apron.id,
+    bomId: apronBom.id,
+    quantity: 4,
+    quantityDone: 1,
+    transferred: true,
+    sourceWarehouseId: warehouse.id,
+    destWarehouseId: warehouse.id,
+    wipWarehouseId: wip.id,
+    scrapWarehouseId: scrap.id,
+    createdById: admin.id,
+    line: { productId: panel.id, quantity: 4, consumed: 1, lossPercent: 0 },
+  }, added)
+  const card = await ensureJobCard(client, {
+    companyId: company.id,
+    orderId: order.id,
+    name: `JC-WIP-${company.id}`,
+    workstationId: bench.id,
+  }, added)
+  await ensureWastage(client, {
+    companyId: company.id,
+    orderId: order.id,
+    jobCardId: card.id,
+    productId: panel.id,
+    workstationId: bench.id,
+  }, added)
+  await ensureOrder(client, {
+    companyId: company.id,
+    name: `MO-SUB-${company.id}`,
+    state: 'confirmed',
+    purpose: 'subcontract',
+    productId: panel.id,
+    bomId: panelBom.id,
+    quantity: 2,
+    quantityDone: 0,
+    transferred: false,
+    sourceWarehouseId: warehouse.id,
+    destWarehouseId: warehouse.id,
+    wipWarehouseId: null,
+    scrapWarehouseId: null,
+    createdById: admin.id,
+    line: { productId: cloth.id, quantity: 2.52, consumed: 0, lossPercent: 5 },
+  }, added)
+  await ensurePlan(client, company.id, apron.id, apronBom.id, cloth.id, added)
+
+  console.log(`seed-floor: ${company.name} ${added.length > 0 ? `added ${added.join(', ')}` : 'already had the named floor documents'}.`)
+}
+
+async function ensureProduct(
+  client: PrismaClient,
+  companyId: number,
+  input: { name: string; sku: string; kind: string; listPrice: number; costPrice: number; purchasable: boolean },
+  added: string[],
+) {
+  const existing = await client.product.findFirst({ where: { companyId, sku: input.sku } })
+  if (existing) return existing
+  added.push(input.name)
+  return client.product.create({
+    data: { companyId, name: input.name, sku: input.sku, type: 'product', kind: input.kind, listPrice: input.listPrice, costPrice: input.costPrice, purchasable: input.purchasable },
+  })
+}
+
+async function ensureQuant(client: PrismaClient, productId: number, locationId: number, quantity: number, added: string[], label: string) {
+  const existing = await client.stockQuant.findUnique({ where: { productId_locationId: { productId, locationId } } })
+  if (existing) return
+  added.push(label)
+  await client.stockQuant.create({ data: { productId, locationId, quantity } })
+}
+
+async function ensureWorkstation(client: PrismaClient, companyId: number, added: string[]) {
+  const existing = await client.workstation.findFirst({ where: { companyId, name: 'Cutting bench' } })
+  if (existing) return existing
+  added.push('Cutting bench')
+  return client.workstation.create({ data: { companyId, name: 'Cutting bench', hourRate: 60 } })
+}
+
+async function ensureWarehouse(client: PrismaClient, companyId: number, name: string, code: string, added: string[]) {
+  const existing = await client.warehouse.findFirst({ where: { companyId, code } })
+  if (existing) return existing
+  added.push(name)
+  return client.warehouse.create({ data: { companyId, name, code, isDefault: false } })
+}
+
+async function ensureLocation(client: PrismaClient, companyId: number, warehouseId: number, name: string, added: string[]) {
+  const existing = await client.stockLocation.findFirst({ where: { companyId, warehouseId, name, type: 'internal' } })
+  if (existing) return existing
+  added.push(name)
+  return client.stockLocation.create({ data: { companyId, warehouseId, name, type: 'internal' } })
+}
+
+async function ensureBom(
+  client: PrismaClient,
+  companyId: number,
+  productId: number,
+  recipe: {
+    notes: string
+    lines: Array<{ productId: number; quantity: number; lossPercent: number }>
+    operations?: Array<{ sequence: number; name: string; workstationId: number; hours: number; lossPercent: number }>
+    byproducts?: Array<{ productId: number; quantity: number }>
+  },
+  added: string[],
+  label: string,
+) {
+  const existing = await client.billOfMaterials.findFirst({
+    where: { companyId, productId },
+    orderBy: [{ active: 'desc' }, { version: 'desc' }],
+  })
+  if (existing) return existing
+  added.push(label)
+  return client.billOfMaterials.create({
+    data: {
+      companyId,
+      productId,
+      yieldQty: 1,
+      version: 1,
+      active: true,
+      notes: recipe.notes,
+      lines: { create: recipe.lines },
+      operations: recipe.operations ? { create: recipe.operations } : undefined,
+      byproducts: recipe.byproducts ? { create: recipe.byproducts } : undefined,
+    },
+  })
+}
+
+async function ensureOrder(
+  client: PrismaClient,
+  input: {
+    companyId: number
+    name: string
+    state: string
+    purpose: string
+    productId: number
+    bomId: number
+    quantity: number
+    quantityDone: number
+    transferred: boolean
+    sourceWarehouseId: number
+    destWarehouseId: number
+    wipWarehouseId: number | null
+    scrapWarehouseId: number | null
+    createdById: number
+    line: { productId: number; quantity: number; consumed: number; lossPercent: number }
+  },
+  added: string[],
+) {
+  const existing = await client.manufacturingOrder.findFirst({ where: { companyId: input.companyId, name: input.name } })
+  if (existing) return existing
+  added.push(input.name)
+  return client.manufacturingOrder.create({
+    data: {
+      companyId: input.companyId,
+      name: input.name,
+      state: input.state,
+      purpose: input.purpose,
+      productId: input.productId,
+      bomId: input.bomId,
+      quantity: input.quantity,
+      quantityDone: input.quantityDone,
+      transferred: input.transferred,
+      sourceWarehouseId: input.sourceWarehouseId,
+      destWarehouseId: input.destWarehouseId,
+      wipWarehouseId: input.wipWarehouseId,
+      scrapWarehouseId: input.scrapWarehouseId,
+      createdById: input.createdById,
+      lines: { create: [input.line] },
+    },
+  })
+}
+
+async function ensureJobCard(
+  client: PrismaClient,
+  input: { companyId: number; orderId: number; name: string; workstationId: number },
+  added: string[],
+) {
+  const existing = await client.jobCard.findFirst({ where: { companyId: input.companyId, name: input.name } })
+  const card = existing ?? await client.jobCard.create({
+    data: {
+      companyId: input.companyId,
+      orderId: input.orderId,
+      name: input.name,
+      sequence: 1,
+      operationName: 'Cut and hem',
+      workstationId: input.workstationId,
+      plannedQty: 4,
+      completedQty: 1,
+      processLoss: 0.2,
+      status: 'open',
+    },
+  })
+  if (!existing) added.push(input.name)
+  const log = await client.jobTimeLog.findFirst({ where: { jobCardId: card.id, note: 'First apron on the bench.' } })
+  if (!log) {
+    await client.jobTimeLog.create({
+      data: { jobCardId: card.id, operatorName: 'August', minutes: 30, note: 'First apron on the bench.' },
     })
-    const card = await client.jobCard.create({
-      data: {
-        companyId: company.id,
-        orderId: order.id,
-        name: `JC-WIP-${company.id}`,
-        sequence: 1,
-        operationName: 'Cut and hem',
-        workstationId: bench.id,
-        plannedQty: 4,
-        completedQty: 1,
-        processLoss: 0.2,
-        status: 'open',
-        logs: { create: [{ operatorName: 'August', minutes: 30, note: 'First apron on the bench.' }] },
-      },
-    })
-    await client.wastageEntry.create({
-      data: {
-        companyId: company.id,
-        orderId: order.id,
-        jobCardId: card.id,
-        productId: panel.id,
-        workstationId: bench.id,
-        operationName: 'Cut and hem',
-        quantity: 0.2,
-        expectedQty: 0.2,
-        reason: 'Frayed edge',
-        kind: 'process_loss',
-        cost: 2.02,
-      },
-    })
-    await client.manufacturingOrder.create({
-      data: {
-        companyId: company.id,
-        name: `MO-SUB-${company.id}`,
-        state: 'confirmed',
-        purpose: 'subcontract',
-        productId: panel.id,
-        bomId: panelBom.id,
-        quantity: 2,
-        sourceWarehouseId: warehouse.id,
-        destWarehouseId: warehouse.id,
-        createdById: admin.id,
-        lines: { create: [{ productId: cloth.id, quantity: 2.52, lossPercent: 5 }] },
-      },
-    })
+    if (existing) added.push(`${input.name} time log`)
+  }
+  return card
+}
+
+async function ensureWastage(
+  client: PrismaClient,
+  input: { companyId: number; orderId: number; jobCardId: number; productId: number; workstationId: number },
+  added: string[],
+) {
+  const existing = await client.wastageEntry.findFirst({
+    where: { companyId: input.companyId, orderId: input.orderId, reason: 'Frayed edge' },
+  })
+  if (existing) return
+  added.push('Frayed edge')
+  await client.wastageEntry.create({
+    data: {
+      companyId: input.companyId,
+      orderId: input.orderId,
+      jobCardId: input.jobCardId,
+      productId: input.productId,
+      workstationId: input.workstationId,
+      operationName: 'Cut and hem',
+      quantity: 0.2,
+      expectedQty: 0.2,
+      reason: 'Frayed edge',
+      kind: 'process_loss',
+      cost: 2.02,
+    },
+  })
+}
+
+async function ensurePlan(client: PrismaClient, companyId: number, apronId: number, apronBomId: number, clothId: number, added: string[]) {
+  const name = `PLAN-FLOOR-${companyId}`
+  const existing = await client.productionPlan.findFirst({ where: { companyId, name }, include: { lines: true } })
+  if (existing && existing.lines.length > 0) return
+  if (!existing) {
+    added.push(name)
     await client.productionPlan.create({
       data: {
-        companyId: company.id,
-        name: `PLAN-FLOOR-${company.id}`,
+        companyId,
+        name,
         state: 'draft',
         lines: {
           create: [
-            { productId: apron.id, demandQty: 6, onHand: 0, toMake: 6, toBuy: 0, bomId: apronBom.id },
-            { productId: cloth.id, demandQty: 8, onHand: 40, toMake: 0, toBuy: 0, bomId: null },
+            { productId: apronId, demandQty: 6, onHand: 0, toMake: 6, toBuy: 0, bomId: apronBomId },
+            { productId: clothId, demandQty: 8, onHand: 40, toMake: 0, toBuy: 0, bomId: null },
           ],
         },
       },
     })
+    return
   }
+  added.push(`${name} lines`)
+  await client.productionPlanLine.createMany({
+    data: [
+      { planId: existing.id, productId: apronId, demandQty: 6, onHand: 0, toMake: 6, toBuy: 0, bomId: apronBomId },
+      { planId: existing.id, productId: clothId, demandQty: 8, onHand: 40, toMake: 0, toBuy: 0, bomId: null },
+    ],
+  })
 }

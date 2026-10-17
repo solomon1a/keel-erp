@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { seedFloor } from '../prisma/seed-floor.ts'
 import { demoPasswords } from '../prisma/seed.ts'
 import { balanceSheet } from '../server/services/accounting.ts'
 import { prisma } from '../server/db.ts'
@@ -133,5 +134,33 @@ describe('shop floor', () => {
     expect((received.body as { state?: string; subcontractState?: string }).state).toBe('done')
     expect((received.body as { subcontractState?: string }).subcontractState).toBe('received')
     await booksBalance()
+  })
+
+  it('fills missing named floor documents without posting or duplicating', async () => {
+    const journals = await prisma.journalEntry.count({ where: { companyId } })
+    const accounts = await prisma.account.count({ where: { companyId } })
+    await prisma.wastageEntry.deleteMany({ where: { companyId, reason: 'Frayed edge' } })
+    await prisma.productionPlan.deleteMany({ where: { companyId, name: `PLAN-FLOOR-${companyId}` } })
+    const card = await prisma.jobCard.findFirst({ where: { companyId, name: `JC-WIP-${companyId}` } })
+    if (card) {
+      await prisma.wastageEntry.deleteMany({ where: { jobCardId: card.id } })
+      await prisma.jobCard.delete({ where: { id: card.id } })
+    }
+    await seedFloor(prisma)
+    expect(await prisma.product.findFirst({ where: { companyId, name: 'Shop apron' } })).toBeTruthy()
+    expect(await prisma.wastageEntry.findFirst({ where: { companyId, reason: 'Frayed edge' } })).toBeTruthy()
+    expect(await prisma.productionPlan.findFirst({ where: { companyId, name: `PLAN-FLOOR-${companyId}` }, include: { lines: true } })).toMatchObject({
+      lines: expect.any(Array),
+    })
+    const plan = await prisma.productionPlan.findFirstOrThrow({ where: { companyId, name: `PLAN-FLOOR-${companyId}` }, include: { lines: true } })
+    expect(plan.lines).toHaveLength(2)
+    expect(await prisma.jobCard.findFirst({ where: { companyId, name: `JC-WIP-${companyId}` } })).toBeTruthy()
+    const wastage = await prisma.wastageEntry.count({ where: { companyId, reason: 'Frayed edge' } })
+    const plans = await prisma.productionPlan.count({ where: { companyId, name: `PLAN-FLOOR-${companyId}` } })
+    await seedFloor(prisma)
+    expect(await prisma.wastageEntry.count({ where: { companyId, reason: 'Frayed edge' } })).toBe(wastage)
+    expect(await prisma.productionPlan.count({ where: { companyId, name: `PLAN-FLOOR-${companyId}` } })).toBe(plans)
+    expect(await prisma.journalEntry.count({ where: { companyId } })).toBe(journals)
+    expect(await prisma.account.count({ where: { companyId } })).toBe(accounts)
   })
 })
