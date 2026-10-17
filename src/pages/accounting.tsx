@@ -34,6 +34,8 @@ type Invoice = {
   salesOrder: { name: string } | null
   purchaseOrder: { name: string } | null
   posOrder: { name: string } | null
+  reversalOf: { id: number; name: string } | null
+  reversals: Array<{ id: number; name: string; moveType: string; state: string }>
 }
 
 type LedgerRow = {
@@ -205,6 +207,13 @@ export function InvoicePage() {
         <Link className="text-sm font-semibold text-primary" to="/accounting">{t('acct.title')}</Link>
         <h1 className="font-serif text-4xl tracking-tight">{row.name}</h1>
         <p className="mt-1 text-muted-foreground">{typeLabel(row.moveType, t)} · {row.partner.name} · {stateLabel(row.state, t)}{source ? ` · ${source}` : ''}</p>
+        {row.reversalOf ? (
+          <p className="mt-1">
+            <Link className="font-medium text-primary hover:underline" to={`/accounting/${row.reversalOf.id}`}>
+              {t('acct.returnOf', { name: row.reversalOf.name })}
+            </Link>
+          </p>
+        ) : null}
       </div>
       {error ? <Notice message={error} /> : null}
       <p className="rounded-md border border-accent/40 bg-card px-4 py-3 text-sm">{t('acct.notSubmitted')}</p>
@@ -213,6 +222,9 @@ export function InvoicePage() {
         {row.state === 'draft' ? <Button variant="destructive" disabled={act.isPending} onClick={() => act.mutate(`/api/invoices/${row.id}/cancel`)}>{t('acct.cancel')}</Button> : null}
         {row.state === 'posted' || row.state === 'paid' ? (
           <Button variant="secondary" disabled={act.isPending} onClick={() => act.mutate(`/api/invoices/${row.id}/credit`)}>{t('acct.credit')}</Button>
+        ) : null}
+        {(row.state === 'posted' || row.state === 'paid') && (row.moveType === 'out_invoice' || row.moveType === 'in_invoice') ? (
+          <Button variant="outline" disabled={act.isPending} onClick={() => act.mutate(`/api/invoices/${row.id}/return`)}>{t('acct.return')}</Button>
         ) : null}
         <Link to={`/accounting/${row.id}/print`} target="_blank"><Button variant="outline">{t('acct.print')}</Button></Link>
       </div>

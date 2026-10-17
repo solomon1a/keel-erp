@@ -221,11 +221,24 @@ function buildPlan() {
   }
   assetDelta = roundMoney(assetDelta - operating)
 
-  const income = roundMoney(prior.income + salesIncome)
-  const expense = roundMoney(prior.expense + costOfSales + operating)
+  const tradeIncome = 72
+  const tradeExpense = 30
+  const tradeProfit = roundMoney(tradeIncome - tradeExpense)
+  const tradeOutputVat = 9.36
+  const tradeInputVat = 4.68
+  const tradeReceivable = 101.7
+  const tradePayable = 40.68
+  const tradeAssets = 127.36
+  const tradeLiabilities = 85.36
+  if (roundMoney(tradeAssets - tradeLiabilities - tradeProfit) !== 0) {
+    throw new Error('Trade demo does not balance.')
+  }
+
+  const income = roundMoney(prior.income + salesIncome + tradeIncome)
+  const expense = roundMoney(prior.expense + costOfSales + operating + tradeExpense)
   const profit = roundMoney(income - expense)
-  const assets = roundMoney(prior.assets + assetDelta)
-  const liabilities = roundMoney(prior.liabilities + liabilityDelta)
+  const assets = roundMoney(prior.assets + assetDelta + tradeAssets)
+  const liabilities = roundMoney(prior.liabilities + liabilityDelta + tradeLiabilities)
   const balanced = roundMoney(assets - liabilities - profit) === 0
   if (!balanced) throw new Error('Jiangbei wholesale season does not balance.')
 
@@ -239,11 +252,11 @@ function buildPlan() {
     assets,
     liabilities,
     equity: profit,
-    outputVat: roundMoney(prior.outputVat + outputVat),
-    inputVat: roundMoney(prior.inputVat + inputVat),
-    vatPayable: roundMoney(prior.outputVat + outputVat - (prior.inputVat + inputVat)),
-    receivable: roundMoney(prior.receivable + openReceivable),
-    payable: roundMoney(prior.payable + openPayable),
+    outputVat: roundMoney(prior.outputVat + outputVat + tradeOutputVat),
+    inputVat: roundMoney(prior.inputVat + inputVat + tradeInputVat),
+    vatPayable: roundMoney(prior.outputVat + outputVat + tradeOutputVat - (prior.inputVat + inputVat + tradeInputVat)),
+    receivable: roundMoney(prior.receivable + openReceivable + tradeReceivable),
+    payable: roundMoney(prior.payable + openPayable + tradePayable),
   }
 }
 

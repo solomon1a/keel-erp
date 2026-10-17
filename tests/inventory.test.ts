@@ -55,9 +55,9 @@ describe('inventory', () => {
     expect(toteRule).toMatchObject({
       minQty: 5,
       maxQty: 12,
-      onHand: 2,
-      suggestQty: 10,
-      short: true,
+      onHand: 6,
+      suggestQty: 0,
+      short: false,
       warehouse: { code: 'SH' },
     })
     expect(toteRule?.product.hasBom).toBe(true)
@@ -92,7 +92,7 @@ describe('inventory', () => {
       valuation: number
       levels: Array<{ sku: string; locationName: string; onHand: number; value: number }>
     }
-    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === 'Main stock')?.onHand).toBe(39)
+    expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === 'Main stock')?.onHand).toBe(34)
     expect(stock.levels.find((row) => row.sku === 'NB-01' && row.locationName === 'Shop floor')?.onHand).toBe(8)
 
     const counted = await call('/api/stock/adjust', maya, {

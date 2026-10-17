@@ -108,8 +108,8 @@ export const deskScreens: DeskScreen[] = [
   ]),
   report('dashboard', 'reporting', 'Company snapshot', '公司快照', 'A short read of pipeline, stock, and cash.', '管道、库存和现金的简表。', [
     { name: 'Open pipeline', state: 'open', bucket: 'Pipeline', amount: 6200, recordDate: day('2026-04-01') },
-    { name: 'Customers owe', state: 'open', bucket: 'Receivable', amount: 51930.28, recordDate: day('2026-04-01') },
-    { name: 'Vendors to pay', state: 'open', bucket: 'Payable', amount: 33990.4, recordDate: day('2026-04-01') },
+    { name: 'Customers owe', state: 'open', bucket: 'Receivable', amount: 52031.98, recordDate: day('2026-04-01') },
+    { name: 'Vendors to pay', state: 'open', bucket: 'Payable', amount: 34031.08, recordDate: day('2026-04-01') },
     { name: 'Low stock lines', state: 'open', bucket: 'Stock', amount: 2, recordDate: day('2026-04-01') },
   ]),
   settings('dashboard', 'Dashboard settings', '仪表板设置', 'What the home page emphasises.', '首页强调的内容。', [

@@ -35,7 +35,7 @@ export const appModules: AppModule[] = [
     description: 'mod.sales.desc',
     home: '/orders',
     group: 'sell',
-    match: ['/orders', '/products', '/app/sales'],
+    match: ['/orders', '/products', '/app/sales', '/sales'],
     menu: moduleMenus.sales ?? [],
   },
   {

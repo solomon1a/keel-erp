@@ -38,6 +38,7 @@ import { ManufacturingFormPage } from './pages/manufacturing-form-page.tsx'
 import { ManufacturingPage } from './pages/manufacturing-page.tsx'
 import { ManufacturingPrintPage } from './pages/manufacturing-print-page.tsx'
 import { OrderDetailPage } from './pages/order-detail-page.tsx'
+import { PricingPage } from './pages/pricing-page.tsx'
 import { OrderFormPage } from './pages/order-form-page.tsx'
 import { OrdersPage } from './pages/orders-page.tsx'
 import { PasswordPage } from './pages/password-page.tsx'
@@ -119,6 +120,7 @@ export default function App() {
             <Route path="/hr/payroll/:id" element={<PayrollRunPage />} />
             <Route path="/hr/expenses" element={<ExpensesPage />} />
             <Route path="/hr/:id" element={<EmployeePage />} />
+            <Route path="/sales/pricing" element={<PricingPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />

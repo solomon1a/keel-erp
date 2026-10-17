@@ -33,8 +33,8 @@ export async function seedDeskForCompany(client: DeskDb, companyId: number) {
   }
   if (missing.length > 0) await client.deskRecord.createMany({ data: missing, skipDuplicates: true })
   const snapshot = [
-    ['Customers owe', 51930.28],
-    ['Vendors to pay', 33990.4],
+    ['Customers owe', 52031.98],
+    ['Vendors to pay', 34031.08],
   ] as const
   for (const [name, amount] of snapshot) {
     await client.deskRecord.updateMany({

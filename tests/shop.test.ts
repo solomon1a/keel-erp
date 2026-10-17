@@ -24,7 +24,7 @@ describe('shop', () => {
     const skus = body.products.map((product) => product.sku).sort()
     expect(skus).toEqual(['BL-04', 'NB-01', 'TO-11'])
     const notebook = body.products.find((product) => product.sku === 'NB-01')
-    expect(notebook?.onHand).toBe(40)
+    expect(notebook?.onHand).toBe(35)
 
     const denied = await call('/api/shop/checkout', '', {
       method: 'POST',
@@ -62,7 +62,7 @@ describe('shop', () => {
     const quant = await prisma.stockQuant.findFirstOrThrow({
       where: { product: { sku: 'NB-01' }, location: { name: 'Main stock' } },
     })
-    expect(quant.quantity).toBe(38)
+    expect(quant.quantity).toBe(33)
 
     const maya = await signIn('maya@northline.example', demoPasswords.maya)
     const list = await call('/api/orders?state=done', maya)

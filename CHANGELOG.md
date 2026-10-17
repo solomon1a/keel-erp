@@ -1,5 +1,9 @@
 # Changelog
 
+## Selling and buying
+
+Quotations, partial deliveries and bills, pricing rules, credit limits, returns, material requests, supplier comparison, receipts with landed cost, and three-way match. Demo trade documents sit on every company. Jiangbei stays profitable and the balance sheet still balances.
+
 ## Workspace glass
 
 Every app workspace shares one shell. The page sits on a mint and brass wash so the cards read as frost: translucent fill, blur, a light border, and a soft shadow. Sidebar rows are pills with an icon, and the open section is a teal pill. On a narrow screen those rows become a horizontal strip of chips, with a second strip for a group’s children. Shortcut figures put an icon in a tinted circle, a large number, and the chart’s last-month move as a pill. Reports & Masters links are icon rows. Getting Started uses a pill progress bar, checkable rows, and pill buttons. The top bar is glass: section names scroll as pills, and language, theme, and sign-out sit in one account menu until the screen is wide. Charts fill the area under the line and show a rounded tip. The teal accent stays `#0E6B5C`.
