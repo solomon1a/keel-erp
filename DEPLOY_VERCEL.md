@@ -44,7 +44,7 @@ Documented by Vercel at [Deploying Origin repositories](https://vercel.com/docs/
 6. Framework preset: **Vite**. Production branch: `main`.
 7. Confirm the build matches `vercel.json` (the dashboard must not replace these):
    - Install command: `npm install` (this runs `postinstall`, which is `prisma generate`)
-   - Build command: `sh scripts/vercel-build.sh` (generate, migrate, typecheck, Vite build, and the API bundle). Set `KEEL_SEED_ON_BUILD=1` only when you want that build to seed. A failed seed is skipped so the build can finish.
+   - Build command: `sh scripts/vercel-build.sh` (generate, migrate, typecheck, Vite build, and the API bundle). Set `KEEL_SEED_ON_BUILD=1` only when you want that build to seed. A failed seed prints `KEEL SEED FAILED` and the deploy still finishes.
    - Output directory: `dist`
 8. Add the environment variables in the next section **before** the first deploy. Apply them to **Production**. Use a second Neon branch for **Preview** if you want pull-request deploys; do not point Preview at the production database unless you are content for both to share the demo data.
 9. Deploy.
@@ -83,7 +83,7 @@ npm run db:deploy
 npm run db:seed
 ```
 
-`db:deploy` is `prisma migrate deploy`. With `KEEL_SEED_ON_BUILD=1`, the build also runs `prisma db seed`. That seed is safe to run again: it keeps Jiangbei Goods Co., Harbour & Line, and Hudson Yard Goods, rewrites any remaining Chinese Jiangbei records into English, and deletes other companies. It does not insert a second copy of a company, payroll run, or expense that is already there.
+`db:deploy` is `prisma migrate deploy`. With `KEEL_SEED_ON_BUILD=1`, the build also runs `prisma db seed`. That seed is safe to run again: it keeps Jiangbei Goods Co., Harbour & Line, and Hudson Yard Goods, rewrites any remaining Chinese Jiangbei records into English, and posts the selling and buying demo once on those three companies. It does not insert a second copy of a company, payroll run, expense, or trade document that is already there, and it does not add demo documents to a company created through sign-up. An empty company left behind by a partial seed is removed. A company that has a user is kept.
 
 Open the production URL Vercel shows (or the domain you attach). Sign in:
 

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { handler } from '../server/vercel-handler.ts'
 import { demoPasswords } from '../prisma/seed.ts'
@@ -13,6 +14,13 @@ afterAll(async () => {
 })
 
 describe('vercel function', () => {
+  it('prints a seed failure and still builds', () => {
+    const script = readFileSync('scripts/vercel-build.sh', 'utf8')
+    expect(script).not.toContain('echo skipped')
+    expect(script).toContain('KEEL SEED FAILED')
+    expect(script).toContain('if prisma db seed; then')
+  })
+
   it('serves health on the original /api path', async () => {
     const response = await handler(new Request('https://keel.example/api/health'))
     expect(response.status).toBe(200)

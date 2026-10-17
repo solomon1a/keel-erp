@@ -2,7 +2,7 @@
 
 ## Selling and buying
 
-Quotations, partial deliveries and bills, pricing rules, credit limits, returns, material requests, supplier comparison, receipts with landed cost, and three-way match. Demo trade documents sit on every company. Jiangbei stays profitable and the balance sheet still balances.
+Quotations, partial deliveries and bills, pricing rules, credit limits, returns, material requests, supplier comparison, receipts with landed cost, and three-way match. The selling and buying demo is posted once on Jiangbei Goods Co., Harbour & Line, and Hudson Yard Goods. A later seed finishes a partial run and does not post those documents again. A company created through sign-up is left alone. Jiangbei stays profitable and the balance sheet still balances.
 
 ## Workspace glass
 
