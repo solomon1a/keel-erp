@@ -89,10 +89,10 @@ Open the production URL Vercel shows (or the domain you attach). Sign in:
 
 | Name | Role | Email | Password |
 | --- | --- | --- | --- |
-| Maya Chen | admin | maya@northline.example | keel-maya-desk |
+| August | admin | maya@northline.example | keel-maya-desk |
 | Jonah Ellis | user | jonah@northline.example | keel-jonah-desk |
 
-The China company is **Jiangbei Goods Co.**, Shanghai, CNY, VAT 13%. Maya is the admin. Jonah can sell and can close a register session only when the counted cash matches. Card, WeChat Pay, and Alipay on the register are recorded on the sale. Nothing is sent to a bank or a wallet. Payroll deductions and expense reimbursements are demo postings, not a filing.
+The China company is **Jiangbei Goods Co.**, Shanghai, CNY, VAT 13%. August is the admin. Jonah can sell and can close a register session only when the counted cash matches. Card, WeChat Pay, and Alipay on the register are recorded on the sale. Nothing is sent to a bank or a wallet. Payroll deductions and expense reimbursements are demo postings, not a filing.
 
 ## 6. What this deploy does not do
 

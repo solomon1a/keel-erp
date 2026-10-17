@@ -586,7 +586,7 @@ function PipelineCard({ pipeline, money, t }: { pipeline: HomeData['pipeline']; 
         </div>
         <span className="home-pill home-teal ml-auto">{t('home.pipeline.win', { rate: pipeline.winRate })}</span>
       </div>
-      <div className="mt-3 grid gap-2">
+      <div className="mt-4 grid gap-3">
         {pipeline.stages.map((stage) => (
           <div key={stage.stage} className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-2">
             <span className="truncate text-xs text-muted-foreground">{t(stageKey(stage.stage))}</span>
@@ -693,8 +693,8 @@ function AttentionCard({
   t: Translate
 }) {
   return (
-    <section id="home-attention" className="home-attention keel-glass rounded-[22px] px-4 py-4 sm:px-5">
-      <div className="flex items-center gap-2">
+    <section id="home-attention" className="home-attention keel-glass rounded-[22px] px-4 py-5 sm:px-5">
+      <div className="flex items-center gap-3">
         <h2 className="text-[15px] font-semibold">{t('home.attention')}</h2>
         <span className={cn('home-pill ml-auto', count > 0 ? 'home-warn' : 'home-ok')}>{count}</span>
       </div>
@@ -704,23 +704,55 @@ function AttentionCard({
           <p className="mt-1 text-sm text-muted-foreground">{t('home.attention.caughtLead')}</p>
         </div>
       ) : (
-        <ul className="mt-2">
-          {items.map((item, index) => (
-            <li key={`${item.kind}-${item.id}`} className={cn('flex items-center gap-3 py-2', index > 0 && 'border-t border-[var(--kl-glass-border)]')}>
-              <span className="home-icon grid size-8 shrink-0 place-items-center rounded-full" style={{ ['--c' as string]: attentionColor(item.kind) }}>
-                {attentionIcon(item.kind)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{attentionTitle(item, t)}</p>
-                <p className="truncate text-xs text-muted-foreground">{attentionDetail(item, money, locale, t)}</p>
-              </div>
-              <Link to={item.href} className={cn('home-pill h-7 px-3', actionClass(item.kind))}>{t(actionKey(item.kind))}</Link>
-            </li>
+        <div className="mt-4 grid gap-5">
+          {attentionGroups(items).map((group) => (
+            <div key={group.kind}>
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(groupLabel(group.kind))}</p>
+              <ul className="mt-2">
+                {group.items.map((item, index) => (
+                  <li key={`${item.kind}-${item.id}`} className={cn('flex items-center gap-3 py-3', index > 0 && 'border-t border-[var(--kl-glass-border)]')}>
+                    <span className="home-icon grid size-9 shrink-0 place-items-center rounded-full" style={{ ['--c' as string]: attentionColor(item.kind) }}>
+                      {attentionIcon(item.kind)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{attentionTitle(item, t)}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{attentionDetail(item, money, locale, t)}</p>
+                    </div>
+                    <Link to={item.href} className={cn('home-pill h-8 px-3', actionClass(item.kind))}>{t(actionKey(item.kind))}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   )
+}
+
+function groupLabel(kind: AttentionKind): MessageKey {
+  switch (kind) {
+    case 'purchase':
+      return 'home.attention.group.purchase'
+    case 'invoice':
+      return 'home.attention.group.invoice'
+    case 'expense':
+      return 'home.attention.group.expense'
+    case 'leave':
+      return 'home.attention.group.leave'
+    default: {
+      const unexpected: never = kind
+      return unexpected
+    }
+  }
+}
+
+function attentionGroups(items: Attention[]) {
+  const shown = items.slice(0, 4)
+  const order: AttentionKind[] = ['purchase', 'invoice', 'expense', 'leave']
+  return order
+    .map((kind) => ({ kind, items: shown.filter((item) => item.kind === kind) }))
+    .filter((group) => group.items.length > 0)
 }
 
 function attentionDetail(item: Attention, money: (value: number) => string, locale: Locale, t: Translate) {
@@ -742,7 +774,7 @@ function attentionDetail(item: Attention, money: (value: number) => string, loca
 
 function StockCard({ rows, t }: { rows: HomeData['lowStock']; t: Translate }) {
   return (
-    <section className="home-stock keel-glass rounded-[22px] px-4 py-4 sm:px-5">
+    <section className="home-stock keel-glass rounded-[22px] px-4 py-5 sm:px-5">
       <div className="flex items-center gap-2">
         <h2 className="text-[15px] font-semibold">{t('home.stock')}</h2>
         <span className={cn('home-pill ml-auto', rows.length > 0 ? 'home-bad' : 'home-ok')}>{t('home.stock.count', { count: rows.length })}</span>
@@ -750,7 +782,7 @@ function StockCard({ rows, t }: { rows: HomeData['lowStock']; t: Translate }) {
       {rows.length === 0 ? <p className="py-4 text-sm text-muted-foreground">{t('home.stock.clear')}</p> : (
         <ul className="mt-2">
           {rows.map((row, index) => (
-            <li key={row.id} className={cn('flex h-8 items-center gap-2 text-sm', index > 0 && 'border-t border-[var(--kl-glass-border)]')}>
+            <li key={row.id} className={cn('flex min-h-11 items-center gap-3 text-sm', index > 0 && 'border-t border-[var(--kl-glass-border)]')}>
               <i className={cn('size-2 shrink-0 rounded-full', row.level === 'bad' ? 'bg-[#9F1D1D]' : 'bg-[#8A4A04]')} />
               <span className="min-w-0 flex-1 truncate">{row.name}</span>
               <span className={cn('text-xs font-semibold tabular-nums', row.level === 'bad' ? 'home-bad-text' : 'home-warn-text')}>
@@ -767,13 +799,13 @@ function StockCard({ rows, t }: { rows: HomeData['lowStock']; t: Translate }) {
 
 function AppsCard({ t, installed = false }: { t: Translate; installed?: boolean }) {
   return (
-    <section className="home-apps keel-glass rounded-[22px] px-4 py-4 sm:px-5">
+    <section className="home-apps keel-glass rounded-[22px] px-4 py-5 sm:px-5">
       <div className="flex items-center gap-2">
         <h2 className="text-[15px] font-semibold">{t('home.apps')}</h2>
         {installed ? <span className="text-xs text-muted-foreground">{t('home.apps.installed', { count: shortcuts.length })}</span> : null}
         <Link to="/" className="home-link ml-auto text-xs">{t('home.apps.all')}</Link>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4">
         {shortcuts.map((app) => (
           <Link key={app.id} to={app.to} className="flex min-w-0 items-center gap-2.5 rounded-2xl">
             <span className="grid size-9 shrink-0 place-items-center rounded-[11px] text-white shadow-sm" style={{ background: app.color }}>

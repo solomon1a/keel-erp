@@ -1,6 +1,7 @@
 import type { Hono } from 'hono'
 import { fapiaoSchema, invoicePaySchema } from '../shared/schemas.ts'
 import type { AppEnv } from './auth.ts'
+import { cached } from './cache.ts'
 import { AppError } from './errors.ts'
 import {
   balanceSheet,
@@ -59,6 +60,22 @@ export function registerAccountingRoutes(app: Hono<AppEnv>) {
   app.post('/api/invoices/:id/cancel', async (c) => c.json(await cancelInvoice(c.get('user').companyId, Number(c.req.param('id')))))
 
   app.get('/api/ledger', async (c) => c.json(await listLedger(c.get('user').companyId, c.req.query('account') || undefined)))
+
+  app.get('/api/reports/pack', async (c) => {
+    const companyId = c.get('user').companyId
+    const asOf = c.req.query('asOf') || new Date().toISOString().slice(0, 10)
+    const started = performance.now()
+    const body = await cached(`reports:${companyId}:${asOf}`, 15_000, () =>
+      Promise.all([
+        profitAndLoss(companyId),
+        balanceSheet(companyId),
+        vatReport(companyId),
+        agingReport(companyId, asOf),
+      ]).then(([pnl, balance, vat, aging]) => ({ pnl, balance, vat, aging })),
+    )
+    c.header('Server-Timing', `reports;dur=${Math.round(performance.now() - started)}`)
+    return c.json(body)
+  })
 
   app.get('/api/reports/pnl', async (c) => c.json(await profitAndLoss(c.get('user').companyId, c.req.query('from') || undefined, c.req.query('to') || undefined)))
 

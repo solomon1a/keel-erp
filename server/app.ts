@@ -40,6 +40,7 @@ import {
   userFromToken,
   writeSessionCookie,
 } from './auth.ts'
+import { cached } from './cache.ts'
 import { prisma } from './db.ts'
 import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
@@ -309,6 +310,13 @@ export function createApp() {
   app.get('/api/desk', async (c) => {
     const user = c.get('user')
     const companyId = user.companyId
+    const started = performance.now()
+    const body = await cached(`desk:${companyId}`, 15_000, () => deskSnapshot(companyId))
+    c.header('Server-Timing', `desk;dur=${Math.round(performance.now() - started)}`)
+    return c.json(body)
+  })
+
+  async function deskSnapshot(companyId: number) {
     const [contactCount, productCount, openOrders, recentOrders, products, pipeline, receivable, payable, shopOrders, staff, leaveWaiting, pnl, vat] = await Promise.all([
       prisma.contact.count({ where: { companyId } }),
       prisma.product.count({ where: { companyId, active: true } }),
@@ -317,11 +325,23 @@ export function createApp() {
         where: { companyId },
         orderBy: { updatedAt: 'desc' },
         take: 6,
-        include: { customer: { select: { name: true } } },
+        select: {
+          id: true,
+          name: true,
+          state: true,
+          dateOrder: true,
+          amountTotal: true,
+          customer: { select: { name: true } },
+        },
       }),
       prisma.product.findMany({
         where: { companyId, type: 'product', active: true },
-        include: { quants: { where: { location: { type: 'internal' } } } },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          quants: { where: { location: { type: 'internal' } }, select: { quantity: true } },
+        },
       }),
       prisma.lead.aggregate({
         where: { companyId, stage: { in: ['new', 'qualified', 'proposition'] } },
@@ -351,7 +371,7 @@ export function createApp() {
       }))
       .filter((product) => product.onHand < 5)
       .sort((a, b) => a.onHand - b.onHand)
-    return c.json({
+    return {
       contactCount,
       productCount,
       openOrders,
@@ -366,8 +386,8 @@ export function createApp() {
       leaveWaiting,
       profit: pnl.profit,
       vatPayable: vat.payable,
-    })
-  })
+    }
+  }
 
   app.get('/api/contacts', async (c) => {
     const user = c.get('user')
@@ -557,7 +577,15 @@ export function createApp() {
         companyId: user.companyId,
         ...(state && state !== 'all' ? { state } : {}),
       },
-      include: { customer: { select: { id: true, name: true } } },
+      select: {
+        id: true,
+        name: true,
+        state: true,
+        dateOrder: true,
+        amountTotal: true,
+        origin: true,
+        customer: { select: { id: true, name: true } },
+      },
       orderBy: { dateOrder: 'desc' },
       take: 200,
     })

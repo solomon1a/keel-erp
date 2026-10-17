@@ -9,7 +9,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
 }
 
 export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(fieldControlClass, 'h-10', className)} {...props} />
+  return <select className={cn(fieldControlClass, 'h-10 bg-[var(--kl-color-semantic-surface)] backdrop-blur-none', className)} {...props} />
 }
 
 export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {

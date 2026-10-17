@@ -11,7 +11,7 @@ import { api } from '../lib/api.ts'
 import { useMoney } from '../lib/format.ts'
 import { menuLabel } from '../lib/menu-label.ts'
 import { linkActive, moduleForPath, sectionForPath, type AppModule, type MenuEntry } from '../lib/modules.ts'
-import { prefetchDesk } from '../lib/prefetch.ts'
+import { prefetchHref } from '../lib/prefetch.ts'
 import type { User } from '../lib/types.ts'
 import { cn } from '../lib/utils.ts'
 import { BarChart } from './bar-chart.tsx'
@@ -120,7 +120,7 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
         {opened
           ? createPortal(
               <div
-                className="fixed z-40 min-w-52"
+                className="fixed z-[60] min-w-52"
                 style={{ top: box.top, left: box.left }}
                 onMouseEnter={() => {
                   overMenu.current = true
@@ -131,7 +131,7 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
                   setOpened(false)
                 }}
               >
-                <div className="keel-glass grid max-h-[70vh] gap-1 overflow-y-auto rounded-3xl p-2 shadow-lg">
+                <div className="keel-menu grid max-h-[70vh] gap-1 overflow-y-auto rounded-3xl p-2">
                   {entry.children.map((child) => (
                     <NavLink
                       key={child.to}
@@ -190,7 +190,7 @@ function AccountMenu({ user }: { user: User }) {
         {initials(user.name)}
       </button>
       {open ? (
-        <div className="keel-glass absolute right-0 z-40 mt-2 w-64 rounded-3xl p-3 shadow-lg">
+        <div className="keel-menu absolute right-0 z-[60] mt-2 w-64 rounded-3xl p-3">
           <p className="truncate px-1 text-sm font-semibold">{user.name}</p>
           <p className="truncate px-1 text-xs text-muted-foreground">{roleText(user.role, t)}</p>
           <div className="mt-3 flex items-center justify-between gap-2">
@@ -302,8 +302,20 @@ export function Shell() {
   })
 
   useEffect(() => {
-    if (me.data) prefetchDesk(queryClient)
-  }, [me.data, queryClient])
+    const onOver = (event: Event) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const href = target.closest('a')?.getAttribute('href')
+      if (!href) return
+      prefetchHref(queryClient, href)
+    }
+    document.addEventListener('mouseover', onOver)
+    document.addEventListener('focusin', onOver)
+    return () => {
+      document.removeEventListener('mouseover', onOver)
+      document.removeEventListener('focusin', onOver)
+    }
+  }, [queryClient])
 
   if (me.isPending && !me.data) {
     return (

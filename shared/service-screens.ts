@@ -53,7 +53,7 @@ export const serviceScreens: DeskScreen[] = [
     row('Loom stays', 'draft', { partner: 'Loom 02', owner: 'He Gong', bucket: 'Shanghai workshop', notes: 'No move planned.' }),
   ]),
   list('assets', 'disposals', 'Disposals', '处置', 'Assets taken off the register.', '从登记册上移除的资产。', ['draft', 'done'], [
-    row('Office laptops', 'done', { owner: 'Maya Chen', amount: 0, notes: 'Sold as a lot in March.', recordDate: day('2026-03-18') }),
+    row('Office laptops', 'done', { owner: 'August', amount: 0, notes: 'Sold as a lot in March.', recordDate: day('2026-03-18') }),
     row('Old press', 'draft', { owner: 'He Gong', amount: 200, notes: 'Quote from the scrap yard. Not posted.' }),
   ]),
   report('assets', 'schedule', 'Depreciation schedule', '折旧计划', 'What each running asset still has to depreciate.', '每项在用资产还要计提的折旧。', [
@@ -73,7 +73,7 @@ export const serviceScreens: DeskScreen[] = [
     row('April', 'progress', { bucket: 'Apr', amount: 38, recordDate: day('2026-04-16') }),
   ]),
   list('projects', 'updates', 'Updates', '进展', 'A short note on where a project stands.', '项目进展的简短记录。', ['open', 'done'], [
-    row('Half the totes are cut', 'open', { partner: 'Spring tote run', owner: 'Maya Chen', notes: '120 of 200 panels are on the bench.' }),
+    row('Half the totes are cut', 'open', { partner: 'Spring tote run', owner: 'August', notes: '120 of 200 panels are on the bench.' }),
     row('Shelves ordered', 'open', { partner: 'Shop refit', owner: 'Lin Xiao', notes: 'Delivery in the first week of May.' }),
     row('Harbour kit closed', 'done', { partner: 'Harbour wholesale kit', owner: 'Amira Shah', notes: 'Invoiced and delivered.', recordDate: day('2026-03-20') }),
   ]),
@@ -83,7 +83,7 @@ export const serviceScreens: DeskScreen[] = [
     row('Shop', 'active', { notes: 'Counter and the refit.', owner: 'Shop' }),
   ]),
   list('projects', 'templates', 'Project templates', '项目模板', 'A starting set of tasks for a kind of job.', '一类工作的起始任务。', ['active', 'draft'], [
-    row('Customer make-to-order', 'active', { notes: 'Cut, sew, inspect, deliver.', owner: 'Maya Chen' }),
+    row('Customer make-to-order', 'active', { notes: 'Cut, sew, inspect, deliver.', owner: 'August' }),
     row('Shop refit', 'draft', { notes: 'Not used yet.', owner: 'Lin Xiao' }),
   ]),
   report('projects', 'profitability', 'Project profitability', '项目利润', 'Billed and still to bill, against the hours.', '已开票和待开票，对照工时。', [
@@ -141,7 +141,7 @@ export const serviceScreens: DeskScreen[] = [
   ]),
   list('subcontracting', 'boms', 'Subcontracting BOM', '委外物料清单', 'What goes out with an order, and what comes back.', '随订单发出的组件，以及收回的成品。', ['active', 'draft'], [
     row('Dyed canvas', 'active', { partner: 'Harbour Dye', owner: 'Jonah Ellis', notes: 'Greige out, dyed roll back.' }),
-    row('School logo embroidery', 'draft', { partner: 'West Stitch', owner: 'Maya Chen', notes: 'Not released.' }),
+    row('School logo embroidery', 'draft', { partner: 'West Stitch', owner: 'August', notes: 'Not released.' }),
     row('Hemmed tote', 'active', { partner: 'West Stitch', owner: 'He Gong', notes: 'Cut panels out, hemmed tote back.' }),
   ]),
   report('subcontracting', 'order-summary', 'Subcontract order summary', '委外订单汇总', 'Orders by state.', '按状态的委外订单。', [
@@ -175,9 +175,9 @@ export const serviceScreens: DeskScreen[] = [
     row('Low', 'active', { amount: 5, notes: 'This week.', owner: 'Desk' }),
   ]),
   list('helpdesk', 'replies', 'Canned replies', '常用回复', 'A reply the desk can paste onto a ticket.', '服务台可以贴到工单上的回复。', ['active', 'draft'], [
-    row('Invoice copy sent', 'active', { notes: 'We have emailed a copy of the invoice.', owner: 'Maya Chen' }),
+    row('Invoice copy sent', 'active', { notes: 'We have emailed a copy of the invoice.', owner: 'August' }),
     row('Shade sample', 'active', { notes: 'A swatch is in the post.', owner: 'Jonah Ellis' }),
-    row('Delay apology', 'draft', { notes: 'Not approved yet.', owner: 'Maya Chen' }),
+    row('Delay apology', 'draft', { notes: 'Not approved yet.', owner: 'August' }),
   ]),
   report('helpdesk', 'summary', 'Ticket summary', '工单汇总', 'Open, in progress, and closed.', '未处理、处理中和已关闭。', [
     row('Open', 'open', { bucket: 'Open', amount: 1 }),
@@ -189,7 +189,7 @@ export const serviceScreens: DeskScreen[] = [
     row('Breached', 'breached', { bucket: 'Breached', amount: 1 }),
   ]),
   report('helpdesk', 'by-team', 'Tickets by team', '按团队的工单', 'Who is holding the open tickets.', '未关闭工单在谁手里。', [
-    row('Desk', 'open', { bucket: 'Desk', amount: 2, owner: 'Maya Chen' }),
+    row('Desk', 'open', { bucket: 'Desk', amount: 2, owner: 'August' }),
     row('Shop', 'done', { bucket: 'Shop', amount: 0, owner: 'Lin Xiao' }),
   ]),
 ]

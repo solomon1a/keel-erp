@@ -30,7 +30,7 @@ function report(
 
 export const depthScreens: DeskScreen[] = [
   list('sales', 'follow-ups', 'Follow-ups', '跟进', 'Calls still open on a quotation or a confirmed order.', '还挂在报价或已确认订单上的电话。', ['open', 'done'], [
-    { name: 'Call Orchard about SO1108', state: 'open', partner: 'Orchard School', owner: 'Maya Chen', bucket: 'Call', notes: 'Ask when they can take the invoice.', recordDate: day('2026-04-16') },
+    { name: 'Call Orchard about SO1108', state: 'open', partner: 'Orchard School', owner: 'August', bucket: 'Call', notes: 'Ask when they can take the invoice.', recordDate: day('2026-04-16') },
     { name: 'Send swatches to Paper & Pine', state: 'open', partner: 'Paper & Pine', owner: 'Jonah Ellis', bucket: 'To-do', notes: 'Three shades of the spring tote.', recordDate: day('2026-04-15') },
     { name: 'Harbour price check', state: 'done', partner: 'Harbour & Line', owner: 'Amira Shah', bucket: 'Call', notes: 'Wholesale price agreed.', recordDate: day('2026-04-02') },
   ]),
@@ -52,11 +52,11 @@ export const depthScreens: DeskScreen[] = [
   list('pos', 'floors', 'Floors', '楼层', 'Where a register sits.', '收银台所在的位置。', ['active'], [
     { name: 'Shop floor', state: 'active', owner: 'Lin Xiao', notes: 'The counter by the door.', recordDate: day('2026-01-01') },
     { name: 'Workshop hatch', state: 'active', owner: 'He Gong', notes: 'Used on open days.', recordDate: day('2026-01-01') },
-    { name: 'Pop-up', state: 'active', owner: 'Maya Chen', notes: 'Taken to the spring fair.', recordDate: day('2026-03-01') },
+    { name: 'Pop-up', state: 'active', owner: 'August', notes: 'Taken to the spring fair.', recordDate: day('2026-03-01') },
   ], false),
   list('website', 'pages', 'Pages', '页面', 'Pages on the public shop, besides the product grid.', '网店上除了产品网格之外的页面。', ['draft', 'done'], [
-    { name: 'Home', state: 'done', owner: 'Maya Chen', notes: 'The shop front.', recordDate: day('2026-01-01') },
-    { name: 'About the workshop', state: 'done', owner: 'Maya Chen', notes: 'How the totes are cut.', recordDate: day('2026-02-12') },
+    { name: 'Home', state: 'done', owner: 'August', notes: 'The shop front.', recordDate: day('2026-01-01') },
+    { name: 'About the workshop', state: 'done', owner: 'August', notes: 'How the totes are cut.', recordDate: day('2026-02-12') },
     { name: 'Spring fair', state: 'draft', owner: 'Jonah Ellis', notes: 'Not published.', recordDate: day('2026-04-16') },
   ]),
   report('website', 'visitors', 'Visitors', '访客', 'A sample of shop visits. Nothing is collected from a browser.', '网店访问的示例。没有从浏览器采集。', [
@@ -65,17 +65,17 @@ export const depthScreens: DeskScreen[] = [
     { name: 'Notebook', state: 'done', bucket: 'Product', amount: 96, recordDate: day('2026-04-16') },
   ]),
   list('payroll', 'payslips', 'Payslips', '工资单', 'One row per person for the open month, beside the live payroll run.', '未结月份每人一行，与正式工资运行并列。', ['draft', 'posted', 'paid'], [
-    { name: 'Maya Chen · April', state: 'posted', partner: 'Maya Chen', owner: 'Office', amount: 18000, notes: 'Posted with the April run.', recordDate: day('2026-04-30') },
+    { name: 'August · April', state: 'posted', partner: 'August', owner: 'Office', amount: 18000, notes: 'Posted with the April run.', recordDate: day('2026-04-30') },
     { name: 'Jonah Ellis · April', state: 'posted', partner: 'Jonah Ellis', owner: 'Office', amount: 9000, notes: 'Posted with the April run.', recordDate: day('2026-04-30') },
     { name: 'Lin Xiao · May', state: 'draft', partner: 'Lin Xiao', owner: 'Shop', amount: 0, notes: 'May is not opened yet.', recordDate: day('2026-05-01') },
   ], false),
   list('expenses', 'approvals', 'Approvals', '审批', 'Claims sitting with an approver.', '停在审批人那里的报销。', ['waiting', 'approved', 'refused'], [
-    { name: 'Cafe receipt', state: 'waiting', partner: 'Jonah Ellis', owner: 'Maya Chen', amount: 46, notes: 'Waiting on Maya.', recordDate: day('2026-04-09') },
-    { name: 'Client lunch', state: 'approved', partner: 'Maya Chen', owner: 'Maya Chen', amount: 28, notes: 'Approved and reimbursed.', recordDate: day('2026-04-03') },
-    { name: 'Late taxi', state: 'refused', partner: 'Lin Xiao', owner: 'Maya Chen', amount: 18, notes: 'Not a company trip.', recordDate: day('2026-04-11') },
+    { name: 'Cafe receipt', state: 'waiting', partner: 'Jonah Ellis', owner: 'August', amount: 46, notes: 'Waiting on August.', recordDate: day('2026-04-09') },
+    { name: 'Client lunch', state: 'approved', partner: 'August', owner: 'August', amount: 28, notes: 'Approved and reimbursed.', recordDate: day('2026-04-03') },
+    { name: 'Late taxi', state: 'refused', partner: 'Lin Xiao', owner: 'August', amount: 18, notes: 'Not a company trip.', recordDate: day('2026-04-11') },
   ]),
   list('projects', 'milestones', 'Milestones', '里程碑', 'The points a project can be billed from.', '项目可以据此开票的节点。', ['planned', 'progress', 'done'], [
-    { name: 'Half the totes cut', state: 'progress', partner: 'Spring tote run', owner: 'Maya Chen', amount: 1200, notes: '120 of 200.', recordDate: day('2026-04-16') },
+    { name: 'Half the totes cut', state: 'progress', partner: 'Spring tote run', owner: 'August', amount: 1200, notes: '120 of 200.', recordDate: day('2026-04-16') },
     { name: 'Shelves delivered', state: 'planned', partner: 'Shop refit', owner: 'Lin Xiao', amount: 800, notes: 'Not started.', recordDate: day('2026-04-20') },
     { name: 'Kit handed over', state: 'done', partner: 'Harbour wholesale kit', owner: 'Amira Shah', amount: 1600, notes: 'Billed in March.', recordDate: day('2026-03-20') },
   ]),
@@ -86,7 +86,7 @@ export const depthScreens: DeskScreen[] = [
   ]),
   list('subcontracting', 'resupply', 'Resupply', '补料', 'Components sent out with a subcontracting order.', '随委外订单发出的组件。', ['draft', 'ready', 'done'], [
     { name: 'RS/1102 greige', state: 'ready', partner: 'Harbour Dye', owner: 'Jonah Ellis', amount: 40, notes: 'Rolls waiting on the dock.', recordDate: day('2026-04-09') },
-    { name: 'RS/1104 logos', state: 'draft', partner: 'West Stitch', owner: 'Maya Chen', amount: 80, notes: 'Not sent. The order is still a quote.', recordDate: day('2026-04-16') },
+    { name: 'RS/1104 logos', state: 'draft', partner: 'West Stitch', owner: 'August', amount: 80, notes: 'Not sent. The order is still a quote.', recordDate: day('2026-04-16') },
     { name: 'RS/1098 panels', state: 'done', partner: 'West Stitch', owner: 'He Gong', amount: 80, notes: 'Sent in March.', recordDate: day('2026-03-18') },
   ]),
   list('helpdesk', 'stages', 'Stages', '阶段', 'The columns on the ticket board.', '工单看板上的列。', ['active'], [

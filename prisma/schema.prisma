@@ -302,6 +302,8 @@ model SalesOrder {
 
   @@unique([companyId, name])
   @@index([companyId, state])
+  @@index([companyId, dateOrder])
+  @@index([companyId, updatedAt])
 }
 
 model SalesOrderLine {
@@ -351,6 +353,7 @@ model PurchaseOrder {
 
   @@unique([companyId, name])
   @@index([companyId, state])
+  @@index([companyId, dateOrder])
 }
 
 model PurchaseOrderLine {
@@ -730,6 +733,8 @@ model Invoice {
   @@unique([companyId, name])
   @@index([companyId, state])
   @@index([companyId, moveType])
+  @@index([companyId, invoiceDate])
+  @@index([companyId, state, moveType])
 }
 
 model InvoiceLine {
@@ -790,6 +795,7 @@ model JournalItem {
   costCentreId Int?
   costCentre   CostCentre? @relation(fields: [costCentreId], references: [id])
 
+  @@index([entryId])
   @@index([accountId])
   @@index([costCentreId])
 }
@@ -968,6 +974,8 @@ model LeaveRequest {
   state      String   @default("draft")
   reason     String?
   createdAt  DateTime @default(now())
+
+  @@index([employeeId, state])
 }
 
 /// One monthly gross per employee. Deduction maths is a demo approximation.
@@ -1045,6 +1053,8 @@ model DeskRecord {
 
   @@unique([companyId, module, screen, name])
   @@index([companyId, module, screen])
+  @@index([companyId, module, screen, state])
+  @@index([companyId, recordDate])
 }
 
 model ModuleSetting {

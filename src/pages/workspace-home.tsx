@@ -187,7 +187,7 @@ function MonthChart({ points, locale }: { points: WsPoint[]; locale: Locale }) {
       </svg>
       {hot ? (
         <div
-          className="keel-glass pointer-events-none absolute z-10 -translate-x-1/2 rounded-2xl px-3 py-2 text-xs shadow-md"
+          className="keel-menu pointer-events-none absolute z-[60] -translate-x-1/2 rounded-2xl px-3 py-2 text-xs"
           style={{ left: `${(hot.x / width) * 100}%`, top: 8 }}
         >
           <p className="font-semibold">{locale === 'zh' ? hot.point.zh : hot.point.en}</p>

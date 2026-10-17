@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client'
 import { lineAmounts, roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
@@ -42,45 +41,59 @@ const journals = [
   ['GEN', '杂项'],
 ] as const
 
+const booksReady = new Set<number>()
+
+export function forgetBooks(companyId?: number) {
+  if (companyId === undefined) booksReady.clear()
+  else booksReady.delete(companyId)
+}
+
+function sequenceNames(companyId: number) {
+  return [
+    `account.out.${companyId}`,
+    `account.in.${companyId}`,
+    `account.out_refund.${companyId}`,
+    `account.in_refund.${companyId}`,
+    `account.entry.${companyId}`,
+  ]
+}
+
 export async function ensureBooks(companyId: number) {
-  const existing = await prisma.account.count({ where: { companyId } })
-  if (existing === 0) {
-    await prisma.account.createMany({
-      data: chart.map(([code, name, type]) => ({ code, name, type, companyId })),
-    })
-    await prisma.journal.createMany({
-      data: journals.map(([code, name]) => ({ code, name, companyId })),
-    })
-    await prisma.sequence.createMany({
-      data: [
-        { name: `account.out.${companyId}`, next: 0 },
-        { name: `account.in.${companyId}`, next: 0 },
-        { name: `account.out_refund.${companyId}`, next: 0 },
-        { name: `account.in_refund.${companyId}`, next: 0 },
-        { name: `account.entry.${companyId}`, next: 0 },
-      ],
-      skipDuplicates: true,
-    })
-  }
-  for (const [code, name, type] of chart) {
-    const found = await prisma.account.findUnique({ where: { companyId_code: { companyId, code } } })
-    if (found) continue
-    try {
-      await prisma.account.create({ data: { code, name, type, companyId } })
-    } catch (error) {
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error
-    }
-  }
-  try {
-    await prisma.sequence.upsert({
-      where: { name: `account.entry.${companyId}` },
-      update: {},
-      create: { name: `account.entry.${companyId}`, next: 0 },
-    })
-  } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error
-  }
-  await ensureCompanyFrame(prisma, companyId)
+  if (booksReady.has(companyId)) return
+  const names = sequenceNames(companyId)
+  const [accounts, journalRows, sequences] = await Promise.all([
+    prisma.account.findMany({ where: { companyId }, select: { code: true } }),
+    prisma.journal.findMany({ where: { companyId }, select: { code: true } }),
+    prisma.sequence.findMany({ where: { name: { in: names } }, select: { name: true } }),
+  ])
+  const haveAccounts = new Set(accounts.map((row) => row.code))
+  const missingAccounts = chart.filter(([code]) => !haveAccounts.has(code))
+  const haveJournals = new Set(journalRows.map((row) => row.code))
+  const missingJournals = journals.filter(([code]) => !haveJournals.has(code))
+  const haveSequences = new Set(sequences.map((row) => row.name))
+  const missingSequences = names.filter((name) => !haveSequences.has(name))
+  await Promise.all([
+    missingAccounts.length > 0
+      ? prisma.account.createMany({
+          data: missingAccounts.map(([code, name, type]) => ({ code, name, type, companyId })),
+          skipDuplicates: true,
+        })
+      : Promise.resolve(),
+    missingJournals.length > 0
+      ? prisma.journal.createMany({
+          data: missingJournals.map(([code, name]) => ({ code, name, companyId })),
+          skipDuplicates: true,
+        })
+      : Promise.resolve(),
+    missingSequences.length > 0
+      ? prisma.sequence.createMany({
+          data: missingSequences.map((name) => ({ name, next: 0 })),
+          skipDuplicates: true,
+        })
+      : Promise.resolve(),
+    ensureCompanyFrame(prisma, companyId),
+  ])
+  booksReady.add(companyId)
 }
 
 async function nextName(tx: Tx, sequenceName: string, prefix: string) {
@@ -420,7 +433,15 @@ export async function listInvoices(companyId: number, moveType?: string) {
   await ensureBooks(companyId)
   return prisma.invoice.findMany({
     where: { companyId, ...(moveType ? { moveType } : {}) },
-    include: invoiceInclude,
+    select: {
+      id: true,
+      name: true,
+      moveType: true,
+      state: true,
+      invoiceDate: true,
+      amountTotal: true,
+      partner: { select: { name: true } },
+    },
     orderBy: { id: 'desc' },
   })
 }
@@ -841,7 +862,11 @@ export async function listLedger(companyId: number, accountCode?: string) {
       entry: { companyId },
       ...(account ? { accountId: account.id } : {}),
     },
-    include: {
+    select: {
+      id: true,
+      label: true,
+      debit: true,
+      credit: true,
       account: { select: { code: true, name: true, type: true } },
       entry: { select: { name: true, date: true, journal: { select: { code: true, name: true } } } },
     },
@@ -856,12 +881,14 @@ function inRange(date: Date, from?: string, to?: string) {
   return true
 }
 
-export async function profitAndLoss(companyId: number, from?: string, to?: string) {
-  await ensureBooks(companyId)
-  const items = await prisma.journalItem.findMany({
-    where: { entry: { companyId }, account: { type: { in: ['income', 'expense'] } } },
-    include: { account: true, entry: { select: { date: true } } },
-  })
+type PnlItem = {
+  debit: number
+  credit: number
+  account: { code: string; name: string; type: string }
+  entry: { date: Date }
+}
+
+export function summarizePnl(items: PnlItem[], from?: string, to?: string) {
   const rows = new Map<string, { code: string; name: string; type: string; amount: number }>()
   for (const item of items) {
     if (!inRange(item.entry.date, from, to)) continue
@@ -881,11 +908,44 @@ export async function profitAndLoss(companyId: number, from?: string, to?: strin
   return { accounts, income, expense, profit: roundMoney(income - expense) }
 }
 
+function entryDate(from?: string, to?: string) {
+  if (!from && !to) return undefined
+  return {
+    ...(from ? { gte: new Date(`${from}T00:00:00.000Z`) } : {}),
+    ...(to ? { lte: new Date(`${to}T23:59:59.999Z`) } : {}),
+  }
+}
+
+export async function profitAndLoss(companyId: number, from?: string, to?: string) {
+  await ensureBooks(companyId)
+  const items = await prisma.journalItem.findMany({
+    where: {
+      entry: { companyId, date: entryDate(from, to) },
+      account: { type: { in: ['income', 'expense'] } },
+    },
+    select: {
+      debit: true,
+      credit: true,
+      account: { select: { code: true, name: true, type: true } },
+      entry: { select: { date: true } },
+    },
+  })
+  return summarizePnl(items, from, to)
+}
+
 export async function balanceSheet(companyId: number, on?: string) {
   await ensureBooks(companyId)
   const items = await prisma.journalItem.findMany({
-    where: { entry: { companyId }, account: { type: { in: ['asset', 'liability', 'equity'] } } },
-    include: { account: true, entry: { select: { date: true } } },
+    where: {
+      entry: { companyId, date: on ? { lte: new Date(`${on}T23:59:59.999Z`) } : undefined },
+      account: { type: { in: ['asset', 'liability', 'equity'] } },
+    },
+    select: {
+      debit: true,
+      credit: true,
+      account: { select: { code: true, name: true, type: true } },
+      entry: { select: { date: true } },
+    },
   })
   const rows = new Map<string, { code: string; name: string; type: string; amount: number }>()
   for (const item of items) {
@@ -911,7 +971,12 @@ export async function balanceSheet(companyId: number, on?: string) {
 export async function vatReport(companyId: number, from?: string, to?: string) {
   await ensureBooks(companyId)
   const invoices = await prisma.invoice.findMany({
-    where: { companyId, state: { in: ['posted', 'paid'] } },
+    where: {
+      companyId,
+      state: { in: ['posted', 'paid'] },
+      invoiceDate: entryDate(from, to),
+    },
+    select: { moveType: true, amountTax: true, invoiceDate: true },
   })
   let output = 0
   let input = 0

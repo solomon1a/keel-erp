@@ -329,14 +329,20 @@ export function ReportsPage() {
   const money = useMoney()
   const [params] = useSearchParams()
   const view = params.get('view')
-  const pnl = useQuery({ queryKey: ['pnl'], queryFn: () => api<{ income: number; expense: number; profit: number; accounts: Array<{ code: string; name: string; amount: number }> }>('/api/reports/pnl') })
-  const balance = useQuery({ queryKey: ['balance'], queryFn: () => api<{ assets: number; liabilities: number; equity: number; accounts: Array<{ code: string; name: string; amount: number }> }>('/api/reports/balance') })
-  const vat = useQuery({ queryKey: ['vat'], queryFn: () => api<{ output: number; input: number; payable: number }>('/api/reports/vat') })
-  const aging = useQuery({
-    queryKey: ['aging'],
-    queryFn: () => api<{ receivable: { current: number; d30: number; d60: number; older: number; total: number } }>('/api/reports/aging?asOf=2026-10-16'),
+  const pack = useQuery({
+    queryKey: ['reports-pack'],
+    queryFn: () => api<{
+      pnl: { income: number; expense: number; profit: number; accounts: Array<{ code: string; name: string; amount: number }> }
+      balance: { assets: number; liabilities: number; equity: number; accounts: Array<{ code: string; name: string; amount: number }> }
+      vat: { output: number; input: number; payable: number }
+      aging: { receivable: { current: number; d30: number; d60: number; older: number; total: number } }
+    }>('/api/reports/pack?asOf=2026-10-16'),
   })
-  if (pnl.isLoading || balance.isLoading || vat.isLoading || aging.isLoading) return <p className="text-sm text-muted-foreground">{t('acct.loading')}</p>
+  if (pack.isLoading) return <p className="text-sm text-muted-foreground">{t('acct.loading')}</p>
+  const pnl = { data: pack.data?.pnl }
+  const balance = { data: pack.data?.balance }
+  const vat = { data: pack.data?.vat }
+  const aging = { data: pack.data?.aging }
   const heading = view === 'balance' ? t('acct.balance') : view === 'vat' ? t('acct.vat') : view === 'pnl' ? t('acct.pnl') : t('acct.reports')
   const showPnl = !view || view === 'pnl'
   const showBalance = !view || view === 'balance'

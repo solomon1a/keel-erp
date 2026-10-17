@@ -1,7 +1,7 @@
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { profitAndLoss } from './accounting.ts'
+import { ensureBooks, summarizePnl } from './accounting.ts'
 
 export const homeRanges = ['today', 'week', 'month', 'year'] as const
 export type HomeRange = (typeof homeRanges)[number]
@@ -184,11 +184,13 @@ function isPipelineStage(stage: string): stage is PipelineStage {
 }
 
 export async function homeDashboard(companyId: number, range: HomeRange, now = new Date()): Promise<HomeDashboard> {
+  await ensureBooks(companyId)
   const bounds = dashboardRange(range, now)
   const asOf = endOf(bounds.to)
+  const chartStart = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth() - 11, 1))
+  const chartFrom = iso(chartStart)
+  const windowFrom = bounds.priorFrom < chartFrom ? bounds.priorFrom : chartFrom
   const [
-    current,
-    prior,
     movements,
     bankAccounts,
     bankItems,
@@ -212,15 +214,24 @@ export async function homeDashboard(companyId: number, range: HomeRange, now = n
     quotationCount,
     company,
   ] = await Promise.all([
-    profitAndLoss(companyId, bounds.from, bounds.to),
-    profitAndLoss(companyId, bounds.priorFrom, bounds.priorTo),
     prisma.journalItem.findMany({
-      where: { entry: { companyId }, account: { type: { in: ['income', 'expense'] } } },
-      select: { debit: true, credit: true, account: { select: { type: true } }, entry: { select: { date: true } } },
+      where: {
+        entry: { companyId, date: { gte: new Date(`${windowFrom}T00:00:00.000Z`), lte: asOf } },
+        account: { type: { in: ['income', 'expense'] } },
+      },
+      select: {
+        debit: true,
+        credit: true,
+        account: { select: { code: true, name: true, type: true } },
+        entry: { select: { date: true } },
+      },
     }),
     prisma.account.count({ where: { companyId, code: { in: ['1001', '1002'] } } }),
     prisma.journalItem.findMany({
-      where: { account: { companyId, code: { in: ['1001', '1002'] } }, entry: { companyId } },
+      where: {
+        account: { companyId, code: { in: ['1001', '1002'] } },
+        entry: { companyId, date: { lte: asOf } },
+      },
       select: { debit: true, credit: true, entry: { select: { date: true } } },
     }),
     prisma.invoice.aggregate({
@@ -310,6 +321,9 @@ export async function homeDashboard(companyId: number, range: HomeRange, now = n
     prisma.quotation.count({ where: { companyId } }),
     prisma.company.findUnique({ where: { id: companyId }, select: { taxId: true } }),
   ])
+
+  const current = summarizePnl(movements, bounds.from, bounds.to)
+  const prior = summarizePnl(movements, bounds.priorFrom, bounds.priorTo)
 
   const balanceAsOf = (day: string) => {
     const cutoff = endOf(day)

@@ -10,7 +10,9 @@ import { seedAccess } from '../server/services/access.ts'
 import { ensureCompanyFrame } from '../server/services/books.ts'
 import { seedHealthyBooks } from './seed-books.ts'
 import { seedTrade } from './seed-trade.ts'
+import { renameDemoAdmin } from './rename-admin.ts'
 import { seedRichDemo } from './seed-rich.ts'
+import { forgetBooks } from '../server/services/accounting.ts'
 
 const prisma = new PrismaClient()
 
@@ -25,12 +27,14 @@ export const demoPasswords = {
 } as const
 
 export async function seedDatabase(client: PrismaClient = prisma) {
+  forgetBooks()
   await removeStrayCompanies(client)
   await seedJiangbei(client)
   await seedRegionalCompanies(client)
   await removeStrayCompanies(client)
   await seedPayrollAndExpenses(client)
   await seedRichDemo(client)
+  await renameDemoAdmin(client)
   await seedDesk(client)
   await seedAccess(client)
   const companies = await client.company.findMany({ select: { id: true } })
@@ -59,7 +63,7 @@ async function seedJiangbei(client: PrismaClient) {
   ])
   const maya = await client.user.create({
     data: {
-      name: 'Maya Chen',
+      name: 'August',
       email: 'maya@northline.example',
       role: 'admin',
       passwordHash: mayaHash,
