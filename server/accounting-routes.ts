@@ -64,7 +64,6 @@ export function registerAccountingRoutes(app: Hono<AppEnv>) {
   app.get('/api/reports/pack', async (c) => {
     const companyId = c.get('user').companyId
     const asOf = c.req.query('asOf') || new Date().toISOString().slice(0, 10)
-    const started = performance.now()
     const body = await cached(`reports:${companyId}:${asOf}`, 15_000, () =>
       Promise.all([
         profitAndLoss(companyId),
@@ -73,7 +72,6 @@ export function registerAccountingRoutes(app: Hono<AppEnv>) {
         agingReport(companyId, asOf),
       ]).then(([pnl, balance, vat, aging]) => ({ pnl, balance, vat, aging })),
     )
-    c.header('Server-Timing', `reports;dur=${Math.round(performance.now() - started)}`)
     return c.json(body)
   })
 

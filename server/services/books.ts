@@ -49,7 +49,6 @@ export async function assertYearOpen(tx: Tx, companyId: number, date: Date) {
 }
 
 export async function listFiscalYears(companyId: number) {
-  await ensureCompanyFrame(prisma, companyId)
   return prisma.fiscalYear.findMany({ where: { companyId }, orderBy: { startsOn: 'asc' } })
 }
 

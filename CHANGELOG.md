@@ -1,5 +1,9 @@
 # Changelog
 
+## Live read path
+
+GET requests no longer open or write the chart of accounts. Profit and loss is one journal query. The balance sheet loads that query and the asset query together. Session rows are remembered in the function for 60 seconds and dropped on logout or a password change. Each API response sends `Server-Timing` with `total`, `db`, `queries`, `region`, and `nearest`. The region is the Neon host’s cloud region, never the connection string. On a `*.neon.tech` database the client uses the Neon HTTP driver for queries and a websocket only for transactions. Local Postgres stays on the standard Prisma engine.
+
 ## Opaque menus, a calmer dashboard, and faster reads
 
 Navigation menus, the account menu, chart tips, and toasts use a solid surface so the page underneath does not show through. Selects use the same solid fill in light and dark. The dashboard attention card shows four items in groups, with more space between rows, stock lines, and app shortcuts.

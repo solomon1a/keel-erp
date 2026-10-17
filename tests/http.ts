@@ -23,5 +23,6 @@ export async function call(path: string, cookie: string, init: RequestInit = {})
     status: response.status,
     body: text ? (JSON.parse(text) as Record<string, unknown>) : null,
     setCookie: response.headers.get('set-cookie'),
+    serverTiming: response.headers.get('server-timing'),
   }
 }

@@ -18,8 +18,19 @@ afterAll(async () => {
 
 describe('accounting', () => {
   it('posts the seeded shop invoice into the ledger, VAT, and statements', async () => {
+    const accounts = await prisma.account.count()
+    const years = await prisma.fiscalYear.count()
     const pnl = await call('/api/reports/pnl', maya)
     expect(pnl.status).toBe(200)
+    expect(pnl.serverTiming).toContain('total;dur=')
+    expect(pnl.serverTiming).toContain('db;dur=')
+    expect(pnl.serverTiming).toContain('queries;desc="')
+    expect(pnl.serverTiming).toContain('region;desc="local"')
+    expect(pnl.serverTiming ?? '').not.toContain('postgres://')
+    expect(await prisma.account.count()).toBe(accounts)
+    const listedYears = await call('/api/fiscal-years', maya)
+    expect(listedYears.status).toBe(200)
+    expect(await prisma.fiscalYear.count()).toBe(years)
     expect(pnl.body).toMatchObject({
       income: jiangbeiBooks.income,
       expense: jiangbeiBooks.expense,

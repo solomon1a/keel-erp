@@ -19,6 +19,8 @@
   "dependencies": {
     "@hono/node-server": "^2.1.5",
     "@hookform/resolvers": "^5.9.1",
+    "@neondatabase/serverless": "^1.2.0",
+    "@prisma/adapter-neon": "^6.19.0",
     "@prisma/client": "^6.19.0",
     "@tanstack/react-query": "^5.104.3",
     "bcryptjs": "^3.0.3",
@@ -28,6 +30,7 @@
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.90.0",
     "react-router-dom": "^7.18.4",
+    "ws": "^8.22.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -40,6 +43,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
