@@ -5,13 +5,19 @@ import type { PrismaClient } from '@prisma/client'
 // exists does not skip the bills, work orders, job cards, plan, or wastage.
 export async function seedFloor(client: PrismaClient) {
   const companies = await client.company.findMany({ select: { id: true, name: true } })
+  const failures: string[] = []
   for (const company of companies) {
     try {
       await seedCompanyFloor(client, company)
     } catch (error) {
-      console.error(`seed-floor: ${company.name} failed`)
-      throw error
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`seed-floor: ${company.name} failed: ${message}`)
+      if (error instanceof Error && error.stack) console.error(error.stack)
+      failures.push(`${company.name}: ${message}`)
     }
+  }
+  if (failures.length > 0) {
+    throw new Error(`seed-floor did not finish: ${failures.join('; ')}`)
   }
 }
 

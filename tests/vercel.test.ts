@@ -21,6 +21,19 @@ describe('vercel function', () => {
     expect(script).toContain('if prisma db seed; then')
   })
 
+  it('keeps a long transaction limit and runs floor after trade', () => {
+    const db = readFileSync('server/db.ts', 'utf8')
+    const seed = readFileSync('prisma/seed.ts', 'utf8')
+    expect(db).toContain('maxWait: 15_000')
+    expect(db).toContain('timeout: 60_000')
+    expect(db).toContain('new PrismaClient({ adapter, transactionOptions })')
+    expect(seed).toContain('new PrismaClient({ transactionOptions })')
+    const tradeAt = seed.indexOf("runStage('trade'")
+    const floorAt = seed.indexOf("runStage('floor'")
+    expect(tradeAt).toBeGreaterThan(0)
+    expect(floorAt).toBeGreaterThan(tradeAt)
+  })
+
   it('serves health on the original /api path', async () => {
     const response = await handler(new Request('https://keel.example/api/health'))
     expect(response.status).toBe(200)

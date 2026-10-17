@@ -1,8 +1,8 @@
 import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { OrderInput } from '../../shared/schemas.ts'
-import { prisma, type Tx } from '../db.ts'
+import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
+import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty } from './stock.ts'
 import { assertCreditLimit, recordDelivery } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
@@ -180,8 +180,28 @@ export async function confirmOrder(companyId: number, orderId: number) {
     }
     await assertCreditLimit(tx, companyId, order.customerId, order.amountTotal)
 
-    const locations = await companyLocations(tx, companyId)
-    const source = await warehouseStockLocation(tx, companyId, order.warehouseId)
+    const sourceWarehouseId = order.warehouseId ?? (await resolveWarehouseId(tx, companyId, null))
+    const rows = await tx.stockLocation.findMany({
+      where: {
+        companyId,
+        OR: [{ warehouseId: null }, { warehouseId: sourceWarehouseId, type: 'internal' }],
+      },
+      orderBy: { id: 'asc' },
+    })
+    const customer = rows.find((row) => row.warehouseId == null && row.type === 'customer')
+    const supplier = rows.find((row) => row.warehouseId == null && row.type === 'supplier')
+    const adjustment = rows.find((row) => row.warehouseId == null && row.type === 'inventory')
+    const production = rows.find((row) => row.warehouseId == null && row.type === 'production')
+    if (!customer || !supplier || !adjustment || !production) {
+      throw new AppError(500, 'Stock locations are not set up for this company.')
+    }
+    const shelves = rows.filter((row) => row.warehouseId === sourceWarehouseId && row.type === 'internal')
+    const shelf = shelves.find((row) => row.isDefault) ?? shelves[0]
+    if (!shelf) {
+      const warehouse = await tx.warehouse.findFirst({ where: { id: sourceWarehouseId } })
+      throw new AppError(400, `${warehouse?.name ?? 'Warehouse'} has no stock location.`)
+    }
+
     const needed = new Map<number, { name: string; quantity: number }>()
     for (const line of order.lines) {
       if (line.product.type !== 'product') continue
@@ -192,35 +212,43 @@ export async function confirmOrder(companyId: number, orderId: number) {
       })
     }
 
-    for (const [productId, need] of needed) {
-      const available = await onHand(tx, productId, source.location.id)
-      if (available + 0.0001 < need.quantity) {
-        throw new AppError(
-          409,
-          `${need.name} has ${available} on hand and this order needs ${need.quantity}. Adjust stock or lower the quantity.`,
-        )
+    if (needed.size > 0) {
+      const quants = await tx.stockQuant.findMany({
+        where: { locationId: shelf.id, productId: { in: [...needed.keys()] } },
+      })
+      const availableByProduct = new Map(quants.map((quant) => [quant.productId, quant.quantity]))
+      for (const [productId, need] of needed) {
+        const available = availableByProduct.get(productId) ?? 0
+        if (available + 0.0001 < need.quantity) {
+          throw new AppError(
+            409,
+            `${need.name} has ${available} on hand and this order needs ${need.quantity}. Adjust stock or lower the quantity.`,
+          )
+        }
       }
     }
 
-    for (const line of order.lines) {
-      if (line.product.type !== 'product') {
-        await tx.salesOrderLine.update({
-          where: { id: line.id },
-          data: { qtyDelivered: line.quantity },
-        })
-        continue
-      }
-      await tx.stockMove.create({
-        data: {
+    const stocked = order.lines.filter((line) => line.product.type === 'product')
+    const services = order.lines.filter((line) => line.product.type !== 'product')
+    if (stocked.length > 0) {
+      const postedAt = new Date()
+      await tx.stockMove.createMany({
+        data: stocked.map((line) => ({
           productId: line.productId,
-          locationFromId: source.location.id,
-          locationToId: locations.customer.id,
+          locationFromId: shelf.id,
+          locationToId: customer.id,
           quantity: line.quantity,
           state: 'draft',
           reference: order.name,
           orderId: order.id,
-          date: new Date(),
-        },
+          date: postedAt,
+        })),
+      })
+    }
+    for (const line of services) {
+      await tx.salesOrderLine.update({
+        where: { id: line.id },
+        data: { qtyDelivered: line.quantity },
       })
     }
 
@@ -237,7 +265,7 @@ export async function confirmOrder(companyId: number, orderId: number) {
       data: { state: 'sale' },
       include: orderInclude,
     })
-  })
+  }, transactionOptions)
 }
 
 export async function deliverOrder(companyId: number, orderId: number) {
@@ -275,7 +303,7 @@ export async function deliverOrder(companyId: number, orderId: number) {
       data: { state: 'done' },
       include: orderInclude,
     })
-  })
+  }, transactionOptions)
 }
 
 export async function cancelOrder(companyId: number, orderId: number) {

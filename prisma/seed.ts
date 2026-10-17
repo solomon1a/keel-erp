@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { prisma as serverPrisma } from '../server/db.ts'
+import { prisma as serverPrisma, transactionOptions } from '../server/db.ts'
 import { clearSessionCache, hashPassword } from '../server/auth.ts'
 import { anglicizeJiangbei } from './anglicize.ts'
 import { removeStrayCompanies } from './company-cleanup.ts'
@@ -15,7 +15,7 @@ import { renameDemoAdmin } from './rename-admin.ts'
 import { seedRichDemo } from './seed-rich.ts'
 import { forgetBooks } from '../server/services/accounting.ts'
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient({ transactionOptions })
 
 export const demoPasswords = {
   maya: 'keel-maya-desk',
@@ -27,23 +27,40 @@ export const demoPasswords = {
   sam: 'keel-sam-shop',
 } as const
 
+async function runStage(name: string, run: () => Promise<void>, failures: string[]) {
+  try {
+    await run()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`KEEL SEED FAILED in ${name}: ${message}`)
+    if (error instanceof Error && error.stack) console.error(error.stack)
+    failures.push(`${name}: ${message}`)
+  }
+}
+
 export async function seedDatabase(client: PrismaClient = prisma) {
   forgetBooks()
   clearSessionCache()
-  await removeStrayCompanies(client)
-  await seedJiangbei(client)
-  await seedRegionalCompanies(client)
-  await removeStrayCompanies(client)
-  await seedPayrollAndExpenses(client)
-  await seedRichDemo(client)
-  await renameDemoAdmin(client)
-  await seedDesk(client)
-  await seedAccess(client)
-  const companies = await client.company.findMany({ select: { id: true } })
-  for (const company of companies) await ensureCompanyFrame(client, company.id)
-  await seedHealthyBooks(client)
-  await seedTrade(client)
-  await seedFloor(client)
+  const failures: string[] = []
+  await runStage('cleanup', () => removeStrayCompanies(client), failures)
+  await runStage('jiangbei', () => seedJiangbei(client), failures)
+  await runStage('regions', () => seedRegionalCompanies(client), failures)
+  await runStage('cleanup-again', () => removeStrayCompanies(client), failures)
+  await runStage('payroll', () => seedPayrollAndExpenses(client), failures)
+  await runStage('rich', () => seedRichDemo(client), failures)
+  await runStage('rename', () => renameDemoAdmin(client), failures)
+  await runStage('desk', () => seedDesk(client), failures)
+  await runStage('access', () => seedAccess(client), failures)
+  await runStage('frame', async () => {
+    const companies = await client.company.findMany({ select: { id: true } })
+    for (const company of companies) await ensureCompanyFrame(client, company.id)
+  }, failures)
+  await runStage('books', () => seedHealthyBooks(client), failures)
+  await runStage('trade', () => seedTrade(client), failures)
+  await runStage('floor', () => seedFloor(client), failures)
+  if (failures.length > 0) {
+    throw new Error(`KEEL SEED FAILED: ${failures.join('; ')}`)
+  }
 }
 
 async function seedJiangbei(client: PrismaClient) {
