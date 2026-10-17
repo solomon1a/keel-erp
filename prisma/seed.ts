@@ -10,6 +10,7 @@ import { seedAccess } from '../server/services/access.ts'
 import { ensureCompanyFrame } from '../server/services/books.ts'
 import { seedHealthyBooks } from './seed-books.ts'
 import { seedTrade } from './seed-trade.ts'
+import { seedFloor } from './seed-floor.ts'
 import { renameDemoAdmin } from './rename-admin.ts'
 import { seedRichDemo } from './seed-rich.ts'
 import { forgetBooks } from '../server/services/accounting.ts'
@@ -42,6 +43,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   for (const company of companies) await ensureCompanyFrame(client, company.id)
   await seedHealthyBooks(client)
   await seedTrade(client)
+  await seedFloor(client)
 }
 
 async function seedJiangbei(client: PrismaClient) {

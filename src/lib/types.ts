@@ -141,6 +141,7 @@ export type BomLine = {
   id?: number
   productId: number
   quantity: number
+  lossPercent?: number
   product?: { id: number; name: string; sku: string; costPrice: number; kind: string; type: string; purchasable?: boolean }
 }
 
@@ -148,10 +149,18 @@ export type BillOfMaterials = {
   id: number
   productId: number
   yieldQty: number
+  version?: number
+  active?: boolean
   notes: string | null
+  material?: number
+  operating?: number
+  byproduct?: number
   unitCost: number
   product: { id: number; name: string; sku: string; kind: string; costPrice: number; type: string }
   lines: BomLine[]
+  operations?: Array<{ id: number; sequence: number; name: string; hours: number; lossPercent: number; workstation: { id: number; name: string; hourRate: number } }>
+  byproducts?: Array<{ id: number; quantity: number; product: { id: number; name: string; sku: string; costPrice: number } }>
+  orders?: Array<{ id: number; name: string; state: string }>
 }
 
 export type ManufacturingLine = {
@@ -175,10 +184,32 @@ export type ManufacturingOrder = {
   destWarehouseId?: number | null
   sourceWarehouse?: { id: number; name: string; code: string } | null
   destWarehouse?: { id: number; name: string; code: string } | null
+  wipWarehouse?: { id: number; name: string; code: string } | null
+  scrapWarehouse?: { id: number; name: string; code: string } | null
+  purpose?: string
+  transferred?: boolean
+  quantityRejected?: number
+  subcontractState?: string | null
+  salesOrder?: { id: number; name: string; state: string } | null
+  materialRequest?: { id: number; name: string; state: string } | null
+  supplier?: { id: number; name: string } | null
   product: { id: number; name: string; sku: string; kind?: string; costPrice?: number }
-  bom?: { id: number; yieldQty: number; notes: string | null }
+  bom?: { id: number; yieldQty: number; version?: number; notes: string | null }
   lines?: ManufacturingLine[]
   moves?: StockMove[]
+  jobCards?: Array<{
+    id: number
+    name: string
+    operationName: string
+    status: string
+    plannedQty: number
+    completedQty: number
+    processLoss: number
+    rejectedQty: number
+    workstation?: { id: number; name: string; hourRate: number } | null
+    logs: Array<{ id: number; operatorName: string; minutes: number; note: string | null }>
+  }>
+  wastage?: Array<{ id: number; quantity: number; reason: string; kind: string; cost: number }>
 }
 
 export type PosPayment = {

@@ -41,6 +41,8 @@ export function ManufacturingPage() {
           <p className="mt-1 text-muted-foreground">{t('manufacturing.lead')}</p>
         </div>
         <div className="flex gap-2">
+          <Link to="/manufacturing/plan"><Button variant="outline">{t('floor.plan')}</Button></Link>
+          <Link to="/manufacturing/wastage"><Button variant="outline">{t('floor.wastage')}</Button></Link>
           <Link to="/boms"><Button variant="outline">{t('manufacturing.boms')}</Button></Link>
           <Link to="/manufacturing/new"><Button>{t('manufacturing.new')}</Button></Link>
         </div>

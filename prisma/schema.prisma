@@ -23,6 +23,10 @@ model Company {
   purchases     PurchaseOrder[]
   boms          BillOfMaterials[]
   manufacturing ManufacturingOrder[]
+  workstations  Workstation[]
+  jobCards      JobCard[]
+  wastageEntries WastageEntry[]
+  productionPlans ProductionPlan[]
   warehouses    Warehouse[]
   transfers     StockTransfer[]
   reorderRules  ReorderRule[]
@@ -139,6 +143,7 @@ model Contact {
   customerGroupId Int?
   customerGroup   CustomerGroup? @relation(fields: [customerGroupId], references: [id])
   notes       String?
+  subcontracts ManufacturingOrder[] @relation("MoSupplier")
   parentId    Int?
   parent      Contact?     @relation("ContactHierarchy", fields: [parentId], references: [id])
   children    Contact[]    @relation("ContactHierarchy")
@@ -198,6 +203,8 @@ model Product {
   purchaseLines            PurchaseOrderLine[]
   boms                     BillOfMaterials[]        @relation("BomFinished")
   bomLines                 BomLine[]
+  bomByproducts            BomByproduct[]           @relation("BomByproduct")
+  wastageEntries           WastageEntry[]
   manufacturingOrders      ManufacturingOrder[]
   manufacturingComponents  ManufacturingComponent[]
   quants                   StockQuant[]
@@ -286,6 +293,7 @@ model SalesOrder {
   invoices      Invoice[]
   quotations    Quotation[]
   deliveries    DeliveryNote[]
+  manufacturingOrders ManufacturingOrder[]
   warehouseId   Int?
   warehouse     Warehouse?       @relation(fields: [warehouseId], references: [id])
   /// `desk` or `shop`.
@@ -377,27 +385,67 @@ model PurchaseOrderLine {
 
 model BillOfMaterials {
   id         Int                  @id @default(autoincrement())
-  productId  Int                  @unique
+  productId  Int
   product    Product              @relation("BomFinished", fields: [productId], references: [id])
   companyId  Int
   company    Company              @relation(fields: [companyId], references: [id])
   /// Finished units this recipe makes. Component quantities are for this many units.
   yieldQty   Float                @default(1)
+  version    Int                  @default(1)
+  active     Boolean              @default(true)
   notes      String?
   lines      BomLine[]
+  operations BomOperation[]
+  byproducts BomByproduct[]
   orders     ManufacturingOrder[]
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
-  @@index([companyId])
+  @@unique([productId, version])
+  @@index([companyId, active])
 }
 
 model BomLine {
+  id          Int             @id @default(autoincrement())
+  bomId       Int
+  bom         BillOfMaterials @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  productId   Int
+  product     Product         @relation(fields: [productId], references: [id])
+  quantity    Float
+  lossPercent Float           @default(0)
+}
+
+model Workstation {
+  id        Int            @id @default(autoincrement())
+  companyId Int
+  company   Company        @relation(fields: [companyId], references: [id])
+  name      String
+  hourRate  Float
+  operations BomOperation[]
+  jobCards  JobCard[]
+  wastage   WastageEntry[]
+
+  @@unique([companyId, name])
+}
+
+model BomOperation {
+  id            Int             @id @default(autoincrement())
+  bomId         Int
+  bom           BillOfMaterials @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  sequence      Int
+  name          String
+  workstationId Int
+  workstation   Workstation     @relation(fields: [workstationId], references: [id])
+  hours         Float
+  lossPercent   Float           @default(0)
+}
+
+model BomByproduct {
   id        Int             @id @default(autoincrement())
   bomId     Int
   bom       BillOfMaterials @relation(fields: [bomId], references: [id], onDelete: Cascade)
   productId Int
-  product   Product         @relation(fields: [productId], references: [id])
+  product   Product         @relation("BomByproduct", fields: [productId], references: [id])
   quantity  Float
 }
 
@@ -414,12 +462,31 @@ model ManufacturingOrder {
   company        Company                   @relation(fields: [companyId], references: [id])
   quantity       Float
   quantityDone   Float                     @default(0)
+  /// stock, order, or subcontract
+  purpose             String                    @default("stock")
+  salesOrderId        Int?
+  salesOrder          SalesOrder?               @relation(fields: [salesOrderId], references: [id])
+  materialRequestId   Int?
+  materialRequest     MaterialRequest?          @relation(fields: [materialRequestId], references: [id])
+  supplierId          Int?
+  supplier            Contact?                  @relation("MoSupplier", fields: [supplierId], references: [id])
+  subcontractState    String?
+  transferred         Boolean                   @default(false)
+  operatingAbsorbed   Float                     @default(0)
+  relieved            Float                     @default(0)
+  quantityRejected    Float                     @default(0)
   lines          ManufacturingComponent[]
   moves             StockMove[]
+  jobCards          JobCard[]
+  wastage           WastageEntry[]
   sourceWarehouseId Int?
   sourceWarehouse   Warehouse?                @relation("MoSource", fields: [sourceWarehouseId], references: [id])
   destWarehouseId   Int?
   destWarehouse     Warehouse?                @relation("MoDest", fields: [destWarehouseId], references: [id])
+  wipWarehouseId    Int?
+  wipWarehouse      Warehouse?                @relation("MoWip", fields: [wipWarehouseId], references: [id])
+  scrapWarehouseId  Int?
+  scrapWarehouse    Warehouse?                @relation("MoScrap", fields: [scrapWarehouseId], references: [id])
   createdById       Int?
   createdBy      User?                     @relation("ManufacturingCreatedBy", fields: [createdById], references: [id])
   createdAt      DateTime                  @default(now())
@@ -429,6 +496,90 @@ model ManufacturingOrder {
   @@index([companyId, state])
 }
 
+model JobCard {
+  id            Int          @id @default(autoincrement())
+  companyId     Int
+  company       Company      @relation(fields: [companyId], references: [id])
+  orderId       Int
+  order         ManufacturingOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name          String
+  sequence      Int
+  operationName String
+  workstationId Int?
+  workstation   Workstation? @relation(fields: [workstationId], references: [id])
+  plannedQty    Float
+  completedQty  Float        @default(0)
+  processLoss   Float        @default(0)
+  rejectedQty   Float        @default(0)
+  /// pending, open, done
+  status        String
+  logs          JobTimeLog[]
+  wastage       WastageEntry[]
+
+  @@unique([companyId, name])
+  @@index([orderId])
+}
+
+model JobTimeLog {
+  id           Int      @id @default(autoincrement())
+  jobCardId    Int
+  jobCard      JobCard  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  operatorName String
+  minutes      Float
+  note         String?
+}
+
+model WastageEntry {
+  id            Int           @id @default(autoincrement())
+  companyId     Int
+  company       Company       @relation(fields: [companyId], references: [id])
+  orderId       Int?
+  order         ManufacturingOrder? @relation(fields: [orderId], references: [id])
+  jobCardId     Int?
+  jobCard       JobCard?      @relation(fields: [jobCardId], references: [id])
+  productId     Int
+  product       Product       @relation(fields: [productId], references: [id])
+  workstationId Int?
+  workstation   Workstation?  @relation(fields: [workstationId], references: [id])
+  operationName String?
+  quantity      Float
+  reason        String
+  /// process_loss, scrap, or rejected
+  kind          String
+  cost          Float
+  expectedQty   Float         @default(0)
+  createdAt     DateTime      @default(now())
+
+  @@index([companyId, kind])
+}
+
+model ProductionPlan {
+  id        Int                  @id @default(autoincrement())
+  companyId Int
+  company   Company              @relation(fields: [companyId], references: [id])
+  name      String
+  /// draft or raised
+  state     String
+  lines     ProductionPlanLine[]
+  createdAt DateTime             @default(now())
+
+  @@unique([companyId, name])
+}
+
+model ProductionPlanLine {
+  id                Int            @id @default(autoincrement())
+  planId            Int
+  plan              ProductionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  productId         Int
+  demandQty         Float
+  onHand            Float
+  toMake            Float
+  toBuy             Float
+  bomId             Int?
+  workOrderId       Int?
+  materialRequestId Int?
+}
+
 model ManufacturingComponent {
   id        Int                 @id @default(autoincrement())
   orderId   Int
@@ -436,8 +587,9 @@ model ManufacturingComponent {
   productId Int
   product   Product             @relation(fields: [productId], references: [id])
   /// Total component quantity for the full order.
-  quantity  Float
-  consumed  Float               @default(0)
+  quantity    Float
+  consumed    Float               @default(0)
+  lossPercent Float               @default(0)
 }
 
 model Warehouse {
@@ -452,6 +604,8 @@ model Warehouse {
   purchases     PurchaseOrder[]
   moSources     ManufacturingOrder[] @relation("MoSource")
   moDestinations ManufacturingOrder[] @relation("MoDest")
+  moWip         ManufacturingOrder[] @relation("MoWip")
+  moScrap       ManufacturingOrder[] @relation("MoScrap")
   reorderRules  ReorderRule[]
   posSessions   PosSession[]
   posOrders     PosOrder[]
@@ -570,6 +724,8 @@ model StockMove {
   deliveryNote         DeliveryNote?       @relation(fields: [deliveryNoteId], references: [id])
   purchaseReceiptId    Int?
   purchaseReceipt      PurchaseReceipt?    @relation(fields: [purchaseReceiptId], references: [id])
+  /// When set on a receipt, this unit cost is used instead of the product cost.
+  unitCost             Float?
   date                 DateTime
 }
 
@@ -1386,6 +1542,7 @@ model MaterialRequest {
   state     String
   lines     MaterialRequestLine[]
   quotes    SupplierQuotation[]
+  manufacturingOrders ManufacturingOrder[]
   createdAt DateTime              @default(now())
 
   @@unique([companyId, name])

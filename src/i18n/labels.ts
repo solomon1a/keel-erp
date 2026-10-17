@@ -37,13 +37,14 @@ export function purchaseStateLabel(state: string, t: Translate) {
 export function manufacturingStateLabel(state: string, t: Translate) {
   switch (state) {
     case 'draft':
-      return t('moState.draft')
     case 'confirmed':
-      return t('moState.confirmed')
+      return t('moState.notStarted')
     case 'progress':
       return t('moState.progress')
     case 'done':
       return t('moState.done')
+    case 'stopped':
+      return t('moState.stopped')
     case 'cancel':
       return t('moState.cancel')
     default:

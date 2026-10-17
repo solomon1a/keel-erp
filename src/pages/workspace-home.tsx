@@ -340,11 +340,23 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
   const money = useMoney()
   const { pathname } = useLocation()
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me'), retry: false })
+  const liveFloor = mod.id === 'manufacturing' || mod.id === 'wastage'
+  const pulse = useQuery({
+    queryKey: ['workspace-pulse', mod.id],
+    queryFn: () => api<{ kpis: number[]; chart: number[] }>(`/api/workspaces/${mod.id}`),
+    enabled: liveFloor,
+  })
+  const chart = pulse.data
+    ? workspace.chart.map((point, index) => ({ ...point, value: pulse.data.chart[index] ?? 0 }))
+    : workspace.chart
+  const kpis = pulse.data
+    ? workspace.kpis.map((kpi, index) => ({ ...kpi, value: pulse.data.kpis[index] ?? kpi.value }))
+    : workspace.kpis
   const storageKey = `keel-setup:${me.data?.company.id ?? 0}:${mod.id}`
   const [panel, setPanel] = useState(true)
   const [done, setDone] = useState<string[]>([])
   const [ready, setReady] = useState(false)
-  const move = chartMove(workspace.chart)
+  const move = chartMove(chart)
 
   useEffect(() => {
     setDone(readDone(storageKey))
@@ -390,10 +402,10 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
                 <span className="keel-chip">{t('ws.lastYear')}</span>
               </div>
             </div>
-            <MonthChart points={workspace.chart} locale={locale} />
+            <MonthChart points={chart} locale={locale} />
           </div>
           <div className={cn('mt-3 grid gap-3 sm:grid-cols-2', !panel && 'xl:grid-cols-3')}>
-            {workspace.kpis.map((kpi, index) => {
+            {kpis.map((kpi, index) => {
               const Icon = kpiIcons[index % kpiIcons.length] ?? ClipboardList
               return (
                 <Link

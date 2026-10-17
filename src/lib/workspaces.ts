@@ -397,9 +397,9 @@ const wastage: Workspace = {
   chartTitle: copy('Scrap cost', '报废成本'),
   chart: series([40, 22, 60, 18, 35, 48, 27, 55, 30, 42, 38, 24]),
   kpis: [
-    { label: copy('Open records', '未结记录'), value: 2, to: app('wastage', 'records') },
-    { label: copy('Waiting approval', '待审批'), value: 1, to: app('wastage', 'records') },
-    { label: copy('Scrap cost', '报废成本'), value: 186, money: true, to: app('wastage', 'by-period') },
+    { label: copy('Open records', '未结记录'), value: 2, to: '/manufacturing/wastage' },
+    { label: copy('Waiting approval', '待审批'), value: 1, to: '/manufacturing/wastage' },
+    { label: copy('Scrap cost', '报废成本'), value: 186, money: true, to: '/manufacturing/wastage' },
   ],
   sidebar: [
     { label: 'ws.home', to: '/go/wastage' },

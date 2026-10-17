@@ -9,7 +9,10 @@ import { roundQty } from './stock.ts'
 const stockAccounts = [
   ['2203', 'Goods received not invoiced', 'liability'],
   ['1407', 'Work in progress', 'asset'],
+  ['1408', 'Subcontracted goods', 'asset'],
   ['1409', 'Landed cost clearing', 'liability'],
+  ['2211', 'Accrued manufacturing labour', 'liability'],
+  ['6603', 'Wastage', 'expense'],
 ] as const
 
 async function ensureStockAccounts(tx: Tx, companyId: number) {
@@ -43,6 +46,8 @@ function receiptCredit(fromType: string) {
   switch (fromType) {
     case 'production':
       return '1407'
+    case 'subcontract':
+      return '1408'
     case 'customer':
       return '6401'
     case 'supplier':
@@ -58,6 +63,8 @@ function issueDebit(toType: string) {
   switch (toType) {
     case 'production':
       return '1407'
+    case 'subcontract':
+      return '1408'
     case 'customer':
     case 'supplier':
     case 'inventory':
@@ -66,6 +73,11 @@ function issueDebit(toType: string) {
     default:
       return '6401'
   }
+}
+
+export async function postValuationJournal(tx: Tx, companyId: number, date: Date, label: string, debitCode: string, creditCode: string, value: number) {
+  await ensureStockAccounts(tx, companyId)
+  return postPair(tx, companyId, date, label, debitCode, creditCode, value)
 }
 
 async function postPair(tx: Tx, companyId: number, date: Date, label: string, debitCode: string, creditCode: string, value: number) {
@@ -144,8 +156,8 @@ export async function valueDoneMove(tx: Tx, companyId: number, moveId: number) {
   await assertYearOpen(tx, companyId, move.date)
   await ensureStockAccounts(tx, companyId)
   const method = move.product.costMethod === 'fifo' ? 'fifo' : 'avco'
-  let incoming = roundMoney(move.product.costPrice)
-  if (move.purchaseOrderId) {
+  let incoming = move.unitCost != null ? roundMoney(move.unitCost) : roundMoney(move.product.costPrice)
+  if (move.unitCost == null && move.purchaseOrderId) {
     const line = await tx.purchaseOrderLine.findFirst({
       where: { orderId: move.purchaseOrderId, productId: move.productId },
     })

@@ -21,7 +21,8 @@ const purchaseOrder: Record<string, readonly string[]> = {
 const manufacturingOrder: Record<string, readonly string[]> = {
   draft: ['confirmed', 'cancel'],
   confirmed: ['progress', 'cancel'],
-  progress: ['done', 'cancel'],
+  progress: ['done', 'stopped', 'cancel'],
+  stopped: ['progress', 'cancel'],
   done: [],
   cancel: [],
 }
