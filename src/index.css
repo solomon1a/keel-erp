@@ -133,6 +133,17 @@ header.keel-glass {
   background: color-mix(in srgb, var(--kl-color-primary-100) 72%, var(--kl-glass-bg));
 }
 
+.keel-chip-block {
+  width: 100%;
+  height: auto;
+  min-height: 36px;
+  justify-content: flex-start;
+  white-space: normal;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  text-align: left;
+}
+
 .keel-chip-active,
 .keel-chip[aria-current="page"] {
   color: var(--kl-color-primary-800);

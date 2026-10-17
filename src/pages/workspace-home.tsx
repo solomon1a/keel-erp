@@ -254,11 +254,11 @@ function SideNode({ item, locale, t, pathname }: { item: WsSide; locale: Locale;
 
 function MasterLink({ link, locale, t }: { link: WsLink; locale: Locale; t: Translate }) {
   return (
-    <Link to={link.to} className="keel-chip w-full justify-start">
-      <span className="grid size-6 place-items-center rounded-full bg-[var(--kl-color-primary-100)] text-[var(--kl-color-primary-700)]">
+    <Link to={link.to} className="keel-chip keel-chip-block">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--kl-color-primary-100)] text-[var(--kl-color-primary-700)]">
         <SideGlyph label={link.label} />
       </span>
-      <span className="truncate">{text(link.label, locale, t)}</span>
+      <span className="min-w-0">{text(link.label, locale, t)}</span>
       {link.external ? <ArrowUpRight className="ml-auto size-3.5 opacity-70" aria-hidden /> : null}
     </Link>
   )
@@ -392,7 +392,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
             </div>
             <MonthChart points={workspace.chart} locale={locale} />
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className={cn('mt-3 grid gap-3 sm:grid-cols-2', !panel && 'xl:grid-cols-3')}>
             {workspace.kpis.map((kpi, index) => {
               const Icon = kpiIcons[index % kpiIcons.length] ?? ClipboardList
               return (
@@ -411,7 +411,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
                     <TrendPill pct={move.pct} up={move.up} title={t('ws.trend')} />
                   </div>
                   <p className="text-sm font-medium text-muted-foreground">{text(kpi.label, locale, t)}</p>
-                  <p className="truncate text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">{kpi.money ? money(kpi.value) : kpi.value}</p>
+                  <p className="text-4xl font-semibold tracking-tight tabular-nums sm:text-3xl">{kpi.money ? money(kpi.value) : kpi.value}</p>
                 </Link>
               )
             })}

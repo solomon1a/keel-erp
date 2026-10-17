@@ -54,7 +54,7 @@ export function OrdersPage() {
         <EmptyState title={t('orders.emptyTitle')} body={t('orders.emptyBody')} action={{ to: '/orders/new', label: t('orders.new') }} />
       ) : null}
       <TableFrame>
-        <table className="w-full min-w-[680px] text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">{t('orders.colNumber')}</th>
