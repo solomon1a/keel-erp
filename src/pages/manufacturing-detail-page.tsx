@@ -172,7 +172,7 @@ export function ManufacturingDetailPage() {
         </table>
       </div>
       {row.state === 'progress' ? (
-        <section className="grid max-w-md gap-3">
+        <section className="grid max-w-md gap-3" data-tour="tour-produce">
           <h2 className="font-serif text-2xl">{t('mo.produce')}</h2>
           <p className="text-sm text-muted-foreground">{t('mo.remaining')}: {remaining}</p>
           <Input type="number" min="0" step="0.001" value={produceQty} onChange={(event) => setProduceQty(event.target.value)} aria-label={t('mo.produceQty')} />

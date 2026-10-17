@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { moduleAccent, moduleIconId } from '../brand/module-icon.tsx'
+import { DemoLaunch } from '../components/demo-tour.tsx'
 import { LauncherTile } from '../components/launcher-tile.tsx'
 import { useI18n } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
@@ -29,6 +30,7 @@ export function AppsPage() {
           {me.data ? t('apps.meta', { company: me.data.company.name, count: modules.length }) : t('apps.lead')}
         </p>
       </div>
+      <DemoLaunch place="launcher" />
       <div className="keel-glass mx-auto grid max-w-[960px] grid-cols-3 justify-items-center gap-x-3 gap-y-8 rounded-[32px] px-4 py-8 sm:grid-cols-4 sm:px-8 lg:grid-cols-5">
         {modules.map((mod) => (
           <LauncherTile key={mod.id} to={workspaceFor(mod.id) ? `/go/${mod.id}` : mod.home} label={t(mod.label)} icon={moduleIconId(mod.id)} accent={moduleAccent(mod.id)} />

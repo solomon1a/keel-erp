@@ -103,6 +103,26 @@ button, input, select, textarea {
   opacity: 1;
 }
 
+.keel-tour-card {
+  background: var(--kl-color-semantic-surface);
+  color: var(--kl-color-semantic-text);
+  border: 1px solid var(--kl-color-semantic-border);
+  box-shadow: var(--kl-shadow-lg);
+  border-radius: 28px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  opacity: 1;
+  width: min(340px, calc(100vw - 32px));
+}
+
+.keel-tour-card h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
 header.keel-glass {
   border-width: 0 0 1px;
   border-radius: 0;
