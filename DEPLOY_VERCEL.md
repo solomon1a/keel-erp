@@ -32,6 +32,34 @@ Marketplace path instead of the Neon console: in the Vercel project, **Storage â
 
 A single non-pooled URL can be pasted into both variables for a first try. Serverless will open more connections that way. Prefer the pooler for `DATABASE_URL`.
 
+The API logs one line at cold start, with no password and no host: `keel database region=ap-southeast-1 nearest=sin1 pooler=true driver=neon-http`. The same names are on every response as `Server-Timing`. `region` is the Neon region parsed from the hostname. `nearest` is the Vercel region that sits next to it. Put that value in `vercel.json` and redeploy:
+
+```json
+"regions": ["sin1"]
+```
+
+| Neon region on `region` | `vercel.json` regions |
+| --- | --- |
+| `us-east-1` | `iad1` |
+| `us-east-2` | `cle1` |
+| `us-west-2` | `pdx1` |
+| `eu-central-1` | `fra1` |
+| `eu-west-2` | `lhr1` |
+| `ap-southeast-1` | `sin1` |
+| `ap-southeast-2` | `syd1` |
+| `ap-northeast-1` | `hnd1` |
+
+Leaving `regions` unset runs the function in Washington (`iad1`). That is the right place only when `region` is `us-east-1`.
+
+After the deploy, from a logged-in browser tab:
+
+```bash
+curl -sD - -o /dev/null -H "cookie: keel_session=YOUR_COOKIE" https://keel-erp.vercel.app/api/orders
+curl -sD - -o /dev/null -H "cookie: keel_session=YOUR_COOKIE" https://keel-erp.vercel.app/api/reports/pnl
+```
+
+Read `server-timing`. `queries` on `/api/orders` should be `1` after the first call in that instance (the session is cached) and `2` on the first call. `/api/reports/pnl` should be one journal query plus that session lookup, not a string of account upserts. `total` is the whole function. `db` is time spent inside Prisma. A warm orders call should be under 500ms and profit and loss under 1.5s once `regions` matches `nearest`. `/api/health` is public and carries the same `region` and `nearest` values.
+
 ## 3. Connect the Origin repo to Vercel
 
 Documented by Vercel at [Deploying Origin repositories](https://vercel.com/docs/git/vercel-for-origin) and by Cursor at [https://cursor.com/codebase/get-started](https://cursor.com/codebase/get-started).

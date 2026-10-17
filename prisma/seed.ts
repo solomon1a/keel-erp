@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { prisma as serverPrisma } from '../server/db.ts'
-import { hashPassword } from '../server/auth.ts'
+import { clearSessionCache, hashPassword } from '../server/auth.ts'
 import { anglicizeJiangbei } from './anglicize.ts'
 import { removeStrayCompanies } from './company-cleanup.ts'
 import { seedPayrollAndExpenses } from './seed-payroll.ts'
@@ -28,6 +28,7 @@ export const demoPasswords = {
 
 export async function seedDatabase(client: PrismaClient = prisma) {
   forgetBooks()
+  clearSessionCache()
   await removeStrayCompanies(client)
   await seedJiangbei(client)
   await seedRegionalCompanies(client)

@@ -430,7 +430,6 @@ export async function invoiceFromPos(companyId: number, orderId: number) {
 }
 
 export async function listInvoices(companyId: number, moveType?: string) {
-  await ensureBooks(companyId)
   return prisma.invoice.findMany({
     where: { companyId, ...(moveType ? { moveType } : {}) },
     select: {
@@ -853,14 +852,10 @@ export async function cancelInvoice(companyId: number, invoiceId: number) {
 }
 
 export async function listLedger(companyId: number, accountCode?: string) {
-  await ensureBooks(companyId)
-  const account = accountCode
-    ? await prisma.account.findFirst({ where: { companyId, code: accountCode } })
-    : null
   const items = await prisma.journalItem.findMany({
     where: {
       entry: { companyId },
-      ...(account ? { accountId: account.id } : {}),
+      ...(accountCode ? { account: { companyId, code: accountCode } } : {}),
     },
     select: {
       id: true,
@@ -917,7 +912,6 @@ function entryDate(from?: string, to?: string) {
 }
 
 export async function profitAndLoss(companyId: number, from?: string, to?: string) {
-  await ensureBooks(companyId)
   const items = await prisma.journalItem.findMany({
     where: {
       entry: { companyId, date: entryDate(from, to) },
@@ -934,8 +928,8 @@ export async function profitAndLoss(companyId: number, from?: string, to?: strin
 }
 
 export async function balanceSheet(companyId: number, on?: string) {
-  await ensureBooks(companyId)
-  const items = await prisma.journalItem.findMany({
+  const [items, pnl] = await Promise.all([
+    prisma.journalItem.findMany({
     where: {
       entry: { companyId, date: on ? { lte: new Date(`${on}T23:59:59.999Z`) } : undefined },
       account: { type: { in: ['asset', 'liability', 'equity'] } },
@@ -946,7 +940,9 @@ export async function balanceSheet(companyId: number, on?: string) {
       account: { select: { code: true, name: true, type: true } },
       entry: { select: { date: true } },
     },
-  })
+  }),
+    profitAndLoss(companyId, undefined, on),
+  ])
   const rows = new Map<string, { code: string; name: string; type: string; amount: number }>()
   for (const item of items) {
     if (on && item.entry.date > new Date(`${on}T23:59:59.999Z`)) continue
@@ -963,13 +959,12 @@ export async function balanceSheet(companyId: number, on?: string) {
   const accounts = [...rows.values()].filter((row) => Math.abs(row.amount) > 0.001)
   const assets = roundMoney(accounts.filter((row) => row.type === 'asset').reduce((sum, row) => sum + row.amount, 0))
   const liabilities = roundMoney(accounts.filter((row) => row.type === 'liability').reduce((sum, row) => sum + row.amount, 0))
-  const profit = (await profitAndLoss(companyId, undefined, on)).profit
+  const profit = pnl.profit
   const equity = roundMoney(profit)
   return { accounts, assets, liabilities, equity, balanced: roundMoney(assets - liabilities - equity) === 0 }
 }
 
 export async function vatReport(companyId: number, from?: string, to?: string) {
-  await ensureBooks(companyId)
   const invoices = await prisma.invoice.findMany({
     where: {
       companyId,
@@ -1005,6 +1000,5 @@ export async function vatReport(companyId: number, from?: string, to?: string) {
 }
 
 export async function listAccounts(companyId: number) {
-  await ensureBooks(companyId)
   return prisma.account.findMany({ where: { companyId }, orderBy: { code: 'asc' } })
 }

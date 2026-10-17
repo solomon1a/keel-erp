@@ -1,7 +1,7 @@
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma } from '../db.ts'
 import { AppError } from '../errors.ts'
-import { ensureBooks, summarizePnl } from './accounting.ts'
+import { summarizePnl } from './accounting.ts'
 
 export const homeRanges = ['today', 'week', 'month', 'year'] as const
 export type HomeRange = (typeof homeRanges)[number]
@@ -184,7 +184,6 @@ function isPipelineStage(stage: string): stage is PipelineStage {
 }
 
 export async function homeDashboard(companyId: number, range: HomeRange, now = new Date()): Promise<HomeDashboard> {
-  await ensureBooks(companyId)
   const bounds = dashboardRange(range, now)
   const asOf = endOf(bounds.to)
   const chartStart = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth() - 11, 1))

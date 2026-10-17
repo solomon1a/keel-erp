@@ -41,7 +41,8 @@ import {
   writeSessionCookie,
 } from './auth.ts'
 import { cached } from './cache.ts'
-import { prisma } from './db.ts'
+import { dbTarget, prisma } from './db.ts'
+import { startQueryTiming } from './timing.ts'
 import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
 import { registerTradeRoutes } from './trade-routes.ts'
@@ -145,6 +146,21 @@ function isPublicApi(method: string, path: string) {
 
 export function createApp() {
   const app = new Hono<AppEnv>()
+
+  app.use('/api/*', async (c, next) => {
+    const started = performance.now()
+    const timing = startQueryTiming()
+    try {
+      await timing.run(() => next())
+    } finally {
+      const total = Math.round(performance.now() - started)
+      const db = Math.round(timing.bucket.dbMs)
+      c.header(
+        'Server-Timing',
+        `total;dur=${total}, db;dur=${db}, queries;desc="${timing.bucket.queries}", region;desc="${dbTarget.region}", nearest;desc="${dbTarget.nearest}"`,
+      )
+    }
+  })
 
   app.onError((error, c) => {
     if (error instanceof AppError) {
@@ -310,9 +326,7 @@ export function createApp() {
   app.get('/api/desk', async (c) => {
     const user = c.get('user')
     const companyId = user.companyId
-    const started = performance.now()
     const body = await cached(`desk:${companyId}`, 15_000, () => deskSnapshot(companyId))
-    c.header('Server-Timing', `desk;dur=${Math.round(performance.now() - started)}`)
     return c.json(body)
   })
 

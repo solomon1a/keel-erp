@@ -91,6 +91,19 @@ function toSessionUser(row: {
   return { ...row, role }
 }
 
+const sessionCache = new Map<string, { user: SessionUser; until: number }>()
+const sessionCacheMs = 60_000
+
+export function clearSessionCache() {
+  sessionCache.clear()
+}
+
+function forgetCachedUser(userId: number) {
+  for (const [hash, entry] of sessionCache) {
+    if (entry.user.id === userId) sessionCache.delete(hash)
+  }
+}
+
 export async function openSession(userId: number) {
   const token = randomBytes(32).toString('base64url')
   const expiresAt = new Date(Date.now() + sessionSeconds * 1000)
@@ -102,24 +115,36 @@ export async function openSession(userId: number) {
 
 export async function userFromToken(token: string | undefined) {
   if (!token) return null
+  const hash = tokenHash(token)
+  const cached = sessionCache.get(hash)
+  if (cached && cached.until > Date.now()) return cached.user
   const session = await prisma.session.findUnique({
-    where: { tokenHash: tokenHash(token) },
+    where: { tokenHash: hash },
     include: { user: { select: userSelect } },
   })
-  if (!session) return null
+  if (!session) {
+    sessionCache.delete(hash)
+    return null
+  }
   if (session.expiresAt.getTime() <= Date.now()) {
+    sessionCache.delete(hash)
     await prisma.session.delete({ where: { id: session.id } })
     return null
   }
-  return toSessionUser(session.user)
+  const user = toSessionUser(session.user)
+  sessionCache.set(hash, { user, until: Date.now() + sessionCacheMs })
+  return user
 }
 
 export async function closeSession(token: string | undefined) {
   if (!token) return
-  await prisma.session.deleteMany({ where: { tokenHash: tokenHash(token) } })
+  const hash = tokenHash(token)
+  sessionCache.delete(hash)
+  await prisma.session.deleteMany({ where: { tokenHash: hash } })
 }
 
 export async function closeUserSessions(userId: number) {
+  forgetCachedUser(userId)
   await prisma.session.deleteMany({ where: { userId } })
 }
 
