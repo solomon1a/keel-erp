@@ -65,10 +65,10 @@
   --kl-color-semantic-focus-ring: rgba(14,107,92,.35);
   --kl-color-primary-fill: #0E6B5C;
   --kl-color-primary-on: #FFFFFF;
-  --kl-glass-bg: color-mix(in srgb, #ffffff 74%, transparent);
-  --kl-glass-border: color-mix(in srgb, #ffffff 55%, var(--kl-color-neutral-200));
-  --kl-glass-blur: 18px;
-  --kl-gradient-app: radial-gradient(980px 420px at 8% -8%, color-mix(in srgb, var(--kl-color-primary-200) 70%, transparent), transparent 62%), radial-gradient(760px 380px at 100% 0%, color-mix(in srgb, var(--kl-color-brass-100) 80%, transparent), transparent 58%), var(--kl-color-semantic-bg);
+  --kl-glass-bg: color-mix(in srgb, #ffffff 58%, transparent);
+  --kl-glass-border: color-mix(in srgb, #ffffff 72%, var(--kl-color-neutral-200));
+  --kl-glass-blur: 22px;
+  --kl-gradient-app: radial-gradient(1200px 560px at -8% -18%, #C5E6DC 0%, transparent 58%), radial-gradient(920px 520px at 108% -8%, #F6ECDD 0%, transparent 52%), radial-gradient(780px 460px at 50% 118%, #E3F4EF 0%, transparent 55%), linear-gradient(165deg, #F3FAF8 0%, #E7F1EE 48%, #F7F4EE 100%);
   --kl-font-family-sans: "Inter", "Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --kl-font-family-mono: "JetBrains Mono", "SFMono-Regular", Menlo, "Noto Sans Mono CJK SC", monospace;
   --kl-font-weight-regular: 400;
@@ -175,9 +175,9 @@
   --kl-color-module-dashboard: #B4C4CC;
   --kl-color-semantic-bg: #0C1416;
   --kl-color-semantic-focus-ring: rgba(125,222,200,.45);
-  --kl-glass-bg: color-mix(in srgb, #172124 78%, transparent);
-  --kl-glass-border: color-mix(in srgb, white 14%, transparent);
-  --kl-gradient-app: radial-gradient(900px 380px at 0% 0%, color-mix(in srgb, #0E6B5C 35%, transparent), transparent 60%), radial-gradient(700px 320px at 100% 0%, color-mix(in srgb, #C08A3E 16%, transparent), transparent 55%), var(--kl-color-semantic-bg);
+  --kl-glass-bg: color-mix(in srgb, #1a2629 56%, transparent);
+  --kl-glass-border: color-mix(in srgb, white 18%, transparent);
+  --kl-gradient-app: radial-gradient(1000px 500px at -8% -12%, color-mix(in srgb, #0E6B5C 62%, transparent), transparent 60%), radial-gradient(820px 440px at 108% -6%, color-mix(in srgb, #C08A3E 32%, transparent), transparent 55%), radial-gradient(720px 420px at 46% 118%, color-mix(in srgb, #175045 48%, transparent), transparent 60%), linear-gradient(180deg, #10201e 0%, #0C1416 100%);
   --kl-shadow-xs: 0 1px 2px rgba(0,0,0,.4);
   --kl-shadow-sm: 0 10px 28px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
   --kl-shadow-md: 0 16px 40px rgba(0,0,0,.42);

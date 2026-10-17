@@ -109,6 +109,8 @@ export const enNav = {
   'ws.planning': 'Material Planning',
   'ws.more': 'More',
   'ws.close': 'Close',
+  'ws.trend': 'vs last month',
+  'ws.sections': 'Sections',
   'toast.moved': 'Pipeline updated.',
   'toast.saved': 'Saved.',
 }
@@ -224,6 +226,8 @@ export const zhNav = {
   'ws.planning': '物料计划',
   'ws.more': '更多',
   'ws.close': '关闭',
+  'ws.trend': '较上月',
+  'ws.sections': '分区',
   'toast.moved': '管道已更新。',
   'toast.saved': '已保存。',
 }

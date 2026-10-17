@@ -85,12 +85,13 @@ describe('books rules', () => {
     expect(centres.status).toBe(200)
     expect((centres.body as unknown as Array<{ code: string }>).some((row) => row.code === 'HQ')).toBe(true)
 
-    const aging = await call('/api/reports/aging?asOf=2026-10-16', maya)
+    const asOf = new Date().toISOString().slice(0, 10)
+    const aging = await call(`/api/reports/aging?asOf=${asOf}`, maya)
     expect(aging.status).toBe(200)
     const lines = (aging.body as { lines: Array<{ name: string; bucket: string }> }).lines
     const posted = await prisma.invoice.findFirstOrThrow({ where: { id: invoiceId } })
     expect(lines.find((row) => row.name === posted.name)?.bucket).toBe('current')
-    const other = await call('/api/reports/aging?asOf=2026-10-16', amira)
+    const other = await call(`/api/reports/aging?asOf=${asOf}`, amira)
     const otherNames = (other.body as { lines: Array<{ name: string }> }).lines.map((row) => row.name)
     expect(otherNames).not.toContain(posted.name)
 

@@ -96,7 +96,53 @@ button, input, select, textarea {
 header.keel-glass {
   border-width: 0 0 1px;
   border-radius: 0;
-  box-shadow: 0 10px 30px rgba(18, 48, 42, 0.05);
+  box-shadow: 0 10px 30px rgba(18, 48, 42, 0.06);
+}
+
+.keel-scroll {
+  scrollbar-width: none;
+}
+
+.keel-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.keel-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  max-width: 100%;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--kl-glass-border);
+  background: var(--kl-glass-bg);
+  color: var(--kl-color-semantic-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: var(--kl-shadow-xs);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+}
+
+.keel-chip:hover {
+  color: var(--kl-color-semantic-text);
+  background: color-mix(in srgb, var(--kl-color-primary-100) 72%, var(--kl-glass-bg));
+}
+
+.keel-chip-active,
+.keel-chip[aria-current="page"] {
+  color: var(--kl-color-primary-800);
+  background: var(--kl-color-primary-100);
+  border-color: color-mix(in srgb, var(--kl-color-primary-400) 55%, transparent);
+}
+
+[data-theme="dark"] .keel-chip-active,
+[data-theme="dark"] .keel-chip[aria-current="page"] {
+  color: var(--kl-color-primary-700);
 }
 
 .keel-page .rounded-lg.border,
@@ -397,14 +443,43 @@ tbody tr.record-row:hover {
   padding: 18px 20px;
   border-radius: 28px;
   border: 1px solid var(--kl-glass-border);
-  background: var(--kl-glass-bg);
+  background: color-mix(in srgb, var(--kl-color-primary-50) 42%, var(--kl-glass-bg));
   box-shadow: var(--kl-shadow-sm);
-  backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.35);
+}
+
+.keel-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.keel-kpi-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--kl-color-primary-100);
+  color: var(--kl-color-primary-700);
+}
+
+.keel-kpi-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .keel-kpi-profit {
-  background: color-mix(in srgb, var(--kl-color-success-bg) 78%, var(--kl-glass-bg));
+  background: color-mix(in srgb, var(--kl-color-success-bg) 72%, var(--kl-glass-bg));
   border-color: var(--kl-color-success-border);
+}
+
+.keel-kpi-profit .keel-kpi-icon {
+  background: color-mix(in srgb, var(--kl-color-success-fg) 16%, var(--kl-color-success-bg));
+  color: var(--kl-color-success-fg);
 }
 
 .keel-kpi-label {
@@ -416,11 +491,11 @@ tbody tr.record-row:hover {
 
 .keel-kpi-value {
   margin: 8px 0 0;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 
 .keel-kpi-profit .keel-kpi-value {
@@ -428,9 +503,15 @@ tbody tr.record-row:hover {
 }
 
 .keel-kpi-hint {
-  margin: 6px 0 0;
-  color: var(--kl-color-semantic-text-muted);
+  display: inline-flex;
+  align-items: center;
+  margin: 10px 0 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kl-color-success-bg) 80%, transparent);
+  color: var(--kl-color-success-fg);
   font-size: 12px;
+  font-weight: 600;
 }
 
 .keel-kanban {

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, LogOut, Menu, Users } from 'lucide-react'
+import { ChevronDown, LogOut, Users } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { KeelMark } from '../brand/mark.tsx'
 import { menuIconId, moduleAccent, moduleIconId, ModuleIcon } from '../brand/module-icon.tsx'
@@ -70,100 +71,156 @@ function MenuGlyph({ label }: { label: string }) {
 function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuEntry; pathname: string; search: string; onNavigate: () => void; label: string }) {
   const { locale, t } = useI18n()
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const overMenu = useRef(false)
+  const closeTimer = useRef<number | null>(null)
   const [opened, setOpened] = useState(false)
   const [box, setBox] = useState({ top: 0, left: 0 })
   const place = () => {
     const rect = buttonRef.current?.getBoundingClientRect()
     if (!rect) return
-    setBox({ top: rect.bottom + 4, left: rect.left })
+    const width = 220
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)
+    setBox({ top: rect.bottom + 6, left })
     setOpened(true)
   }
+  const cancelClose = () => {
+    if (closeTimer.current != null) window.clearTimeout(closeTimer.current)
+  }
+  const scheduleClose = () => {
+    cancelClose()
+    closeTimer.current = window.setTimeout(() => {
+      if (!overMenu.current) setOpened(false)
+    }, 140)
+  }
+  useEffect(() => {
+    if (!opened) return
+    const close = () => setOpened(false)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [opened])
   if (entry.children) {
     const current = entry.children.some((child) => linkActive(child.to, pathname, search))
     return (
-      <div className="relative" onMouseEnter={place} onMouseLeave={() => setOpened(false)}>
+      <div className="relative" onMouseEnter={() => { cancelClose(); place() }} onMouseLeave={scheduleClose}>
         <button
           ref={buttonRef}
           type="button"
           aria-expanded={opened}
           onClick={() => (opened ? setOpened(false) : place())}
-          className={cn(
-            'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap',
-            current || opened ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-          )}
+          className={cn('keel-chip', (current || opened) && 'keel-chip-active')}
         >
           <MenuGlyph label={entry.label} />
           {label}
           <ChevronDown className="size-3.5 opacity-70" />
         </button>
-        {opened ? (
-        <div className="fixed z-40 min-w-48" style={{ top: box.top, left: box.left }}>
-          <div className="keel-glass max-h-[70vh] overflow-y-auto rounded-3xl p-1.5 shadow-lg">
-            {entry.children.map((child) => (
-              <NavLink
-                key={child.to}
-                to={child.to}
-                onClick={() => {
-                  setOpened(false)
-                  onNavigate()
+        {opened
+          ? createPortal(
+              <div
+                className="fixed z-40 min-w-52"
+                style={{ top: box.top, left: box.left }}
+                onMouseEnter={() => {
+                  overMenu.current = true
+                  cancelClose()
                 }}
-                className={() =>
-                  cn(
-                    'flex items-center gap-2 rounded-full px-3 py-2 text-sm',
-                    linkActive(child.to, pathname, search) ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-                  )
-                }
+                onMouseLeave={() => {
+                  overMenu.current = false
+                  setOpened(false)
+                }}
               >
-                <MenuGlyph label={child.label} />
-                {menuLabel(child.label, locale, t)}
-              </NavLink>
-            ))}
-          </div>
-        </div>
-        ) : null}
+                <div className="keel-glass grid max-h-[70vh] gap-1 overflow-y-auto rounded-3xl p-2 shadow-lg">
+                  {entry.children.map((child) => (
+                    <NavLink
+                      key={child.to}
+                      to={child.to}
+                      onClick={() => {
+                        setOpened(false)
+                        onNavigate()
+                      }}
+                      className={() => cn('keel-chip w-full justify-start', linkActive(child.to, pathname, search) && 'keel-chip-active')}
+                    >
+                      <MenuGlyph label={child.label} />
+                      {menuLabel(child.label, locale, t)}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     )
   }
   if (!entry.to) return null
   const active = linkActive(entry.to, pathname, search)
   return (
-    <NavLink
-      to={entry.to}
-      onClick={onNavigate}
-      className={() =>
-        cn(
-          'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap',
-          active ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-        )
-      }
-    >
+    <NavLink to={entry.to} onClick={onNavigate} aria-current={active ? 'page' : undefined} className={() => cn('keel-chip', active && 'keel-chip-active')}>
       <MenuGlyph label={entry.label} />
       {label}
     </NavLink>
   )
 }
 
-function MobileMenu({ mod, pathname, search, onNavigate }: { mod: AppModule; pathname: string; search: string; onNavigate: () => void }) {
-  const { locale, t } = useI18n()
-  const links = mod.menu.flatMap((entry) => entry.children ?? (entry.to ? [{ label: entry.label, to: entry.to }] : []))
+function AccountMenu({ user }: { user: User }) {
+  const { t } = useI18n()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
   return (
-    <div className="grid max-h-[70vh] gap-1 overflow-y-auto border-t border-border px-4 py-3 md:hidden">
-      {links.map((link) => (
-        <NavLink
-          key={link.to}
-          to={link.to}
-          onClick={onNavigate}
-          className={() =>
-            cn(
-              'flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium',
-              linkActive(link.to, pathname, search) ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-            )
-          }
-        >
-          <MenuGlyph label={link.label} />
-          {menuLabel(link.label, locale, t)}
-        </NavLink>
-      ))}
+    <div className="relative lg:hidden" ref={ref}>
+      <button
+        type="button"
+        className="grid size-9 place-items-center rounded-full bg-[var(--kl-color-brass-100)] text-[11px] font-semibold text-[var(--kl-color-brass-700)]"
+        aria-label={t('shell.account')}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {initials(user.name)}
+      </button>
+      {open ? (
+        <div className="keel-glass absolute right-0 z-40 mt-2 w-64 rounded-3xl p-3 shadow-lg">
+          <p className="truncate px-1 text-sm font-semibold">{user.name}</p>
+          <p className="truncate px-1 text-xs text-muted-foreground">{roleText(user.role, t)}</p>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
+          {user.role === 'admin' ? (
+            <Link className="keel-chip mt-3 w-full justify-start" to="/admin/users" onClick={() => setOpen(false)}>
+              <Users className="size-4" />
+              {t('menu.people')}
+            </Link>
+          ) : null}
+          <Link className="keel-chip mt-2 w-full justify-start" to="/settings" onClick={() => setOpen(false)}>
+            {user.name}
+          </Link>
+          <button
+            type="button"
+            className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-full bg-[var(--kl-color-primary-fill)] text-sm font-semibold text-white"
+            onClick={() => {
+              void api('/api/session/logout', { method: 'POST' }).finally(() => {
+                queryClient.clear()
+                navigate('/sign-in')
+              })
+            }}
+          >
+            <LogOut className="size-4" />
+            {t('shell.signOut')}
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -238,16 +295,11 @@ export function Shell() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const { locale, t } = useI18n()
-  const [menuOpen, setMenuOpen] = useState(false)
   const me = useQuery({
     queryKey: ['me'],
     queryFn: () => api<User>('/api/session/me'),
     retry: false,
   })
-
-  useEffect(() => {
-    setMenuOpen(false)
-  }, [location.pathname, location.search])
 
   useEffect(() => {
     if (me.data) prefetchDesk(queryClient)
@@ -274,66 +326,60 @@ export function Shell() {
   return (
     <div className="min-h-screen">
       <header className="keel-glass sticky top-0 z-20 border-x-0 border-t-0">
-        <div className="flex h-[52px] items-center gap-2 px-3 md:gap-3 md:px-4">
-          {mod ? (
-            <Button className="md:hidden" variant="ghost" size="sm" aria-label={menuOpen ? t('shell.close') : t('shell.menu')} onClick={() => setMenuOpen((open) => !open)}>
-              <Menu className="size-4" />
-            </Button>
-          ) : null}
-            <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-full" aria-label={t('shell.apps')}>
+        <div className="flex h-14 items-center gap-2 px-3 md:px-4">
+          <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-full" aria-label={t('shell.apps')}>
             <KeelMark className="size-7" />
-            <span className="hidden font-semibold tracking-tight sm:inline">Keel</span>
+            <span className="font-semibold tracking-tight">Keel</span>
           </Link>
-          <span className="hidden h-5 w-px shrink-0 bg-border sm:block" aria-hidden />
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
           {mod ? (
             <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
-              <ModuleIcon id={moduleIconId(mod.id)} className="size-4" style={{ color: moduleAccent(mod.id) }} />
-              <span className="hidden truncate sm:inline">{t(mod.label)}</span>
+              <ModuleIcon id={moduleIconId(mod.id)} className="size-4 shrink-0" style={{ color: moduleAccent(mod.id) }} />
+              <span className="truncate">{t(mod.label)}</span>
             </span>
           ) : (
-            <span className="hidden min-w-0 truncate text-sm text-muted-foreground md:inline">{me.data.company.name}</span>
+            <span className="min-w-0 truncate text-sm text-muted-foreground">{me.data.company.name}</span>
           )}
-          {mod ? (
-            <nav className="ml-1 hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex">
-              <MenuItems mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => setMenuOpen(false)} />
-            </nav>
-          ) : <span className="flex-1" />}
           <div className="ml-auto flex shrink-0 items-center gap-1">
-            <LanguageSwitcher />
-            <ThemeToggle />
-            {me.data.role === 'admin' ? (
-              <Link className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground md:hidden" to="/admin/users" aria-label={t('menu.people')}>
-                <Users className="size-4" />
+            <div className="hidden items-center gap-1 lg:flex">
+              <LanguageSwitcher />
+              <ThemeToggle />
+              {me.data.role === 'admin' ? (
+                <Link className="keel-chip" to="/admin/users">
+                  <Users className="size-4" />
+                  {t('menu.people')}
+                </Link>
+              ) : null}
+              <Link
+                to="/settings"
+                title={`${me.data.name} · ${roleText(me.data.role, t)}`}
+                className="grid size-9 place-items-center rounded-full bg-[var(--kl-color-brass-100)] text-[11px] font-semibold text-[var(--kl-color-brass-700)]"
+              >
+                {initials(me.data.name)}
               </Link>
-            ) : null}
-            {me.data.role === 'admin' ? (
-              <Link className="hidden rounded-full px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground md:inline" to="/admin/users">{t('menu.people')}</Link>
-            ) : null}
-            <Link
-              to="/settings"
-              title={`${me.data.name} · ${roleText(me.data.role, t)}`}
-              className="grid size-[30px] place-items-center rounded-full bg-[var(--kl-color-brass-100)] text-[11px] font-semibold text-[var(--kl-color-brass-700)]"
-            >
-              {initials(me.data.name)}
-            </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={t('shell.signOut')}
-              onClick={() => {
-                void api('/api/session/logout', { method: 'POST' }).finally(() => {
-                  queryClient.clear()
-                  navigate('/sign-in')
-                })
-              }}
-            >
-              <LogOut className="size-4 sm:hidden" />
-              <span className="hidden sm:inline">{t('shell.signOut')}</span>
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full"
+                aria-label={t('shell.signOut')}
+                onClick={() => {
+                  void api('/api/session/logout', { method: 'POST' }).finally(() => {
+                    queryClient.clear()
+                    navigate('/sign-in')
+                  })
+                }}
+              >
+                <LogOut className="size-4" />
+                <span>{t('shell.signOut')}</span>
+              </Button>
+            </div>
+            <AccountMenu user={me.data} />
           </div>
         </div>
-        {mod && menuOpen ? (
-          <MobileMenu mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => setMenuOpen(false)} />
+        {mod ? (
+          <nav className="keel-scroll flex gap-1.5 overflow-x-auto px-3 pb-3" aria-label={t(mod.label)}>
+            <MenuItems mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => undefined} />
+          </nav>
         ) : null}
       </header>
       <main className="keel-page mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
