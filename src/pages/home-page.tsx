@@ -1,30 +1,23 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpFromLine,
-  Bell,
   Building2,
   Check,
-  ChevronDown,
   FileText,
   Landmark,
-  LogOut,
   Package,
   Percent,
   Plus,
-  Search,
   TrendingUp,
   Upload,
   Users,
 } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { KeelMark } from '../brand/mark.tsx'
+import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { moduleIconId, ModuleIcon, type ModuleIconId } from '../brand/module-icon.tsx'
-import { ThemeToggle } from '../brand/theme.tsx'
 import { HomeChart } from '../components/home-chart.tsx'
-import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { useToast } from '../components/toast.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { useI18n, type Locale, type Translate } from '../i18n/locale.tsx'
@@ -39,7 +32,6 @@ type OrderTab = 'all' | 'quotes' | 'invoice'
 type OrderStatus = 'quotation' | 'sent' | 'confirmed' | 'to_invoice' | 'cancelled' | 'open'
 type AttentionKind = 'purchase' | 'invoice' | 'expense' | 'leave'
 type StepKey = 'company' | 'team' | 'contacts' | 'taxes' | 'bank' | 'quotation'
-type Panel = 'company' | 'bell' | 'account'
 
 type Attention = {
   kind: AttentionKind
@@ -91,12 +83,6 @@ type HomeData = {
   } | null
 }
 
-type SearchHits = {
-  orders: { id: number; name: string; partner: string }[]
-  contacts: { id: number; name: string }[]
-  products: { id: number; name: string; sku: string }[]
-}
-
 const ranges: HomeRange[] = ['today', 'week', 'month', 'year']
 
 const shortcuts: { id: ModuleIconId; to: string; color: string; label: MessageKey }[] = [
@@ -107,15 +93,6 @@ const shortcuts: { id: ModuleIconId; to: string; color: string; label: MessageKe
   { id: 'hr', to: '/hr', color: '#4F46E5', label: 'home.app.hr' },
   { id: 'manufacturing', to: '/manufacturing', color: '#8A3E06', label: 'home.app.manufacturing' },
 ]
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  const first = parts[0]
-  if (!first) return '·'
-  const last = parts.length > 1 ? parts[parts.length - 1] : undefined
-  if (!last) return first.slice(0, 2).toUpperCase()
-  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase()
-}
 
 function greetingKey(hour: number): MessageKey {
   if (hour < 12) return 'apps.greeting.morning'
@@ -440,9 +417,8 @@ export function HomePage() {
   const hour = new Date().getHours()
 
   return (
-    <div className="keel-home mx-auto min-h-screen max-w-[1440px] px-3 py-3 sm:px-7 sm:py-4">
-      <HomeBar user={me.data} attention={home.data?.attention ?? []} attentionCount={home.data?.attentionCount ?? 0} showBank={Boolean(home.data && !home.data.empty)} bank={home.data?.bank} />
-      <header className="mt-5 flex flex-col gap-4 px-1 lg:flex-row lg:items-center">
+    <div className="keel-home mx-auto max-w-[1440px]">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="min-w-0">
           <h1 className="text-[28px] font-bold tracking-tight text-foreground">
             {home.data?.empty ? t('home.welcome', { name }) : name ? t(greetingKey(hour), { name }) : t('home.loading')}
@@ -500,222 +476,6 @@ export function HomePage() {
 
       {home.data?.empty ? <EmptyBoard data={home.data} company={company} skipped={skipped} onSkip={() => setSkipped(true)} /> : null}
       {home.data && !home.data.empty ? <LiveBoard data={home.data} range={range} locale={locale} money={money} t={t} busy={home.isFetching} /> : null}
-    </div>
-  )
-}
-
-function HomeBar({
-  user,
-  attention,
-  attentionCount,
-  showBank,
-  bank,
-}: {
-  user: User | undefined
-  attention: Attention[]
-  attentionCount: number
-  showBank: boolean
-  bank: HomeData['bank'] | undefined
-}) {
-  const { t } = useI18n()
-  const money = useMoney()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const searchId = useId()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const barRef = useRef<HTMLDivElement>(null)
-  const [query, setQuery] = useState('')
-  const [debounced, setDebounced] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [panel, setPanel] = useState<Panel | null>(null)
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(query.trim()), 180)
-    return () => window.clearTimeout(timer)
-  }, [query])
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        inputRef.current?.focus()
-        setSearchOpen(true)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
-  useEffect(() => {
-    if (!panel && !searchOpen) return
-    const close = (event: MouseEvent) => {
-      if (!barRef.current?.contains(event.target as Node)) {
-        setPanel(null)
-        setSearchOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [panel, searchOpen])
-
-  const results = useQuery({
-    queryKey: ['home-search', debounced],
-    queryFn: () => api<SearchHits>(`/api/home/search?q=${encodeURIComponent(debounced)}`),
-    enabled: debounced.length > 0,
-  })
-  const bankTrend = trend(bank?.changePct ?? 0)
-  const companyName = user?.company.name ?? ''
-
-  return (
-    <div ref={barRef} className="keel-glass relative flex h-[60px] items-center gap-2 rounded-full px-2 sm:gap-3 sm:px-3">
-      <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-full px-1" aria-label={t('home.crumb')}>
-        <KeelMark className="size-8" />
-        <span className="font-bold tracking-tight">Keel</span>
-      </Link>
-      <form role="search" className="relative min-w-0 flex-1 sm:max-w-[360px]" onSubmit={(event) => event.preventDefault()}>
-        <label htmlFor={searchId} className="sr-only">{t('home.searchLabel')}</label>
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          ref={inputRef}
-          id={searchId}
-          value={query}
-          placeholder={t('home.search')}
-          className="h-[38px] w-full min-w-0 rounded-full border border-[var(--kl-glass-border)] bg-[var(--kl-glass-bg)] pr-3 pl-9 text-sm text-foreground outline-none focus:ring-[3px] focus:ring-[var(--kl-color-semantic-focus-ring)] sm:pr-14"
-          onChange={(event) => {
-            setQuery(event.target.value)
-            setSearchOpen(true)
-          }}
-          onFocus={() => setSearchOpen(true)}
-        />
-        <kbd className="pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 rounded-full bg-[var(--home-track)] px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">⌘K</kbd>
-        {searchOpen && debounced ? (
-          <div className="keel-glass absolute top-12 left-0 z-30 w-[min(420px,80vw)] rounded-3xl p-2 shadow-lg" role="listbox" aria-label={t('home.results')}>
-            <SearchList hits={results.data} pending={results.isFetching} onPick={() => { setSearchOpen(false); setQuery('') }} />
-          </div>
-        ) : null}
-      </form>
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        {showBank && bank ? (
-          <div className="home-chip hidden h-[38px] items-center gap-2 px-2 pr-3 min-[1100px]:inline-flex">
-            <span className="home-icon grid size-7 place-items-center rounded-full" style={{ ['--c' as string]: '#0891B2' }}>
-              <Landmark className="size-3.5" />
-            </span>
-            <span className="text-sm text-muted-foreground">{t('home.bank')}</span>
-            <span className="text-sm font-bold tabular-nums">{money(bank.balance)}</span>
-            <span className={cn('home-pill h-5 px-2 text-[11px]', bankTrend.tone)}>{bankTrend.text}</span>
-            <span className="text-xs text-muted-foreground">{t('home.accounts', { count: bank.accounts })}</span>
-          </div>
-        ) : null}
-        <div className="relative">
-          <button
-            type="button"
-            className="home-chip inline-flex h-[38px] max-w-[42vw] items-center gap-2 px-1.5 pr-2 text-sm font-semibold sm:max-w-[220px]"
-            aria-expanded={panel === 'company'}
-            aria-label={t('home.companyMenu')}
-            onClick={() => setPanel(panel === 'company' ? null : 'company')}
-          >
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#9C4321] text-xs text-white">{companyName.slice(0, 1) || '·'}</span>
-            <span className="max-w-[4.5rem] truncate sm:max-w-[11rem]">{companyName}</span>
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-          </button>
-          {panel === 'company' ? (
-            <div className="keel-glass absolute right-0 z-30 mt-2 w-64 rounded-3xl p-3 shadow-lg">
-              <p className="px-1 text-sm">{t('home.companyOnly', { company: companyName })}</p>
-              <Link className="home-secondary mt-3 w-full" to="/settings" onClick={() => setPanel(null)}>{t('home.settings')}</Link>
-            </div>
-          ) : null}
-        </div>
-        <div className="relative">
-          <button
-            type="button"
-            className="home-chip relative grid size-[38px] place-items-center"
-            aria-label={t('home.notifications')}
-            aria-expanded={panel === 'bell'}
-            onClick={() => setPanel(panel === 'bell' ? null : 'bell')}
-          >
-            <Bell className="size-4" />
-            {attentionCount > 0 ? <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[#B42323]" /> : null}
-          </button>
-          {panel === 'bell' ? (
-            <div className="keel-glass absolute right-0 z-30 mt-2 w-[min(360px,80vw)] rounded-3xl p-3 shadow-lg">
-              {attention.length === 0 ? <p className="px-1 text-sm text-muted-foreground">{t('home.notificationsEmpty')}</p> : (
-                <ul className="grid gap-1">
-                  {attention.map((item) => (
-                    <li key={`${item.kind}-${item.id}`}>
-                      <Link to={item.href} className="block rounded-2xl px-2 py-2 text-sm font-semibold hover:bg-secondary" onClick={() => setPanel(null)}>
-                        {attentionTitle(item, t)}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ) : null}
-        </div>
-        <div className="relative">
-          <button
-            type="button"
-            className="grid size-[38px] place-items-center rounded-full bg-gradient-to-br from-[#14806E] to-[#0A4F45] text-xs font-bold text-white"
-            aria-label={t('shell.account')}
-            aria-expanded={panel === 'account'}
-            onClick={() => setPanel(panel === 'account' ? null : 'account')}
-          >
-            {initials(user?.name ?? '')}
-          </button>
-          {panel === 'account' ? (
-            <div className="keel-glass absolute right-0 z-30 mt-2 w-64 rounded-3xl p-3 shadow-lg">
-              <p className="truncate px-1 text-sm font-semibold">{user?.name}</p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <LanguageSwitcher />
-                <ThemeToggle />
-              </div>
-              <Link className="home-secondary mt-3 w-full" to="/apps" onClick={() => setPanel(null)}>{t('home.apps.all')}</Link>
-              <Link className="home-secondary mt-2 w-full" to="/settings" onClick={() => setPanel(null)}>{t('home.settings')}</Link>
-              <button
-                type="button"
-                className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-full bg-[var(--kl-color-primary-fill)] text-sm font-semibold text-white"
-                onClick={() => {
-                  void api('/api/session/logout', { method: 'POST' }).finally(() => {
-                  queryClient.clear()
-                  navigate('/sign-in')
-                })
-                }}
-              >
-                <LogOut className="size-4" />
-                {t('shell.signOut')}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function SearchList({ hits, pending, onPick }: { hits: SearchHits | undefined; pending: boolean; onPick: () => void }) {
-  const { t } = useI18n()
-  if (pending && !hits) return <p className="px-3 py-2 text-sm text-muted-foreground">{t('home.loading')}</p>
-  const empty = !hits || (hits.orders.length === 0 && hits.contacts.length === 0 && hits.products.length === 0)
-  if (empty) return <p className="px-3 py-2 text-sm text-muted-foreground">{t('home.noResults')}</p>
-  return (
-    <div className="grid gap-1">
-      {hits.orders.map((order) => (
-        <Link key={`o-${order.id}`} to={`/orders/${order.id}`} className="rounded-2xl px-3 py-2 text-sm hover:bg-secondary" onClick={onPick}>
-          <span className="font-semibold">{order.name}</span>
-          <span className="text-muted-foreground"> · {order.partner}</span>
-        </Link>
-      ))}
-      {hits.contacts.map((contact) => (
-        <Link key={`c-${contact.id}`} to={`/contacts/${contact.id}`} className="rounded-2xl px-3 py-2 text-sm hover:bg-secondary" onClick={onPick}>
-          {contact.name}
-        </Link>
-      ))}
-      {hits.products.map((product) => (
-        <Link key={`p-${product.id}`} to={`/products/${product.id}`} className="rounded-2xl px-3 py-2 text-sm hover:bg-secondary" onClick={onPick}>
-          <span className="font-semibold">{product.name}</span>
-          <span className="text-muted-foreground"> · {product.sku}</span>
-        </Link>
-      ))}
     </div>
   )
 }
@@ -802,12 +562,12 @@ function LiveBoard({
 
 function Kpi({ icon, color, label, value, children }: { icon: ReactNode; color: string; label: string; value: string; children: ReactNode }) {
   return (
-    <article className="keel-glass min-w-0 rounded-[22px] px-4 py-4 sm:px-5">
+    <article className="home-kpi keel-glass min-w-0 rounded-[22px] px-4 py-4 sm:px-5">
       <div className="flex items-center gap-2.5">
-        <span className="home-icon grid size-10 place-items-center rounded-full" style={{ ['--c' as string]: color }}>{icon}</span>
-        <h2 className="truncate text-sm font-medium text-muted-foreground">{label}</h2>
+        <span className="home-icon grid size-10 shrink-0 place-items-center rounded-full" style={{ ['--c' as string]: color }}>{icon}</span>
+        <h2 className="text-sm font-medium text-muted-foreground">{label}</h2>
       </div>
-      <p className="mt-3 text-[22px] font-bold tracking-tight tabular-nums min-[420px]:text-[26px]">{value}</p>
+      <p className="home-kpi-value mt-3 font-bold leading-none tracking-tight tabular-nums">{value}</p>
       <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">{children}</div>
     </article>
   )
@@ -1011,7 +771,7 @@ function AppsCard({ t, installed = false }: { t: Translate; installed?: boolean 
       <div className="flex items-center gap-2">
         <h2 className="text-[15px] font-semibold">{t('home.apps')}</h2>
         {installed ? <span className="text-xs text-muted-foreground">{t('home.apps.installed', { count: shortcuts.length })}</span> : null}
-        <Link to="/apps" className="home-link ml-auto text-xs">{t('home.apps.all')}</Link>
+        <Link to="/" className="home-link ml-auto text-xs">{t('home.apps.all')}</Link>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3">
         {shortcuts.map((app) => (

@@ -319,14 +319,6 @@ export function Shell() {
   }
   if (!me.data) return <Navigate to="/sign-in" replace />
 
-  if (location.pathname === '/') {
-    return (
-      <div className="min-h-screen">
-        <Outlet />
-      </div>
-    )
-  }
-
   const mod = moduleForPath(location.pathname)
   const section = mod ? sectionForPath(mod, location.pathname, location.search) : null
   const showPulse = Boolean(mod && location.pathname === mod.home && !location.pathname.startsWith('/go/'))
@@ -335,12 +327,9 @@ export function Shell() {
     <div className="min-h-screen">
       <header className="keel-glass sticky top-0 z-20 border-x-0 border-t-0">
         <div className="flex h-14 items-center gap-2 px-3 md:px-4">
-          <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-full" aria-label={t('home.crumb')}>
+          <Link to="/" className="inline-flex shrink-0 items-center gap-2 rounded-full" aria-label={t('shell.apps')}>
             <KeelMark className="size-7" />
             <span className="font-semibold tracking-tight">Keel</span>
-          </Link>
-          <Link to="/apps" className={cn('keel-chip', location.pathname === '/apps' && 'keel-chip-active')}>
-            {t('shell.apps')}
           </Link>
           <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
           {mod ? (
@@ -396,7 +385,7 @@ export function Shell() {
       <main className="keel-page mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         {mod ? (
           <nav className="keel-crumbs" aria-label={t(mod.label)}>
-            <Link to="/">{t('home.crumb')}</Link>
+            <Link to="/">{t('shell.apps')}</Link>
             <Link to={mod.home}>{t(mod.label)}</Link>
             {section && section.to.split('?')[0] !== mod.home ? (
               <span aria-current="page">{menuLabel(section.label, locale, t)}</span>

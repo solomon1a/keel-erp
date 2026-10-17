@@ -6,6 +6,7 @@ import { menuLabel } from '../lib/menu-label.ts'
 import { segmentTiles } from '../lib/module-hub.ts'
 import { appModules, type AppModule } from '../lib/modules.ts'
 import { workspaceFor } from '../lib/workspaces.ts'
+import { HomePage } from './home-page.tsx'
 import { WorkspaceHome } from './workspace-home.tsx'
 
 function SegmentGrid({ mod, segment }: { mod: AppModule; segment: string }) {
@@ -38,6 +39,7 @@ export function ModuleHubPage() {
   const mod = appModules.find((item) => item.id === moduleId)
   if (!mod) return <Navigate to="/" replace />
   if (segment) return <SegmentGrid mod={mod} segment={segment} />
+  if (mod.id === 'dashboard') return <HomePage />
   const workspace = workspaceFor(mod.id)
   if (!workspace) return <Navigate to="/" replace />
   return <WorkspaceHome mod={mod} workspace={workspace} />
