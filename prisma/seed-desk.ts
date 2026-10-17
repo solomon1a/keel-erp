@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client'
 import { deskScreens } from '../shared/desk-screens.ts'
+import { demoAdminEmails } from './demo-companies.ts'
 
 type DeskDb = PrismaClient | Prisma.TransactionClient
 
@@ -60,6 +61,9 @@ export async function seedDeskForCompany(client: DeskDb, companyId: number) {
 }
 
 export async function seedDesk(client: PrismaClient) {
-  const companies = await client.company.findMany({ select: { id: true } })
-  for (const company of companies) await seedDeskForCompany(client, company.id)
+  for (const email of demoAdminEmails) {
+    const admin = await client.user.findUnique({ where: { email }, select: { companyId: true } })
+    if (!admin) continue
+    await seedDeskForCompany(client, admin.companyId)
+  }
 }
