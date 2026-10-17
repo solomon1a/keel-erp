@@ -54,14 +54,14 @@ export function OrdersPage() {
         <EmptyState title={t('orders.emptyTitle')} body={t('orders.emptyBody')} action={{ to: '/orders/new', label: t('orders.new') }} />
       ) : null}
       <TableFrame>
-        <table className="w-full min-w-[680px] text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">{t('orders.colNumber')}</th>
               <th className="px-4 py-3 font-medium">{t('orders.colCustomer')}</th>
               <th className="px-4 py-3 font-medium">{t('orders.colState')}</th>
-              <th className="px-4 py-3 font-medium">{t('orders.colDate')}</th>
-              <th className="px-4 py-3 font-medium">{t('orders.colTotal')}</th>
+              <th className="hidden px-4 py-3 font-medium md:table-cell">{t('orders.colDate')}</th>
+              <th className="hidden px-4 py-3 font-medium md:table-cell">{t('orders.colTotal')}</th>
             </tr>
           </thead>
           <tbody>
@@ -73,8 +73,8 @@ export function OrdersPage() {
                 </td>
                 <td className="px-4 py-3">{order.customer.name}</td>
                 <td className="px-4 py-3"><Badge tone={order.state}>{orderStateLabel(order.state, t)}</Badge></td>
-                <td className="px-4 py-3">{shortDate(order.dateOrder)}</td>
-                <td className="px-4 py-3">{money(order.amountTotal)}</td>
+                <td className="hidden px-4 py-3 md:table-cell">{shortDate(order.dateOrder)}</td>
+                <td className="hidden px-4 py-3 md:table-cell">{money(order.amountTotal)}</td>
               </tr>
             ))}
           </tbody>

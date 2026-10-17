@@ -38,6 +38,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
       { label: 'menu.products', to: '/products' },
       { label: label('sales', 'variants'), to: screen('sales', 'variants') },
       { label: label('sales', 'pricelists'), to: screen('sales', 'pricelists') },
+      { label: 'menu.pricing', to: '/sales/pricing' },
     ] },
     { label: 'menu.reporting', children: [{ label: label('sales', 'analysis'), to: screen('sales', 'analysis') }] },
     { label: 'desk.g.configuration', children: [

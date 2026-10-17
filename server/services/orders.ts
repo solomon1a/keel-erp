@@ -3,6 +3,7 @@ import type { OrderInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
+import { assertCreditLimit, recordDelivery } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
 
@@ -177,6 +178,7 @@ export async function confirmOrder(companyId: number, orderId: number) {
     if (order.lines.length === 0) {
       throw new AppError(400, 'Add a line before confirming.')
     }
+    await assertCreditLimit(tx, companyId, order.customerId, order.amountTotal)
 
     const locations = await companyLocations(tx, companyId)
     const source = await warehouseStockLocation(tx, companyId, order.warehouseId)
@@ -201,7 +203,13 @@ export async function confirmOrder(companyId: number, orderId: number) {
     }
 
     for (const line of order.lines) {
-      if (line.product.type !== 'product') continue
+      if (line.product.type !== 'product') {
+        await tx.salesOrderLine.update({
+          where: { id: line.id },
+          data: { qtyDelivered: line.quantity },
+        })
+        continue
+      }
       await tx.stockMove.create({
         data: {
           productId: line.productId,
@@ -252,12 +260,15 @@ export async function deliverOrder(companyId: number, orderId: number) {
     })
 
     const pending = order.moves.filter((move) => move.state === 'draft')
+    const completed: Array<{ id: number; productId: number; quantity: number }> = []
     for (const move of pending) {
       await applyQuant(tx, move.productId, move.locationFromId, -move.quantity)
       await applyQuant(tx, move.productId, move.locationToId, move.quantity)
       const done = await tx.stockMove.update({ where: { id: move.id }, data: { state: 'done', date: new Date() } })
       await valueDoneMove(tx, companyId, done.id)
+      completed.push({ id: done.id, productId: done.productId, quantity: done.quantity })
     }
+    await recordDelivery(tx, companyId, order.id, completed)
 
     return tx.salesOrder.update({
       where: { id: order.id },

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { prisma as serverPrisma } from '../server/db.ts'
 import { hashPassword } from '../server/auth.ts'
 import { anglicizeJiangbei } from './anglicize.ts'
 import { removeStrayCompanies } from './company-cleanup.ts'
@@ -8,6 +9,7 @@ import { seedDesk } from './seed-desk.ts'
 import { seedAccess } from '../server/services/access.ts'
 import { ensureCompanyFrame } from '../server/services/books.ts'
 import { seedHealthyBooks } from './seed-books.ts'
+import { seedTrade } from './seed-trade.ts'
 import { seedRichDemo } from './seed-rich.ts'
 
 const prisma = new PrismaClient()
@@ -34,6 +36,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   const companies = await client.company.findMany({ select: { id: true } })
   for (const company of companies) await ensureCompanyFrame(client, company.id)
   await seedHealthyBooks(client)
+  await seedTrade(client)
 }
 
 async function seedJiangbei(client: PrismaClient) {
@@ -837,4 +840,5 @@ async function seedJiangbei(client: PrismaClient) {
 if (process.argv[1]?.endsWith('seed.ts')) {
   await seedDatabase()
   await prisma.$disconnect()
+  await serverPrisma.$disconnect()
 }

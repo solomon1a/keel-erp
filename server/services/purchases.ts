@@ -3,6 +3,7 @@ import type { PurchaseInput, ReceivePurchaseInput } from '../../shared/schemas.t
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
+import { noteChatter, recordReceipt } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
 
@@ -235,6 +236,7 @@ export async function receivePurchase(companyId: number, orderId: number, input:
       throw new AppError(400, 'Enter a quantity to receive.')
     }
 
+    const completed: Array<{ id: number; productId: number; quantity: number }> = []
     for (const row of requested) {
       const move = pending.find((item) => item.id === row.moveId)
       if (!move) throw new AppError(400, 'That receipt line is not open.')
@@ -250,6 +252,7 @@ export async function receivePurchase(companyId: number, orderId: number, input:
         data: { state: 'done', quantity, date: new Date() },
       })
       await valueDoneMove(tx, companyId, done.id)
+      completed.push({ id: done.id, productId: done.productId, quantity: done.quantity })
       const remainder = roundQty(move.quantity - quantity)
       if (remainder > 0.0001) {
         await tx.stockMove.create({
@@ -267,6 +270,7 @@ export async function receivePurchase(companyId: number, orderId: number, input:
       }
     }
 
+    await recordReceipt(tx, companyId, order.id, completed)
     const stillOpen = await tx.stockMove.count({
       where: { purchaseOrderId: order.id, state: 'draft' },
     })
@@ -321,4 +325,48 @@ export async function cancelPurchase(companyId: number, orderId: number) {
       include: purchaseInclude,
     })
   })
+}
+
+export async function orderFromQuote(companyId: number, userId: number, quoteId: number) {
+  const quote = await prisma.supplierQuotation.findFirst({
+    where: { id: quoteId, companyId },
+    include: { lines: true, materialRequest: { include: { lines: true } } },
+  })
+  if (!quote) throw new AppError(404, 'Supplier quotation not found.')
+  if (quote.purchaseOrderId) throw new AppError(409, 'This quotation already has a purchase order.')
+  if (quote.lines.length === 0) throw new AppError(400, 'The quotation has no lines.')
+  const tax = await prisma.tax.findFirst({ where: { isDefault: true } })
+  const created = await createPurchase(companyId, userId, {
+    vendorId: quote.vendorId,
+    lines: quote.lines.map((line) => ({
+      productId: line.productId,
+      quantity: line.quantity,
+      unitCost: line.unitCost,
+      taxId: tax?.id ?? null,
+    })),
+  })
+  const confirmed = await confirmPurchase(companyId, created.id)
+  await prisma.supplierQuotation.update({
+    where: { id: quote.id },
+    data: { purchaseOrderId: confirmed.id, state: 'received' },
+  })
+  if (quote.materialRequest) {
+    for (const line of quote.lines) {
+      const requestLine = quote.materialRequest.lines.find((row) => row.productId === line.productId)
+      if (!requestLine) continue
+      await prisma.materialRequestLine.update({
+        where: { id: requestLine.id },
+        data: { qtyOrdered: roundQty(requestLine.qtyOrdered + line.quantity) },
+      })
+    }
+    const fresh = await prisma.materialRequest.findFirst({
+      where: { id: quote.materialRequest.id },
+      include: { lines: true },
+    })
+    if (fresh && fresh.lines.every((line) => line.qtyOrdered + 0.0001 >= line.quantity)) {
+      await prisma.materialRequest.update({ where: { id: fresh.id }, data: { state: 'ordered' } })
+    }
+  }
+  await prisma.$transaction((tx) => noteChatter(tx, companyId, 'purchase.order', confirmed.id, `Created from ${quote.name}.`))
+  return confirmed
 }

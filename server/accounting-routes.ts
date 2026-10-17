@@ -9,8 +9,6 @@ import {
   ensureBooks,
   getInvoice,
   invoiceFromPos,
-  invoiceFromPurchase,
-  invoiceFromSales,
   listAccounts,
   listInvoices,
   listLedger,
@@ -37,14 +35,6 @@ export function registerAccountingRoutes(app: Hono<AppEnv>) {
   })
 
   app.get('/api/invoices/:id', async (c) => c.json(await getInvoice(c.get('user').companyId, Number(c.req.param('id')))))
-
-  app.post('/api/invoices/from/sales/:id', async (c) => {
-    return c.json(await invoiceFromSales(c.get('user').companyId, Number(c.req.param('id'))), 201)
-  })
-
-  app.post('/api/invoices/from/purchase/:id', async (c) => {
-    return c.json(await invoiceFromPurchase(c.get('user').companyId, Number(c.req.param('id'))), 201)
-  })
 
   app.post('/api/invoices/from/pos/:id', async (c) => {
     return c.json(await invoiceFromPos(c.get('user').companyId, Number(c.req.param('id'))), 201)

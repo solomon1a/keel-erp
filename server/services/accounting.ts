@@ -1,9 +1,11 @@
 import { Prisma } from '@prisma/client'
-import { roundMoney } from '../../src/domain/money.ts'
+import { lineAmounts, roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { assertYearOpen, ensureCompanyFrame } from './books.ts'
 import { assertBooksOpen } from './locks.ts'
+import { applyQuant, companyLocations, roundQty, warehouseStockLocation } from './stock.ts'
+import { valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
 
 const invoiceInclude = {
@@ -13,6 +15,8 @@ const invoiceInclude = {
   salesOrder: { select: { id: true, name: true } },
   purchaseOrder: { select: { id: true, name: true } },
   posOrder: { select: { id: true, name: true } },
+  reversalOf: { select: { id: true, name: true } },
+  reversals: { select: { id: true, name: true, moveType: true, state: true } },
 } as const
 
 const chart = [
@@ -153,13 +157,24 @@ function postingLines(
   return lines.filter((line) => line.debit !== 0 || line.credit !== 0)
 }
 
+type DraftLine = {
+  description: string
+  quantity: number
+  unitPrice: number
+  taxRate: number
+  subtotal: number
+  taxAmount: number
+  salesOrderLineId?: number
+  purchaseOrderLineId?: number
+}
+
 async function createDraft(
   tx: Tx,
   companyId: number,
   moveType: string,
   partnerId: number,
-  source: { salesOrderId?: number; purchaseOrderId?: number; posOrderId?: number },
-  lines: Array<{ description: string; quantity: number; unitPrice: number; taxRate: number; subtotal: number; taxAmount: number }>,
+  source: { salesOrderId?: number; purchaseOrderId?: number; posOrderId?: number; reversalOfId?: number },
+  lines: DraftLine[],
   buyer: { buyerName?: string | null; buyerTaxId?: string | null; buyerAddress?: string | null },
 ) {
   const amountUntaxed = roundMoney(lines.reduce((sum, line) => sum + line.subtotal, 0))
@@ -178,6 +193,7 @@ async function createDraft(
       salesOrderId: source.salesOrderId,
       purchaseOrderId: source.purchaseOrderId,
       posOrderId: source.posOrderId,
+      reversalOfId: source.reversalOfId,
       amountUntaxed,
       amountTax,
       amountTotal,
@@ -187,7 +203,18 @@ async function createDraft(
       buyerAddress: buyer.buyerAddress ?? null,
       fapiaoType: moveType.startsWith('out') ? 'electronic' : null,
       fapiaoStatus: 'none',
-      lines: { create: lines },
+      lines: {
+        create: lines.map((line) => ({
+          description: line.description,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          taxRate: line.taxRate,
+          subtotal: line.subtotal,
+          taxAmount: line.taxAmount,
+          salesOrderLineId: line.salesOrderLineId,
+          purchaseOrderLineId: line.purchaseOrderLineId,
+        })),
+      },
     },
     include: invoiceInclude,
   })
@@ -200,7 +227,20 @@ async function assertNoInvoice(tx: Tx, where: { salesOrderId?: number; purchaseO
   if (existing) throw new AppError(409, `${existing.name} already covers that document.`)
 }
 
-export async function invoiceFromSales(companyId: number, orderId: number) {
+async function legacyCover(tx: Tx, where: { salesOrderId?: number; purchaseOrderId?: number }, lineKey: 'salesOrderLineId' | 'purchaseOrderLineId') {
+  const existing = await tx.invoice.findMany({
+    where: { ...where, state: { not: 'cancel' } },
+    include: { lines: true },
+  })
+  const legacy = existing.find((invoice) => invoice.lines.length === 0 || invoice.lines.some((line) => !line[lineKey]))
+  if (legacy) throw new AppError(409, `${legacy.name} already covers that document.`)
+}
+
+export async function invoiceFromSales(
+  companyId: number,
+  orderId: number,
+  requested?: Array<{ lineId: number; quantity: number }>,
+) {
   await ensureBooks(companyId)
   return prisma.$transaction(async (tx) => {
     const order = await tx.salesOrder.findFirst({
@@ -211,56 +251,130 @@ export async function invoiceFromSales(companyId: number, orderId: number) {
     if (order.state !== 'sale' && order.state !== 'done') {
       throw new AppError(409, 'Confirm the sales order before invoicing it.')
     }
-    await assertNoInvoice(tx, { salesOrderId: order.id })
+    await legacyCover(tx, { salesOrderId: order.id }, 'salesOrderLineId')
+    const asked = new Map((requested ?? []).map((row) => [row.lineId, row.quantity]))
+    if (requested && requested.length === 0) throw new AppError(400, 'Enter a quantity to bill.')
+    const bill: DraftLine[] = []
+    for (const line of order.lines) {
+      const open = roundQty(line.quantity - line.qtyInvoiced)
+      if (!requested && open <= 0.0001) continue
+      if (requested && !asked.has(line.id)) continue
+      const quantity = roundQty(requested ? asked.get(line.id) ?? 0 : open)
+      if (quantity <= 0) throw new AppError(400, 'Quantity must be greater than zero.')
+      if (quantity - open > 0.0001) throw new AppError(400, 'You cannot bill more than the open quantity.')
+      const amounts = lineAmounts({
+        quantity,
+        unitPrice: line.unitPrice,
+        discount: line.discount,
+        taxRate: line.tax?.rate ?? 0,
+      })
+      bill.push({
+        description: line.description,
+        quantity,
+        unitPrice: line.unitPrice,
+        taxRate: line.tax?.rate ?? 0,
+        subtotal: amounts.subtotal,
+        taxAmount: amounts.taxAmount,
+        salesOrderLineId: line.id,
+      })
+      await tx.salesOrderLine.update({
+        where: { id: line.id },
+        data: { qtyInvoiced: roundQty(line.qtyInvoiced + quantity) },
+      })
+    }
+    if (bill.length === 0) throw new AppError(409, 'Nothing left to bill.')
     const address = [order.customer.street, order.customer.city].filter(Boolean).join(' ')
-    return createDraft(
+    const invoice = await createDraft(
       tx,
       companyId,
       'out_invoice',
       order.customerId,
       { salesOrderId: order.id },
-      order.lines.map((line) => ({
-        description: line.description,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-        taxRate: line.tax?.rate ?? 0,
-        subtotal: line.subtotal,
-        taxAmount: line.taxAmount,
-      })),
+      bill,
       { buyerName: order.customer.name, buyerTaxId: order.customer.taxId, buyerAddress: address || null },
     )
+    await tx.chatterMessage.create({
+      data: {
+        companyId,
+        model: 'sale.order',
+        recordId: order.id,
+        kind: 'note',
+        summary: `Invoice ${invoice.name} created.`,
+      },
+    })
+    return invoice
   })
 }
 
-export async function invoiceFromPurchase(companyId: number, orderId: number) {
+export async function invoiceFromPurchase(
+  companyId: number,
+  orderId: number,
+  requested?: Array<{ lineId: number; quantity: number }>,
+) {
   await ensureBooks(companyId)
   return prisma.$transaction(async (tx) => {
     const order = await tx.purchaseOrder.findFirst({
       where: { id: orderId, companyId },
-      include: { lines: { include: { tax: true } }, vendor: true },
+      include: { lines: { include: { tax: true, product: true } }, vendor: true },
     })
     if (!order) throw new AppError(404, 'Purchase not found.')
     if (order.state !== 'purchase' && order.state !== 'done') {
       throw new AppError(409, 'Confirm the purchase before billing it.')
     }
-    await assertNoInvoice(tx, { purchaseOrderId: order.id })
+    await legacyCover(tx, { purchaseOrderId: order.id }, 'purchaseOrderLineId')
+    const asked = new Map((requested ?? []).map((row) => [row.lineId, row.quantity]))
+    if (requested && requested.length === 0) throw new AppError(400, 'Enter a quantity to bill.')
+    const bill: DraftLine[] = []
+    for (const line of order.lines) {
+      const cap = line.product.type === 'product'
+        ? roundQty(line.qtyReceived - line.qtyBilled)
+        : roundQty(line.quantity - line.qtyBilled)
+      if (!requested && cap <= 0.0001) continue
+      if (requested && !asked.has(line.id)) continue
+      const quantity = roundQty(requested ? asked.get(line.id) ?? 0 : cap)
+      if (quantity <= 0) throw new AppError(400, 'Quantity must be greater than zero.')
+      if (quantity - cap > 0.0001) throw new AppError(409, 'Receive the goods before billing.')
+      const amounts = lineAmounts({
+        quantity,
+        unitPrice: line.unitCost,
+        discount: 0,
+        taxRate: line.tax?.rate ?? 0,
+      })
+      bill.push({
+        description: line.description,
+        quantity,
+        unitPrice: line.unitCost,
+        taxRate: line.tax?.rate ?? 0,
+        subtotal: amounts.subtotal,
+        taxAmount: amounts.taxAmount,
+        purchaseOrderLineId: line.id,
+      })
+      await tx.purchaseOrderLine.update({
+        where: { id: line.id },
+        data: { qtyBilled: roundQty(line.qtyBilled + quantity) },
+      })
+    }
+    if (bill.length === 0) throw new AppError(409, 'Receive the goods before billing.')
     const address = [order.vendor.street, order.vendor.city].filter(Boolean).join(' ')
-    return createDraft(
+    const invoice = await createDraft(
       tx,
       companyId,
       'in_invoice',
       order.vendorId,
       { purchaseOrderId: order.id },
-      order.lines.map((line) => ({
-        description: line.description,
-        quantity: line.quantity,
-        unitPrice: line.unitCost,
-        taxRate: line.tax?.rate ?? 0,
-        subtotal: line.subtotal,
-        taxAmount: line.taxAmount,
-      })),
+      bill,
       { buyerName: order.vendor.name, buyerTaxId: order.vendor.taxId, buyerAddress: address || null },
     )
+    await tx.chatterMessage.create({
+      data: {
+        companyId,
+        model: 'purchase.order',
+        recordId: order.id,
+        kind: 'note',
+        summary: `Bill ${invoice.name} created.`,
+      },
+    })
+    return invoice
   })
 }
 
@@ -334,53 +448,55 @@ export async function updateFapiao(
   })
 }
 
+export async function postInvoiceTx(tx: Tx, companyId: number, invoiceId: number) {
+  const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, companyId } })
+  if (!invoice) throw new AppError(404, 'Invoice not found.')
+  if (invoice.state !== 'draft') throw new AppError(409, 'Only a draft can be posted.')
+  await assertBooksOpen(tx, companyId, invoice.invoiceDate, Math.abs(invoice.amountTax) > 0.001)
+  await assertYearOpen(tx, companyId, invoice.invoiceDate)
+  await guardWorkflow(tx, {
+    companyId,
+    model: 'account.move',
+    recordId: invoice.id,
+    from: invoice.state,
+    to: 'posted',
+    label: invoice.name,
+  })
+  const accounts = await accountMap(tx, companyId)
+  const journalCode = invoice.moveType.startsWith('in') ? 'PUR' : 'SAL'
+  const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: journalCode } })
+  const lines = postingLines(
+    invoice.moveType,
+    accounts,
+    invoice.amountUntaxed,
+    invoice.amountTax,
+    invoice.amountTotal,
+    invoice.chargeAmount,
+    invoice.name,
+  )
+  const debit = roundMoney(lines.reduce((sum, line) => sum + line.debit, 0))
+  const credit = roundMoney(lines.reduce((sum, line) => sum + line.credit, 0))
+  if (Math.abs(debit - credit) > 0.001) throw new AppError(500, 'The journal entry does not balance.')
+  await tx.journalEntry.create({
+    data: {
+      name: await nextName(tx, `account.entry.${companyId}`, 'JE'),
+      journalId: journal.id,
+      invoiceId: invoice.id,
+      date: invoice.invoiceDate,
+      companyId,
+      lines: { create: lines.map((line) => ({ ...line, partnerId: invoice.partnerId, costCentreId: invoice.costCentreId })) },
+    },
+  })
+  return tx.invoice.update({
+    where: { id: invoice.id },
+    data: { state: 'posted' },
+    include: invoiceInclude,
+  })
+}
+
 export async function postInvoice(companyId: number, invoiceId: number) {
   await ensureBooks(companyId)
-  return prisma.$transaction(async (tx) => {
-    const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, companyId } })
-    if (!invoice) throw new AppError(404, 'Invoice not found.')
-    if (invoice.state !== 'draft') throw new AppError(409, 'Only a draft can be posted.')
-    await assertBooksOpen(tx, companyId, invoice.invoiceDate, Math.abs(invoice.amountTax) > 0.001)
-    await assertYearOpen(tx, companyId, invoice.invoiceDate)
-    await guardWorkflow(tx, {
-      companyId,
-      model: 'account.move',
-      recordId: invoice.id,
-      from: invoice.state,
-      to: 'posted',
-      label: invoice.name,
-    })
-    const accounts = await accountMap(tx, companyId)
-    const journalCode = invoice.moveType.startsWith('in') ? 'PUR' : 'SAL'
-    const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: journalCode } })
-    const lines = postingLines(
-      invoice.moveType,
-      accounts,
-      invoice.amountUntaxed,
-      invoice.amountTax,
-      invoice.amountTotal,
-      invoice.chargeAmount,
-      invoice.name,
-    )
-    const debit = roundMoney(lines.reduce((sum, line) => sum + line.debit, 0))
-    const credit = roundMoney(lines.reduce((sum, line) => sum + line.credit, 0))
-    if (Math.abs(debit - credit) > 0.001) throw new AppError(500, 'The journal entry does not balance.')
-    await tx.journalEntry.create({
-      data: {
-        name: await nextName(tx, `account.entry.${companyId}`, 'JE'),
-        journalId: journal.id,
-        invoiceId: invoice.id,
-        date: invoice.invoiceDate,
-        companyId,
-        lines: { create: lines.map((line) => ({ ...line, partnerId: invoice.partnerId, costCentreId: invoice.costCentreId })) },
-      },
-    })
-    return tx.invoice.update({
-      where: { id: invoice.id },
-      data: { state: 'posted' },
-      include: invoiceInclude,
-    })
-  })
+  return prisma.$transaction((tx) => postInvoiceTx(tx, companyId, invoiceId))
 }
 
 export async function payInvoice(companyId: number, invoiceId: number, amount: number, method: string) {
@@ -573,6 +689,124 @@ export async function creditInvoice(companyId: number, invoiceId: number) {
       })),
       { buyerName: invoice.buyerName, buyerTaxId: invoice.buyerTaxId, buyerAddress: invoice.buyerAddress },
     )
+  })
+}
+
+export async function returnGoods(
+  companyId: number,
+  invoiceId: number,
+  requested?: Array<{ lineId: number; quantity: number }>,
+) {
+  await ensureBooks(companyId)
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findFirst({
+      where: { id: invoiceId, companyId },
+      include: {
+        lines: { include: { salesOrderLine: { include: { product: true } }, purchaseOrderLine: { include: { product: true } } } },
+        partner: true,
+        salesOrder: true,
+        purchaseOrder: true,
+      },
+    })
+    if (!invoice) throw new AppError(404, 'Invoice not found.')
+    if (invoice.state !== 'posted' && invoice.state !== 'paid') {
+      throw new AppError(409, 'Post the invoice before returning goods.')
+    }
+    if (invoice.moveType !== 'out_invoice' && invoice.moveType !== 'in_invoice') {
+      throw new AppError(409, 'A credit note cannot be returned again.')
+    }
+    const prior = await tx.invoice.findMany({
+      where: { reversalOfId: invoice.id, state: { not: 'cancel' } },
+      include: { lines: true },
+    })
+    const returnedFor = (lineId: number, key: 'salesOrderLineId' | 'purchaseOrderLineId') =>
+      prior.reduce((sum, note) => sum + note.lines.filter((line) => line[key] === lineId).reduce((inner, line) => inner + line.quantity, 0), 0)
+    const asked = new Map((requested ?? []).map((row) => [row.lineId, row.quantity]))
+    const key = invoice.moveType === 'out_invoice' ? 'salesOrderLineId' : 'purchaseOrderLineId'
+    const bill: DraftLine[] = []
+    for (const line of invoice.lines) {
+      const linkId = line[key]
+      const open = roundQty(line.quantity - (linkId ? returnedFor(linkId, key) : 0))
+      if (!requested && open <= 0.0001) continue
+      if (requested && !asked.has(line.id)) continue
+      const quantity = roundQty(requested ? asked.get(line.id) ?? 0 : open)
+      if (quantity <= 0) throw new AppError(400, 'Quantity must be greater than zero.')
+      if (quantity - open > 0.0001) throw new AppError(400, 'That quantity is more than what was invoiced.')
+      const amounts = lineAmounts({ quantity, unitPrice: line.unitPrice, discount: 0, taxRate: line.taxRate })
+      bill.push({
+        description: line.description,
+        quantity,
+        unitPrice: line.unitPrice,
+        taxRate: line.taxRate,
+        subtotal: amounts.subtotal,
+        taxAmount: amounts.taxAmount,
+        salesOrderLineId: line.salesOrderLineId ?? undefined,
+        purchaseOrderLineId: line.purchaseOrderLineId ?? undefined,
+      })
+    }
+    if (bill.length === 0) throw new AppError(409, 'Nothing left to return.')
+    const moveType = invoice.moveType === 'out_invoice' ? 'out_refund' : 'in_refund'
+    const draft = await createDraft(
+      tx,
+      companyId,
+      moveType,
+      invoice.partnerId,
+      {
+        salesOrderId: invoice.salesOrderId ?? undefined,
+        purchaseOrderId: invoice.purchaseOrderId ?? undefined,
+        reversalOfId: invoice.id,
+      },
+      bill,
+      { buyerName: invoice.buyerName, buyerTaxId: invoice.buyerTaxId, buyerAddress: invoice.buyerAddress },
+    )
+    const locations = await companyLocations(tx, companyId)
+    const shelf = invoice.salesOrder?.warehouseId || invoice.purchaseOrder?.warehouseId
+      ? (await warehouseStockLocation(tx, companyId, invoice.salesOrder?.warehouseId ?? invoice.purchaseOrder?.warehouseId)).location
+      : locations.internal
+    for (const line of invoice.lines) {
+      const product = line.salesOrderLine?.product ?? line.purchaseOrderLine?.product
+      if (!product || product.type !== 'product') continue
+      const match = bill.find((row) =>
+        (line.salesOrderLineId && row.salesOrderLineId === line.salesOrderLineId)
+        || (line.purchaseOrderLineId && row.purchaseOrderLineId === line.purchaseOrderLineId),
+      )
+      if (!match) continue
+      const incoming = invoice.moveType === 'out_invoice'
+      const from = incoming ? locations.customer : shelf
+      const to = incoming ? shelf : locations.supplier
+      await applyQuant(tx, product.id, from.id, -match.quantity)
+      await applyQuant(tx, product.id, to.id, match.quantity)
+      const move = await tx.stockMove.create({
+        data: {
+          productId: product.id,
+          locationFromId: from.id,
+          locationToId: to.id,
+          quantity: match.quantity,
+          state: 'done',
+          reference: draft.name,
+          orderId: invoice.salesOrderId,
+          purchaseOrderId: invoice.purchaseOrderId,
+          date: new Date(),
+        },
+      })
+      await valueDoneMove(tx, companyId, move.id)
+    }
+    const posted = await postInvoiceTx(tx, companyId, draft.id)
+    const summary = `Return ${posted.name} posted against ${invoice.name}.`
+    await tx.chatterMessage.create({
+      data: { companyId, model: 'account.move', recordId: invoice.id, kind: 'note', summary },
+    })
+    if (invoice.salesOrderId) {
+      await tx.chatterMessage.create({
+        data: { companyId, model: 'sale.order', recordId: invoice.salesOrderId, kind: 'note', summary },
+      })
+    }
+    if (invoice.purchaseOrderId) {
+      await tx.chatterMessage.create({
+        data: { companyId, model: 'purchase.order', recordId: invoice.purchaseOrderId, kind: 'note', summary },
+      })
+    }
+    return posted
   })
 }
 

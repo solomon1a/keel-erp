@@ -1,3 +1,4 @@
+import { TrendingUp, Wallet } from 'lucide-react'
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { cn } from '../lib/utils.ts'
 
@@ -30,8 +31,14 @@ export function KpiGrid({ children }: { children: ReactNode }) {
 }
 
 export function Kpi({ label, value, hint, tone = 'default' }: { label: string; value: string; hint?: string; tone?: 'default' | 'profit' }) {
+  const Icon = tone === 'profit' ? TrendingUp : Wallet
   return (
     <article className={cn('keel-kpi', tone === 'profit' && 'keel-kpi-profit')}>
+      <div className="keel-kpi-top">
+        <span className="keel-kpi-icon" aria-hidden>
+          <Icon />
+        </span>
+      </div>
       <p className="keel-kpi-label">{label}</p>
       <p className="keel-kpi-value">{value}</p>
       {hint ? <p className="keel-kpi-hint">{hint}</p> : null}

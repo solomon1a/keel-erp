@@ -43,6 +43,7 @@ import {
 import { prisma } from './db.ts'
 import { roundMoney } from '../src/domain/money.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
+import { registerTradeRoutes } from './trade-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
 import { registerCoreRoutes } from './core-routes.ts'
@@ -971,6 +972,7 @@ export function createApp() {
   })
 
   registerShopRoutes(app)
+  registerTradeRoutes(app)
   registerAccountingRoutes(app)
   registerCrmRoutes(app)
   registerHrRoutes(app)

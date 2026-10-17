@@ -79,7 +79,7 @@ describe('manufacturing', () => {
     const toteQuant = await prisma.stockQuant.findUniqueOrThrow({
       where: { productId_locationId: { productId: tote.id, locationId: internal.id } },
     })
-    expect(toteQuant.quantity).toBe(3)
+    expect(toteQuant.quantity).toBe(7)
 
     const rest = await call(`/api/manufacturing/${draft.id}/produce`, maya, {
       method: 'POST',
@@ -97,7 +97,7 @@ describe('manufacturing', () => {
     const yarnQuant = await prisma.stockQuant.findUniqueOrThrow({
       where: { productId_locationId: { productId: yarn.id, locationId: internal.id } },
     })
-    expect(finished.quantity).toBe(4)
+    expect(finished.quantity).toBe(8)
     expect(canvasQuant.quantity).toBe(7)
     expect(yarnQuant.quantity).toBeCloseTo(4.7)
 

@@ -61,6 +61,14 @@ model Company {
   statements    BankStatement[]
   valuations    ValuationLayer[]
   routes        StockRoute[]
+  customerGroups CustomerGroup[]
+  priceLists     PriceList[]
+  pricingRules   PricingRule[]
+  quotations     Quotation[]
+  deliveryNotes  DeliveryNote[]
+  receipts       PurchaseReceipt[]
+  materialRequests MaterialRequest[]
+  supplierQuotes SupplierQuotation[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -126,6 +134,10 @@ model Contact {
   postalCode  String?
   /// Buyer taxpayer identification number for a fapiao-ready invoice.
   taxId       String?
+  /// Zero means the customer is not held to a credit limit.
+  creditLimit Float        @default(0)
+  customerGroupId Int?
+  customerGroup   CustomerGroup? @relation(fields: [customerGroupId], references: [id])
   notes       String?
   parentId    Int?
   parent      Contact?     @relation("ContactHierarchy", fields: [parentId], references: [id])
@@ -139,6 +151,10 @@ model Contact {
   posOrders      PosOrder[]
   shopCustomers  ShopCustomer[]
   invoices       Invoice[]
+  quotations     Quotation[]
+  supplierQuotes SupplierQuotation[]
+  customerRules  PricingRule[] @relation("RuleCustomer")
+  vendorRules    PricingRule[] @relation("RuleVendor")
   leads          Lead[]
   createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
@@ -199,6 +215,8 @@ model Product {
   ledgers      StockLedger[]
   batches      StockBatch[]
   serials      StockSerial[]
+  priceItems   PriceListItem[]
+  pricingRules PricingRule[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
@@ -266,6 +284,8 @@ model SalesOrder {
   lines         SalesOrderLine[]
   moves         StockMove[]
   invoices      Invoice[]
+  quotations    Quotation[]
+  deliveries    DeliveryNote[]
   warehouseId   Int?
   warehouse     Warehouse?       @relation(fields: [warehouseId], references: [id])
   /// `desk` or `shop`.
@@ -298,6 +318,10 @@ model SalesOrderLine {
   tax       Tax?        @relation(fields: [taxId], references: [id])
   subtotal  Float
   taxAmount Float
+  qtyDelivered Float @default(0)
+  qtyInvoiced  Float @default(0)
+  deliveryLines DeliveryNoteLine[]
+  invoiceLines  InvoiceLine[]
 }
 
 model PurchaseOrder {
@@ -316,6 +340,8 @@ model PurchaseOrder {
   lines         PurchaseOrderLine[]
   moves         StockMove[]
   invoices      Invoice[]
+  receipts      PurchaseReceipt[]
+  quotes        SupplierQuotation[]
   warehouseId   Int?
   warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
   createdById   Int?
@@ -340,6 +366,10 @@ model PurchaseOrderLine {
   tax         Tax?          @relation(fields: [taxId], references: [id])
   subtotal    Float
   taxAmount   Float
+  qtyReceived Float         @default(0)
+  qtyBilled   Float         @default(0)
+  receiptLines PurchaseReceiptLine[]
+  invoiceLines InvoiceLine[]
 }
 
 model BillOfMaterials {
@@ -533,6 +563,10 @@ model StockMove {
   transfer             StockTransfer?      @relation(fields: [transferId], references: [id])
   posOrderId           Int?
   posOrder             PosOrder?           @relation(fields: [posOrderId], references: [id])
+  deliveryNoteId       Int?
+  deliveryNote         DeliveryNote?       @relation(fields: [deliveryNoteId], references: [id])
+  purchaseReceiptId    Int?
+  purchaseReceipt      PurchaseReceipt?    @relation(fields: [purchaseReceiptId], references: [id])
   date                 DateTime
 }
 
@@ -666,6 +700,9 @@ model Invoice {
   purchaseOrder   PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
   posOrderId      Int?
   posOrder        PosOrder?        @relation(fields: [posOrderId], references: [id])
+  reversalOfId    Int?
+  reversalOf      Invoice?         @relation("InvoiceReversal", fields: [reversalOfId], references: [id])
+  reversals       Invoice[]        @relation("InvoiceReversal")
   amountUntaxed   Float
   amountTax       Float
   amountTotal     Float
@@ -705,6 +742,10 @@ model InvoiceLine {
   taxRate     Float
   subtotal    Float
   taxAmount   Float
+  salesOrderLineId    Int?
+  salesOrderLine      SalesOrderLine?    @relation(fields: [salesOrderLineId], references: [id])
+  purchaseOrderLineId Int?
+  purchaseOrderLine   PurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id])
 }
 
 model InvoicePayment {
@@ -1187,4 +1228,192 @@ model StockRoute {
   transfers StockTransfer[]
 
   @@unique([companyId, name])
+}
+
+model CustomerGroup {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id])
+  name      String
+  contacts  Contact[]
+  rules     PricingRule[]
+
+  @@unique([companyId, name])
+}
+
+model PriceList {
+  id        Int             @id @default(autoincrement())
+  companyId Int
+  company   Company         @relation(fields: [companyId], references: [id])
+  name      String
+  items     PriceListItem[]
+
+  @@unique([companyId, name])
+}
+
+model PriceListItem {
+  id          Int       @id @default(autoincrement())
+  priceListId Int
+  priceList   PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  productId   Int
+  product     Product   @relation(fields: [productId], references: [id])
+  minQty      Float     @default(0)
+  price       Float
+
+  @@unique([priceListId, productId, minQty])
+}
+
+model PricingRule {
+  id              Int            @id @default(autoincrement())
+  companyId       Int
+  company         Company        @relation(fields: [companyId], references: [id])
+  name            String
+  /// sales or purchase
+  side            String
+  productId       Int?
+  product         Product?       @relation(fields: [productId], references: [id])
+  minQty          Float          @default(1)
+  discountPercent Float          @default(0)
+  fixedPrice      Float?
+  customerId      Int?
+  customer        Contact?       @relation("RuleCustomer", fields: [customerId], references: [id])
+  customerGroupId Int?
+  customerGroup   CustomerGroup? @relation(fields: [customerGroupId], references: [id])
+  vendorId        Int?
+  vendor          Contact?       @relation("RuleVendor", fields: [vendorId], references: [id])
+  active          Boolean        @default(true)
+
+  @@unique([companyId, name])
+}
+
+model Quotation {
+  id           Int             @id @default(autoincrement())
+  companyId    Int
+  company      Company         @relation(fields: [companyId], references: [id])
+  name         String
+  customerId   Int
+  customer     Contact         @relation(fields: [customerId], references: [id])
+  salesOrderId Int?
+  salesOrder   SalesOrder?     @relation(fields: [salesOrderId], references: [id])
+  /// draft, sent, ordered, cancel
+  state        String
+  lines        QuotationLine[]
+  createdAt    DateTime        @default(now())
+
+  @@unique([companyId, name])
+}
+
+model QuotationLine {
+  id          Int       @id @default(autoincrement())
+  quotationId Int
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId   Int
+  description String
+  quantity    Float
+  unitPrice   Float
+  discount    Float     @default(0)
+  taxId       Int?
+}
+
+model DeliveryNote {
+  id           Int                @id @default(autoincrement())
+  companyId    Int
+  company      Company            @relation(fields: [companyId], references: [id])
+  name         String
+  salesOrderId Int
+  salesOrder   SalesOrder         @relation(fields: [salesOrderId], references: [id])
+  state        String
+  date         DateTime
+  lines        DeliveryNoteLine[]
+  moves        StockMove[]
+
+  @@unique([companyId, name])
+}
+
+model DeliveryNoteLine {
+  id               Int            @id @default(autoincrement())
+  noteId           Int
+  note             DeliveryNote   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  salesOrderLineId Int
+  orderLine        SalesOrderLine @relation(fields: [salesOrderLineId], references: [id])
+  productId        Int
+  quantity         Float
+}
+
+model PurchaseReceipt {
+  id              Int                   @id @default(autoincrement())
+  companyId       Int
+  company         Company               @relation(fields: [companyId], references: [id])
+  name            String
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
+  state           String
+  date            DateTime
+  landedCost      Float                 @default(0)
+  lines           PurchaseReceiptLine[]
+  moves           StockMove[]
+
+  @@unique([companyId, name])
+}
+
+model PurchaseReceiptLine {
+  id                  Int             @id @default(autoincrement())
+  receiptId           Int
+  receipt             PurchaseReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  purchaseOrderLineId Int
+  orderLine           PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id])
+  productId           Int
+  quantity            Float
+  unitCost            Float
+}
+
+model MaterialRequest {
+  id        Int                   @id @default(autoincrement())
+  companyId Int
+  company   Company               @relation(fields: [companyId], references: [id])
+  name      String
+  /// draft, confirmed, ordered, cancel
+  state     String
+  lines     MaterialRequestLine[]
+  quotes    SupplierQuotation[]
+  createdAt DateTime              @default(now())
+
+  @@unique([companyId, name])
+}
+
+model MaterialRequestLine {
+  id         Int             @id @default(autoincrement())
+  requestId  Int
+  request    MaterialRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  productId  Int
+  quantity   Float
+  qtyOrdered Float           @default(0)
+}
+
+model SupplierQuotation {
+  id                Int                     @id @default(autoincrement())
+  companyId         Int
+  company           Company                 @relation(fields: [companyId], references: [id])
+  name              String
+  vendorId          Int
+  vendor            Contact                 @relation(fields: [vendorId], references: [id])
+  materialRequestId Int?
+  materialRequest   MaterialRequest?        @relation(fields: [materialRequestId], references: [id])
+  purchaseOrderId   Int?
+  purchaseOrder     PurchaseOrder?          @relation(fields: [purchaseOrderId], references: [id])
+  /// draft or received
+  state             String
+  lines             SupplierQuotationLine[]
+  createdAt         DateTime                @default(now())
+
+  @@unique([companyId, name])
+}
+
+model SupplierQuotationLine {
+  id        Int               @id @default(autoincrement())
+  quoteId   Int
+  quote     SupplierQuotation @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId Int
+  quantity  Float
+  unitCost  Float
 }

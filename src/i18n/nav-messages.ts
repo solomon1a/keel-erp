@@ -58,6 +58,7 @@ export const enNav = {
   'menu.quotations': 'Quotations',
   'menu.customers': 'Customers',
   'menu.products': 'Products',
+  'menu.pricing': 'Pricing rules',
   'menu.pipeline': 'Pipeline',
   'menu.rfq': 'Requests',
   'menu.vendors': 'Vendors',
@@ -109,6 +110,8 @@ export const enNav = {
   'ws.planning': 'Material Planning',
   'ws.more': 'More',
   'ws.close': 'Close',
+  'ws.trend': 'vs last month',
+  'ws.sections': 'Sections',
   'toast.moved': 'Pipeline updated.',
   'toast.saved': 'Saved.',
 }
@@ -173,6 +176,7 @@ export const zhNav = {
   'menu.quotations': '报价',
   'menu.customers': '客户',
   'menu.products': '产品',
+  'menu.pricing': '价格规则',
   'menu.pipeline': '管道',
   'menu.rfq': '询价',
   'menu.vendors': '供应商',
@@ -224,6 +228,8 @@ export const zhNav = {
   'ws.planning': '物料计划',
   'ws.more': '更多',
   'ws.close': '关闭',
+  'ws.trend': '较上月',
+  'ws.sections': '分区',
   'toast.moved': '管道已更新。',
   'toast.saved': '已保存。',
 }

@@ -90,6 +90,8 @@ export type OrderLine = {
   taxId: number | null
   subtotal: number
   taxAmount: number
+  qtyDelivered?: number
+  qtyInvoiced?: number
   product?: { id: number; name: string; sku: string; type: string }
   tax?: { id: number; name: string; rate: number } | null
 }

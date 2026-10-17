@@ -56,7 +56,7 @@ describe('sales and stock', () => {
     const quant = await prisma.stockQuant.findUniqueOrThrow({
       where: { productId_locationId: { productId: tote.id, locationId: internal.id } },
     })
-    expect(quant.quantity).toBe(0)
+    expect(quant.quantity).toBe(4)
 
     const cancelled = await call(`/api/orders/${orderId}/cancel`, maya, { method: 'POST' })
     expect(cancelled.status).toBe(409)
