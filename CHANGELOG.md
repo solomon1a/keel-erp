@@ -1,5 +1,9 @@
 # Changelog
 
+## Floor seed on an existing database
+
+The manufacturing demo no longer stops at the first Cutting bench. Each named bill, work order, job card, plan, and wastage row is added only when that name is missing, and quantities already on the shelf are left alone. A failed build seed prints `KEEL SEED FAILED` with the error, then the deploy continues.
+
 ## Dashboard chart
 
 The overview chart for revenue and expenses spans the full width, with a taller plot. The sales pipeline sits on the next row, also full width. Recent orders stay full width under that. Attention, low stock, and app shortcuts share the last row on a wide screen and stack on a narrow one.

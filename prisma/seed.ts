@@ -844,8 +844,17 @@ async function seedJiangbei(client: PrismaClient) {
   })
 }
 
-if (process.argv[1]?.endsWith('seed.ts')) {
-  await seedDatabase()
-  await prisma.$disconnect()
-  await serverPrisma.$disconnect()
+const seedEntry = process.argv[1] ?? ''
+if (seedEntry.endsWith('seed.ts') || seedEntry.endsWith('seed.js')) {
+  try {
+    await seedDatabase()
+    console.log('KEEL SEED: finished')
+  } catch (error) {
+    console.error('KEEL SEED FAILED')
+    console.error(error)
+    process.exitCode = 1
+  } finally {
+    await prisma.$disconnect().catch(() => undefined)
+    await serverPrisma.$disconnect().catch(() => undefined)
+  }
 }

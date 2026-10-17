@@ -7,8 +7,7 @@ if [ "$KEEL_SEED_ON_BUILD" = "1" ]; then
   if prisma db seed; then
     echo "KEEL SEED: finished"
   else
-    status=$?
-    echo "KEEL SEED FAILED (exit ${status}) — deploy continues. Read the seed error above. Selling and buying demo documents were not fully applied."
+    echo "KEEL SEED FAILED (exit $?) — deploy continues. Read the seed error above."
   fi
 fi
 npm run typecheck
