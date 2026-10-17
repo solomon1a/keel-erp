@@ -60,8 +60,8 @@ export function OrdersPage() {
               <th className="px-4 py-3 font-medium">{t('orders.colNumber')}</th>
               <th className="px-4 py-3 font-medium">{t('orders.colCustomer')}</th>
               <th className="px-4 py-3 font-medium">{t('orders.colState')}</th>
-              <th className="px-4 py-3 font-medium">{t('orders.colDate')}</th>
-              <th className="px-4 py-3 font-medium">{t('orders.colTotal')}</th>
+              <th className="hidden px-4 py-3 font-medium md:table-cell">{t('orders.colDate')}</th>
+              <th className="hidden px-4 py-3 font-medium md:table-cell">{t('orders.colTotal')}</th>
             </tr>
           </thead>
           <tbody>
@@ -73,8 +73,8 @@ export function OrdersPage() {
                 </td>
                 <td className="px-4 py-3">{order.customer.name}</td>
                 <td className="px-4 py-3"><Badge tone={order.state}>{orderStateLabel(order.state, t)}</Badge></td>
-                <td className="px-4 py-3">{shortDate(order.dateOrder)}</td>
-                <td className="px-4 py-3">{money(order.amountTotal)}</td>
+                <td className="hidden px-4 py-3 md:table-cell">{shortDate(order.dateOrder)}</td>
+                <td className="hidden px-4 py-3 md:table-cell">{money(order.amountTotal)}</td>
               </tr>
             ))}
           </tbody>
