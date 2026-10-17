@@ -47,6 +47,7 @@ import { registerTradeRoutes } from './trade-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
 import { registerCoreRoutes } from './core-routes.ts'
+import { registerHomeRoutes } from './home-routes.ts'
 import { registerDeskRoutes } from './desk-routes.ts'
 import { registerPayrollRoutes } from './payroll-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
@@ -979,6 +980,7 @@ export function createApp() {
   registerPayrollRoutes(app)
   registerDeskRoutes(app)
   registerCoreRoutes(app)
+  registerHomeRoutes(app)
 
   return app
 }

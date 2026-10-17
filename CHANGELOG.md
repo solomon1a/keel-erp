@@ -1,5 +1,9 @@
 # Changelog
 
+## Home overview
+
+The page after sign-in is the company dashboard. The glass bar searches orders, contacts, and products, and shows the bank balance for cash and bank. Today, week, month, and year change the revenue and profit comparison. Receivables, payables, the pipeline, recent orders, low stock, and the attention list are rows from that company only. A self-serve company with no orders and no journals gets the six-step setup instead of empty charts. The app launcher is at `/apps`.
+
 ## Selling and buying
 
 Quotations, partial deliveries and bills, pricing rules, credit limits, returns, material requests, supplier comparison, receipts with landed cost, and three-way match. The selling and buying demo is posted once on Jiangbei Goods Co., Harbour & Line, and Hudson Yard Goods. A later seed finishes a partial run and does not post those documents again. A company created through sign-up is left alone. Jiangbei stays profitable and the balance sheet still balances.
