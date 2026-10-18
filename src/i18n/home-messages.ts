@@ -132,7 +132,6 @@ export const enHome = {
   'home.loading': 'Loading the overview…',
   'home.results': 'Search results',
   'home.noResults': 'No matches in this company.',
-  'home.demoRate': 'Shown in PKR at demo rate',
 }
 
 export const zhHome = {
@@ -269,5 +268,4 @@ export const zhHome = {
   'home.loading': '正在加载概览…',
   'home.results': '搜索结果',
   'home.noResults': '本公司没有匹配项。',
-  'home.demoRate': '按演示汇率显示为巴基斯坦卢比',
 } as const

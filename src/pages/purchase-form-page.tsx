@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { lineAmounts, sumLines } from '../domain/money.ts'
 import { singleTaxRate } from '../i18n/labels.ts'
+import { BaseCurrencyNote, BaseMoneyLabel } from '../components/base-currency.tsx'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { taxIdForCompany } from '../lib/format.ts'
@@ -177,13 +178,14 @@ export function PurchaseFormPage() {
         choose={t('stock.chooseWarehouse')}
       />
       </div>
+      <BaseCurrencyNote />
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">
             <tr>
               <th className="px-3 py-3 font-medium">{t('purchase.product')}</th>
               <th className="px-3 py-3 font-medium">{t('purchase.colQty')}</th>
-              <th className="px-3 py-3 font-medium">{t('purchase.cost')}</th>
+              <th className="px-3 py-3 font-medium"><BaseMoneyLabel text={t('purchase.cost')} /></th>
               <th className="px-3 py-3 font-medium">{t('purchase.tax')}</th>
               <th className="px-3 py-3 font-medium"></th>
             </tr>

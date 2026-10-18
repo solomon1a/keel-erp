@@ -8,6 +8,7 @@ import { lineAmounts, roundMoney, sumLines } from '../domain/money.ts'
 import { payMethodLabel, posSessionLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
+import { BaseCurrencyNote } from '../components/base-currency.tsx'
 import { useMoney } from '../lib/format.ts'
 import type { Contact, PosCatalog, PosOrder, PosSession, User } from '../lib/types.ts'
 
@@ -269,6 +270,7 @@ export function PosScreenPage() {
           <p className="text-sm text-muted-foreground">{t('totals.untaxed')} {money(totals.amountUntaxed)}</p>
           <p className="text-sm text-muted-foreground">{t('pos.vat', { rate: taxRate })} {money(totals.amountTax)}</p>
           <p className="text-xl font-semibold">{t('pos.total')} {money(totals.amountTotal)}</p>
+          <BaseCurrencyNote />
           <div className="grid grid-cols-2 gap-2">
             {methods.map((method) => (
               <Button key={method} type="button" variant="outline" className="h-11" onClick={() => addMethod(method)}>{t(methodKey(method))}</Button>

@@ -8,6 +8,7 @@ import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import type { User } from '../lib/types.ts'
 import { currencyCodes } from '../../shared/schemas.ts'
+import { formatRate, type RateRow } from '../lib/display-money.ts'
 
 type Settings = {
   name: string
@@ -125,6 +126,85 @@ export function SettingsPage() {
         ) : null}
       </form>
       <FapiaoNote />
+      <RateTable base={settings.data?.currency ?? 'CNY'} isAdmin={isAdmin} />
     </div>
+  )
+}
+
+function RateTable({ base, isAdmin }: { base: string; isAdmin: boolean }) {
+  const { t } = useI18n()
+  const queryClient = useQueryClient()
+  const table = useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: () => api<{ base: string; rates: RateRow[] }>('/api/exchange-rates'),
+  })
+  const [rows, setRows] = useState<RateRow[]>([])
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [pending, setPending] = useState(false)
+
+  useEffect(() => {
+    if (!table.data) return
+    setRows(table.data.rates)
+  }, [table.data])
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    setError('')
+    setSaved(false)
+    setPending(true)
+    try {
+      const next = await api<{ base: string; rates: RateRow[] }>('/api/exchange-rates', {
+        method: 'PUT',
+        body: JSON.stringify({
+          rates: rows.map((row) => ({ currency: row.currency, rate: row.currency === base ? 1 : Number(row.rate) })),
+        }),
+      })
+      queryClient.setQueryData(['exchange-rates'], next)
+      setRows(next.rates)
+      setSaved(true)
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : t('fx.failed'))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  if (table.isLoading) return <p className="text-sm text-muted-foreground">{t('settings.loading')}</p>
+  if (table.isError) return <p className="text-sm text-destructive">{table.error.message}</p>
+
+  return (
+    <form className="grid gap-4 rounded-lg border border-border bg-card p-4" onSubmit={onSubmit}>
+      <div>
+        <h2 className="font-semibold">{t('fx.rates')}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t('fx.ratesLead', { base })}</p>
+      </div>
+      {error ? <Notice message={error} /> : null}
+      {saved ? <p className="text-sm">{t('fx.saved')}</p> : null}
+      <div className="grid gap-2">
+        {rows.map((row) => (
+          <label key={row.currency} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-3 text-sm">
+            <span className="font-semibold">{row.currency}</span>
+            <Input
+              type="number"
+              min="0"
+              step="0.0001"
+              aria-label={t('fx.rate', { base: row.currency })}
+              value={row.currency === base ? formatRate(1) : row.rate}
+              disabled={!isAdmin || row.currency === base}
+              onChange={(event) => {
+                const rate = Number(event.target.value)
+                setRows((current) => current.map((item) => (item.currency === row.currency ? { ...item, rate } : item)))
+              }}
+            />
+          </label>
+        ))}
+      </div>
+      {isAdmin ? (
+        <Button type="submit" disabled={pending}>
+          {pending ? t('common.saving') : t('fx.save')}
+        </Button>
+      ) : null}
+    </form>
   )
 }

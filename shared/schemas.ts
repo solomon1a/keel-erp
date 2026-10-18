@@ -44,6 +44,22 @@ export const signupSchema = z.object({
 
 export const currencyCodes = ['CNY', 'USD', 'EUR', 'GBP', 'HKD', 'JPY'] as const
 
+export const displayCurrencySchema = z.object({
+  currency: z.string().regex(/^[A-Z]{3}$/, 'Choose a currency.'),
+})
+
+export const exchangeRatesSchema = z.object({
+  rates: z
+    .array(
+      z.object({
+        currency: z.string().regex(/^[A-Z]{3}$/, 'Choose a currency.'),
+        rate: z.number().positive('A rate has to be greater than zero.').max(1_000_000),
+      }),
+    )
+    .min(1)
+    .max(12),
+})
+
 export const companySettingsSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   currency: z.enum(currencyCodes),

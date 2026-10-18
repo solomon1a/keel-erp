@@ -1,10 +1,8 @@
 # Changelog
 
-## Dashboard two-column mock
+## Display currency
 
-The overview keeps four KPI cards, drawn a little shorter. Each card has a very light radial tint, about the strength of an app icon, fading out across roughly seventy percent of the card. Revenue versus expenses takes two thirds of the next row, with app shortcuts on the right. The sales pipeline takes two thirds of the row under that, with Needs your attention beside it. Recent orders and low stock follow the same split. Below 1100px the rows stack into one column.
-
-English on this page shows PKR. The figures are the CNY ledger multiplied by a demo rate of 39, and a small line says so. Chinese shows the ledger in CNY. Nothing is rewritten in the database. This is a mock on `dashboard-2col-mock` for review.
+The header has its own currency pill, next to the language toggle. English and 中文 only change the language. The pill lists CNY, PKR, USD, GBP, and EUR, and it starts on the company's books currency. The choice is stored on the user, so it follows that person to another browser, and this browser keeps a copy if the save does not land. Dashboard figures, chart axes, lists, read-only totals, invoices, orders, reports, the till, and the shop all use that display currency. Amounts you type, and every API body, stay in the company currency. When the two differ, a short line names the rate. Each company has its own demo rate table under Settings, and a new company gets the same list relative to its own currency.
 
 ## Desktop layout
 

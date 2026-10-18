@@ -4,6 +4,7 @@ import { signupCountries } from '../../shared/schemas.ts'
 import { hashPassword } from '../auth.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { ensureDemoRates } from './exchange-rates.ts'
 
 export type SignupCountry = (typeof signupCountries)[number]
 
@@ -136,6 +137,7 @@ export async function provisionCompany(input: {
     await seedDeskForCompany(tx, company.id)
     await ensureCompanyAccess(tx, company.id)
     await ensureMembership(tx, { id: admin.id, companyId: company.id, role: 'admin' })
+    await ensureDemoRates(tx, company.id, preset.currency)
     return { user: admin, locale: preset.locale }
   }, { maxWait: 20000, timeout: 120000 })
 }

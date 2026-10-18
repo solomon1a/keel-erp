@@ -23,7 +23,7 @@ import { Button } from '../components/ui/button.tsx'
 import { useI18n, type Locale, type Translate } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
 import { api } from '../lib/api.ts'
-import { formatDisplayMoney, ledgerToDisplay } from '../lib/display-money.ts'
+import { useDisplay, useMoney } from '../lib/format.ts'
 import type { User } from '../lib/types.ts'
 import { cn } from '../lib/utils.ts'
 
@@ -404,7 +404,7 @@ function chartReady(months: HomeData['chart']['months']) {
 
 export function HomePage() {
   const { locale, t } = useI18n()
-  const money = (value: number) => formatDisplayMoney(value, locale)
+  const money = useMoney()
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me'), retry: false })
   const [range, setRange] = useState<HomeRange>('month')
   const [skipped, setSkipped] = useState(false)
@@ -433,7 +433,6 @@ export function HomePage() {
                 : home.data
                   ? t('home.clear')
                   : ''}
-            {locale === 'en' ? <span className="text-[11px]"> · {t('home.demoRate')}</span> : null}
           </p>
         </div>
         {home.data?.empty ? (
@@ -496,6 +495,7 @@ function LiveBoard({
   t: Translate
   busy: boolean
 }) {
+  const display = useDisplay()
   const bankTrend = trend(data.bank.changePct)
   const revenueTrend = trend(data.kpis.revenue.changePct)
   return (
@@ -549,10 +549,11 @@ function LiveBoard({
             <HomeChart
               months={data.chart.months.map((month) => ({
                 ...month,
-                income: ledgerToDisplay(month.income, locale),
-                expense: ledgerToDisplay(month.expense, locale),
+                income: display.convert(month.income),
+                expense: display.convert(month.expense),
               }))}
               locale={locale}
+              currency={display.currency}
             />
           ) : (
             <p className="py-24 text-center text-sm text-muted-foreground">{t('home.chart.empty')}</p>
@@ -829,8 +830,8 @@ function AppsCard({ t, installed = false }: { t: Translate; installed?: boolean 
 }
 
 function EmptyBoard({ data, company, skipped, onSkip }: { data: HomeData; company: string; skipped: boolean; onSkip: () => void }) {
-  const { t, locale } = useI18n()
-  const money = (value: number) => formatDisplayMoney(value, locale)
+  const { t } = useI18n()
+  const money = useMoney()
   const toast = useToast()
   const steps = data.onboarding?.steps ?? []
   const done = data.onboarding?.done ?? 0

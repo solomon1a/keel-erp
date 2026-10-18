@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { CurrencySwitcher } from '../components/currency-switcher.tsx'
 import { Field, Notice } from '../components/field.tsx'
 import { LanguageSwitcher } from '../components/language-switcher.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { useI18n } from '../i18n/locale.tsx'
-import { addToCart, cartCount, readCart, writeCart, type CartLine } from '../lib/cart.ts'
 import { api, ApiError } from '../lib/api.ts'
-import { formatMoney } from '../lib/format.ts'
+import { addToCart, cartCount, readCart, writeCart, type CartLine } from '../lib/cart.ts'
+import { formatRate } from '../lib/display-money.ts'
+import { formatMoney, useDisplay } from '../lib/format.ts'
 
 type ShopProduct = {
   id: number
@@ -65,8 +67,17 @@ function payLabel(method: string | null, t: ReturnType<typeof useI18n>['t']) {
   }
 }
 
+function useShopMoney(base: string | undefined) {
+  const { locale } = useI18n()
+  const display = useDisplay()
+  const ledger = base ?? 'CNY'
+  const follow = display.signedIn && display.base === ledger
+  return (value: number) => (follow ? display.format(value) : formatMoney(value, ledger, locale))
+}
+
 function ShopFrame({ children }: { children: ReactNode }) {
   const { t } = useI18n()
+  const display = useDisplay()
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: () => api<Catalog>('/api/shop/catalog') })
   const [count, setCount] = useState(() => cartCount(readCart()))
   useEffect(() => {
@@ -90,18 +101,25 @@ function ShopFrame({ children }: { children: ReactNode }) {
           <Link className="rounded-md px-3 py-2 hover:bg-secondary" to="/shop/cart">{t('shop.cart')} ({count})</Link>
           <Link className="rounded-md px-3 py-2 hover:bg-secondary" to="/shop/account">{t('shop.account')}</Link>
           <Link className="rounded-md px-3 py-2 text-muted-foreground hover:bg-secondary" to="/sign-in">{t('shop.desk')}</Link>
+          <CurrencySwitcher />
           <LanguageSwitcher />
         </nav>
       </header>
+      {display.converted && catalog.data && display.base === catalog.data.company.currency ? (
+        <p className="pt-2 text-[11px] text-muted-foreground">
+          {t('fx.hint', { display: display.currency, base: display.base, rate: formatRate(display.rate) })}
+        </p>
+      ) : null}
       <div className="py-6">{children}</div>
     </div>
   )
 }
 
 export function ShopCatalogPage() {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: () => api<Catalog>('/api/shop/catalog') })
+  const money = useShopMoney(catalog.data?.company.currency)
   if (catalog.isLoading) return <ShopFrame><p className="text-sm text-muted-foreground">{t('shop.loading')}</p></ShopFrame>
   if (catalog.isError) return <ShopFrame><p className="text-sm text-destructive">{catalog.error.message}</p></ShopFrame>
   const data = catalog.data
@@ -131,7 +149,7 @@ export function ShopCatalogPage() {
               <p className="text-xs text-muted-foreground">{product.categoryName ?? product.sku}</p>
               <h2 className="mt-1 font-serif text-2xl">{product.name}</h2>
               <p className="mt-2 text-sm text-muted-foreground">{product.description}</p>
-              <p className="mt-4 font-semibold">{formatMoney(product.listPrice, data.company.currency, locale)}</p>
+              <p className="mt-4 font-semibold">{money(product.listPrice)}</p>
               <p className="text-sm text-muted-foreground">{t('shop.onHand', { count: product.onHand })}</p>
             </Link>
           ))}
@@ -143,13 +161,14 @@ export function ShopCatalogPage() {
 
 export function ShopProductPage() {
   const { id } = useParams()
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const [qty, setQty] = useState(1)
   const [note, setNote] = useState('')
   const product = useQuery({
     queryKey: ['shop-product', id],
     queryFn: () => api<Catalog & { product: ShopProduct }>(`/api/shop/products/${id}`),
   })
+  const money = useShopMoney(product.data?.company.currency)
   if (product.isLoading) return <ShopFrame><p className="text-sm text-muted-foreground">{t('shop.loading')}</p></ShopFrame>
   if (product.isError) return <ShopFrame><p className="text-sm text-destructive">{product.error.message}</p></ShopFrame>
   const row = product.data?.product
@@ -161,7 +180,7 @@ export function ShopProductPage() {
         <p className="text-sm text-muted-foreground">{row.categoryName ?? row.sku}</p>
         <h1 className="font-serif text-4xl tracking-tight">{row.name}</h1>
         <p className="text-muted-foreground">{row.description}</p>
-        <p className="text-xl font-semibold">{formatMoney(row.listPrice, product.data.company.currency, locale)}</p>
+        <p className="text-xl font-semibold">{money(row.listPrice)}</p>
         <p className="text-sm text-muted-foreground">{t('shop.onHand', { count: row.onHand })}</p>
         <p className="text-sm text-muted-foreground">{t('shop.vat', { rate: product.data.company.taxRate })}</p>
         <Field label={t('shop.qty')}>
@@ -182,10 +201,10 @@ export function ShopProductPage() {
 }
 
 export function ShopCartPage() {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: () => api<Catalog>('/api/shop/catalog') })
+  const money = useShopMoney(catalog.data?.company.currency)
   const [lines, setLines] = useState<CartLine[]>(() => readCart())
-  const currency = catalog.data?.company.currency ?? 'CNY'
   const untaxed = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)
   return (
     <ShopFrame>
@@ -200,7 +219,7 @@ export function ShopCartPage() {
                 <span className="mt-1 block text-sm text-muted-foreground">× {line.quantity}</span>
               </span>
               <span className="flex items-center gap-3">
-                <span>{formatMoney(line.unitPrice * line.quantity, currency, locale)}</span>
+                <span>{money(line.unitPrice * line.quantity)}</span>
                 <Button
                   size="sm"
                   variant="outline"
@@ -218,7 +237,7 @@ export function ShopCartPage() {
         </ul>
         {lines.length > 0 ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-semibold">{t('shop.total')} {formatMoney(untaxed, currency, locale)}</p>
+            <p className="font-semibold">{t('shop.total')} {money(untaxed)}</p>
             <Link to="/shop/checkout"><Button>{t('shop.checkout')}</Button></Link>
           </div>
         ) : null}
@@ -229,7 +248,7 @@ export function ShopCartPage() {
 }
 
 export function ShopCheckoutPage() {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: () => api<Catalog>('/api/shop/catalog') })
   const account = useQuery({
@@ -273,7 +292,7 @@ export function ShopCheckoutPage() {
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('signIn.failed')),
   })
 
-  const currency = catalog.data?.company.currency ?? 'CNY'
+  const money = useShopMoney(catalog.data?.company.currency)
   return (
     <ShopFrame>
       <form
@@ -291,7 +310,7 @@ export function ShopCheckoutPage() {
           {lines.map((line) => (
             <li key={line.productId} className="flex justify-between gap-3 border-b border-border py-2">
               <span>{line.name} × {line.quantity}</span>
-              <span>{formatMoney(line.unitPrice * line.quantity, currency, locale)}</span>
+              <span>{money(line.unitPrice * line.quantity)}</span>
             </li>
           ))}
         </ul>
@@ -316,11 +335,12 @@ export function ShopCheckoutPage() {
 
 export function ShopThanksPage() {
   const { token } = useParams()
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const order = useQuery({
     queryKey: ['shop-order', token],
     queryFn: () => api<ShopOrder>(`/api/shop/orders/${token}`),
   })
+  const money = useShopMoney(order.data?.company.currency)
   if (order.isLoading) return <ShopFrame><p className="text-sm text-muted-foreground">{t('shop.loading')}</p></ShopFrame>
   if (order.isError) return <ShopFrame><p className="text-sm text-destructive">{order.error.message}</p></ShopFrame>
   const row = order.data
@@ -337,11 +357,11 @@ export function ShopThanksPage() {
           {row.lines.map((line) => (
             <li key={line.id} className="flex justify-between gap-3 border-b border-border py-2 text-sm">
               <span>{line.description} × {line.quantity}</span>
-              <span>{formatMoney(line.subtotal + line.taxAmount, row.company.currency, locale)}</span>
+              <span>{money(line.subtotal + line.taxAmount)}</span>
             </li>
           ))}
         </ul>
-        <p className="font-semibold">{t('shop.total')} {formatMoney(row.amountTotal, row.company.currency, locale)}</p>
+        <p className="font-semibold">{t('shop.total')} {money(row.amountTotal)}</p>
         <Link className="text-sm font-semibold text-primary" to="/shop">{t('shop.back')}</Link>
       </div>
     </ShopFrame>
@@ -349,7 +369,7 @@ export function ShopThanksPage() {
 }
 
 export function ShopAccountPage() {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [error, setError] = useState('')
@@ -360,6 +380,7 @@ export function ShopAccountPage() {
     queryFn: () => api<ShopOrder[]>('/api/shop/orders'),
     enabled: Boolean(me.data),
   })
+  const money = useShopMoney(orders.data?.[0]?.company.currency)
   const submit = useMutation({
     mutationFn: () =>
       api<ShopAccount>(mode === 'login' ? '/api/shop/login' : '/api/shop/register', {
@@ -402,7 +423,7 @@ export function ShopAccountPage() {
                   ) : (
                     <span className="font-semibold">{order.name}</span>
                   )}
-                  <span className="ml-3 text-sm">{formatMoney(order.amountTotal, order.company.currency, locale)}</span>
+                  <span className="ml-3 text-sm">{money(order.amountTotal)}</span>
                 </li>
               ))}
             </ul>

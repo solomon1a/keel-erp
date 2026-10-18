@@ -5,6 +5,7 @@ import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { Textarea } from '../components/ui/textarea.tsx'
+import { BaseMoneyLabel } from '../components/base-currency.tsx'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import type { Product } from '../lib/types.ts'
@@ -129,10 +130,10 @@ export function ProductFormPage() {
             <option value="service">{t('products.service')}</option>
           </select>
         </Field>
-        <Field label={t('product.price')}>
+        <Field label={<BaseMoneyLabel text={t('product.price')} />}>
           <Input type="number" min="0" step="0.01" value={form.listPrice} onChange={(event) => setForm({ ...form, listPrice: event.target.value })} />
         </Field>
-        <Field label={t('product.cost')}>
+        <Field label={<BaseMoneyLabel text={t('product.cost')} />}>
           <Input type="number" min="0" step="0.01" value={form.costPrice} onChange={(event) => setForm({ ...form, costPrice: event.target.value })} />
         </Field>
         {form.type === 'product' ? (
