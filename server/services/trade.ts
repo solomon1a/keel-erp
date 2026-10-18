@@ -2,6 +2,7 @@ import { lineAmounts, roundMoney, sumLines } from '../../src/domain/money.ts'
 import { fulfillmentStatus, resolveUnitPrice, type FulfillmentStatus } from '../../src/domain/trade.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { assertQualityClear, prepareQualityChecks } from './quality.ts'
 import { applyQuant, roundQty } from './stock.ts'
 import { landedCost, valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
@@ -75,6 +76,7 @@ export async function deliverPartial(
   requested: Array<{ lineId: number; quantity: number }>,
 ) {
   if (requested.length === 0) throw new AppError(400, 'Enter a quantity to deliver.')
+  await prepareQualityChecks(companyId, { trigger: 'delivery', productIds: [], salesOrderId: orderId })
   return prisma.$transaction(async (tx) => {
     const order = await tx.salesOrder.findFirst({
       where: { id: orderId, companyId },
@@ -82,6 +84,7 @@ export async function deliverPartial(
     })
     if (!order) throw new AppError(404, 'Order not found.')
     if (order.state !== 'sale') throw new AppError(409, 'Confirm the quotation before delivering it.')
+    await assertQualityClear(tx, companyId, { trigger: 'delivery', productIds: [], salesOrderId: order.id })
     const draft = order.moves.filter((move) => move.state === 'draft')
     const completed: CompletedMove[] = []
     for (const row of requested) {

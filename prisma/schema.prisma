@@ -79,6 +79,12 @@ model Company {
   assets         Asset[]
   subcontractOrders SubcontractOrder[]
   invites        UserInvite[]
+  qualityPoints  QualityPoint[]
+  qualityChecks  QualityCheck[]
+  qualityAlerts  QualityAlert[]
+  projects       Project[]
+  bankAccounts   BankAccount[]
+  reconcileRules ReconcileRule[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -112,6 +118,7 @@ model User {
   invitesSent          UserInvite[]
   /// ISO code used only to format amounts. Empty follows the company currency. The books stay in that currency.
   displayCurrency      String?
+  qualityOverrides     QualityCheck[]      @relation("QualityOverride")
   createdAt            DateTime            @default(now())
 }
 
@@ -185,6 +192,9 @@ model Contact {
   customerRules  PricingRule[] @relation("RuleCustomer")
   vendorRules    PricingRule[] @relation("RuleVendor")
   leads          Lead[]
+  qualityChecks  QualityCheck[]  @relation("QualityVendor")
+  qualityAlerts  QualityAlert[]  @relation("AlertVendor")
+  projects       Project[]
   createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
   createdById Int?
@@ -250,6 +260,9 @@ model Product {
   serials      StockSerial[]
   priceItems   PriceListItem[]
   pricingRules PricingRule[]
+  qualityPoints QualityPoint[]
+  qualityChecks QualityCheck[]
+  qualityAlerts QualityAlert[] @relation("AlertProduct")
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
 
@@ -320,6 +333,7 @@ model SalesOrder {
   quotations    Quotation[]
   deliveries    DeliveryNote[]
   manufacturingOrders ManufacturingOrder[]
+  qualityChecks QualityCheck[]
   warehouseId   Int?
   warehouse     Warehouse?       @relation(fields: [warehouseId], references: [id])
   /// `desk` or `shop`.
@@ -378,6 +392,7 @@ model PurchaseOrder {
   invoices      Invoice[]
   receipts      PurchaseReceipt[]
   quotes        SupplierQuotation[]
+  qualityChecks QualityCheck[]
   warehouseId   Int?
   warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
   createdById   Int?
@@ -514,6 +529,7 @@ model ManufacturingOrder {
   wipWarehouse      Warehouse?                @relation("MoWip", fields: [wipWarehouseId], references: [id])
   scrapWarehouseId  Int?
   scrapWarehouse    Warehouse?                @relation("MoScrap", fields: [scrapWarehouseId], references: [id])
+  qualityChecks  QualityCheck[]
   createdById       Int?
   createdBy      User?                     @relation("ManufacturingCreatedBy", fields: [createdById], references: [id])
   createdAt      DateTime                  @default(now())
@@ -646,7 +662,7 @@ model Warehouse {
 model StockLocation {
   id            Int                 @id @default(autoincrement())
   name          String
-  /// internal, customer, supplier, inventory, production, or subcontract
+  /// internal, customer, supplier, inventory, production, subcontract, or quarantine
   type          String
   vendorId      Int?
   vendor        Contact?            @relation("SubcontractVendor", fields: [vendorId], references: [id])
@@ -919,6 +935,10 @@ model Invoice {
   entries         JournalEntry[]
   matches         ReconcileMatch[]
   subcontractReceipts SubcontractReceipt[]
+  projectId       Int?
+  project         Project?         @relation(fields: [projectId], references: [id])
+  timesheets      Timesheet[]
+  milestones      ProjectMilestone[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -972,6 +992,8 @@ model JournalEntry {
   depreciation AssetDepreciation?
   disposedAssets Asset[] @relation("AssetDisposal")
   valuations   ValuationLayer[]
+  qualityAlerts QualityAlert[]
+  reconcileMatches ReconcileMatch[]
 
   @@unique([companyId, name])
   @@index([companyId, date])
@@ -1128,6 +1150,10 @@ model Employee {
   email        String?
   phone        String?
   jobTitle     String?
+  /// What an hour of this person's time costs the company. Payroll still uses the monthly gross.
+  hourlyCost   Float        @default(0)
+  /// What an hour is billed at on a time-and-materials project. Zero uses the project rate.
+  hourlyRate   Float        @default(0)
   active       Boolean      @default(true)
   departmentId Int?
   department   Department?  @relation(fields: [departmentId], references: [id])
@@ -1138,6 +1164,8 @@ model Employee {
   salary       SalaryStructure?
   payslips     Payslip[]
   expenses     ExpenseClaim[]
+  assignedTasks ProjectTask[]
+  timesheets   Timesheet[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -1280,6 +1308,8 @@ model ExpenseClaim {
   state       String
   entryId     Int?          @unique
   entry       JournalEntry? @relation(fields: [entryId], references: [id])
+  projectId   Int?
+  project     Project?      @relation(fields: [projectId], references: [id])
   createdAt   DateTime      @default(now())
 
   @@unique([companyId, name])
@@ -1368,12 +1398,15 @@ model ChatterMessage {
 }
 
 model BankStatement {
-  id            Int                 @id @default(autoincrement())
-  companyId     Int
-  company       Company             @relation(fields: [companyId], references: [id])
-  name          String
-  statementDate DateTime
-  lines         BankStatementLine[]
+  id             Int                 @id @default(autoincrement())
+  companyId      Int
+  company        Company             @relation(fields: [companyId], references: [id])
+  bankAccountId  Int?
+  bankAccount    BankAccount?        @relation(fields: [bankAccountId], references: [id])
+  name           String
+  statementDate  DateTime
+  openingBalance Float               @default(0)
+  lines          BankStatementLine[]
 
   @@unique([companyId, name])
 }
@@ -1383,23 +1416,31 @@ model BankStatementLine {
   statementId Int
   statement   BankStatement    @relation(fields: [statementId], references: [id], onDelete: Cascade)
   companyId   Int
-  lineDate    DateTime
-  label       String
-  amount      Float
-  reconciled  Float            @default(0)
-  matches     ReconcileMatch[]
+  lineDate     DateTime
+  label        String
+  amount       Float
+  reference    String           @default("")
+  /// Stable hash of date, amount, label, and reference. Re-imports skip a hash already stored.
+  fingerprint  String           @default("")
+  reconciled   Float            @default(0)
+  matches      ReconcileMatch[]
 
   @@index([companyId])
+  @@index([companyId, fingerprint])
 }
 
 model ReconcileMatch {
   id        Int               @id @default(autoincrement())
   lineId    Int
   line      BankStatementLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
-  invoiceId Int
-  invoice   Invoice           @relation(fields: [invoiceId], references: [id])
+  invoiceId Int?
+  invoice   Invoice?          @relation(fields: [invoiceId], references: [id])
+  entryId   Int?
+  entry     JournalEntry?     @relation(fields: [entryId], references: [id])
   companyId Int
   amount    Float
+  /// payment posts cash against the invoice. link only clears the line. entry posts a fresh journal.
+  kind      String            @default("payment")
 
   @@index([companyId, invoiceId])
 }
@@ -1788,4 +1829,226 @@ model UserInvite {
   createdAt   DateTime  @default(now())
 
   @@index([companyId, email])
+}
+
+/// A control the company wants run when a product is received, made, or delivered.
+model QualityPoint {
+  id            Int            @id @default(autoincrement())
+  companyId     Int
+  company       Company        @relation(fields: [companyId], references: [id])
+  name          String
+  productId     Int
+  product       Product        @relation(fields: [productId], references: [id])
+  /// receipt, operation, or delivery
+  trigger       String
+  operationName String         @default("")
+  /// pass_fail, measure, or checklist
+  checkType     String
+  minValue      Float?
+  maxValue      Float?
+  /// One checklist line per row.
+  checklist     String         @default("")
+  active        Boolean        @default(true)
+  checks        QualityCheck[]
+  createdAt     DateTime       @default(now())
+
+  @@index([companyId, productId, trigger])
+}
+
+model QualityCheck {
+  id                   Int                 @id @default(autoincrement())
+  companyId            Int
+  company              Company             @relation(fields: [companyId], references: [id])
+  pointId              Int
+  point                QualityPoint        @relation(fields: [pointId], references: [id])
+  productId            Int
+  product              Product             @relation(fields: [productId], references: [id])
+  trigger              String
+  operationName        String              @default("")
+  /// pending, pass, or fail
+  status               String              @default("pending")
+  measured             Float?
+  checklistDone        String              @default("")
+  notes                String              @default("")
+  quantity             Float               @default(0)
+  purchaseOrderId      Int?
+  purchaseOrder        PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id])
+  salesOrderId         Int?
+  salesOrder           SalesOrder?         @relation(fields: [salesOrderId], references: [id])
+  manufacturingOrderId Int?
+  manufacturingOrder   ManufacturingOrder? @relation(fields: [manufacturingOrderId], references: [id])
+  vendorId             Int?
+  vendor               Contact?            @relation("QualityVendor", fields: [vendorId], references: [id])
+  overrideReason       String?
+  overrideById         Int?
+  overrideBy           User?               @relation("QualityOverride", fields: [overrideById], references: [id])
+  overrideAt           DateTime?
+  alert                QualityAlert?
+  createdAt            DateTime            @default(now())
+
+  @@index([companyId, status])
+  @@index([purchaseOrderId])
+  @@index([salesOrderId])
+  @@index([manufacturingOrderId])
+}
+
+model QualityAlert {
+  id         Int           @id @default(autoincrement())
+  companyId  Int
+  company    Company       @relation(fields: [companyId], references: [id])
+  checkId    Int           @unique
+  check      QualityCheck  @relation(fields: [checkId], references: [id])
+  productId  Int
+  product    Product       @relation("AlertProduct", fields: [productId], references: [id])
+  vendorId   Int?
+  vendor     Contact?      @relation("AlertVendor", fields: [vendorId], references: [id])
+  /// open or resolved
+  status     String        @default("open")
+  /// rework, scrap, or return_vendor
+  action     String?
+  /// supplier (credited GRNI), stock (credited inventory), or none
+  heldFrom   String        @default("none")
+  quantity   Float
+  /// Value parked on the quarantine account. Scrap and returns use this figure.
+  value      Float         @default(0)
+  note       String        @default("")
+  entryId    Int?
+  entry      JournalEntry? @relation(fields: [entryId], references: [id])
+  resolvedAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@index([companyId, status])
+}
+
+model Project {
+  id          Int                @id @default(autoincrement())
+  companyId   Int
+  company     Company            @relation(fields: [companyId], references: [id])
+  name        String
+  partnerId   Int?
+  partner     Contact?           @relation(fields: [partnerId], references: [id])
+  /// fixed or time
+  billingType String
+  hourlyRate  Float              @default(0)
+  /// open or done
+  state       String             @default("open")
+  stages      ProjectStage[]
+  tasks       ProjectTask[]
+  timesheets  Timesheet[]
+  milestones  ProjectMilestone[]
+  expenses    ExpenseClaim[]
+  invoices    Invoice[]
+  createdAt   DateTime           @default(now())
+
+  @@unique([companyId, name])
+}
+
+model ProjectStage {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  projectId Int
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  sequence  Int
+  tasks     ProjectTask[]
+
+  @@index([projectId])
+}
+
+model ProjectTask {
+  id         Int              @id @default(autoincrement())
+  companyId  Int
+  projectId  Int
+  project    Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stageId    Int
+  stage      ProjectStage     @relation(fields: [stageId], references: [id])
+  name       String
+  assigneeId Int?
+  assignee   Employee?        @relation(fields: [assigneeId], references: [id])
+  deadline   DateTime?
+  startDate  DateTime?
+  endDate    DateTime?
+  sequence   Int              @default(0)
+  blockedBy  TaskDependency[] @relation("BlockedTask")
+  blocking   TaskDependency[] @relation("BlockingTask")
+  timesheets Timesheet[]
+
+  @@index([projectId, stageId])
+}
+
+model TaskDependency {
+  id          Int         @id @default(autoincrement())
+  companyId   Int
+  taskId      Int
+  task        ProjectTask @relation("BlockedTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnId Int
+  dependsOn   ProjectTask @relation("BlockingTask", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnId])
+}
+
+model Timesheet {
+  id          Int         @id @default(autoincrement())
+  companyId   Int
+  projectId   Int
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId      Int
+  task        ProjectTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId  Int
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  workDate    DateTime
+  hours       Float
+  /// draft, approved, or invoiced
+  state       String      @default("draft")
+  invoiceId   Int?
+  invoice     Invoice?    @relation(fields: [invoiceId], references: [id])
+  description String      @default("")
+  createdAt   DateTime    @default(now())
+
+  @@index([companyId, state])
+  @@index([projectId])
+}
+
+model ProjectMilestone {
+  id        Int       @id @default(autoincrement())
+  companyId Int
+  projectId Int
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  amount    Float
+  dueDate   DateTime?
+  /// open, approved, or invoiced
+  state     String    @default("open")
+  invoiceId Int?
+  invoice   Invoice?  @relation(fields: [invoiceId], references: [id])
+
+  @@index([projectId, state])
+}
+
+model BankAccount {
+  id          Int             @id @default(autoincrement())
+  companyId   Int
+  company     Company         @relation(fields: [companyId], references: [id])
+  name        String
+  accountCode String          @default("1002")
+  currency    String
+  statements  BankStatement[]
+
+  @@unique([companyId, name])
+}
+
+/// When a statement line's text contains matchText, offer this posting.
+model ReconcileRule {
+  id          Int     @id @default(autoincrement())
+  companyId   Int
+  company     Company @relation(fields: [companyId], references: [id])
+  name        String
+  /// contains
+  matchKind   String  @default("contains")
+  matchText   String
+  /// expense, fee, or transfer
+  action      String
+  accountCode String
+
+  @@unique([companyId, name])
 }

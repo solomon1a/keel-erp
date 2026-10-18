@@ -2,6 +2,7 @@ import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { PurchaseInput, ReceivePurchaseInput } from '../../shared/schemas.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { assertQualityClear, ensureQualityChecks, prepareQualityChecks } from './quality.ts'
 import { applyQuant, resolveWarehouseId, roundQty } from './stock.ts'
 import { noteChatter, recordReceipt } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
@@ -207,6 +208,13 @@ export async function confirmPurchase(companyId: number, orderId: number) {
       })
     }
 
+    await ensureQualityChecks(tx, companyId, {
+      trigger: 'receipt',
+      productIds: stocked.map((line) => line.productId),
+      purchaseOrderId: order.id,
+      vendorId: order.vendorId,
+      quantity: stocked.reduce((sum, line) => sum + line.quantity, 0),
+    })
     await guardWorkflow(tx, {
       companyId,
       model: 'purchase.order',
@@ -224,6 +232,7 @@ export async function confirmPurchase(companyId: number, orderId: number) {
 }
 
 export async function receivePurchase(companyId: number, orderId: number, input: ReceivePurchaseInput) {
+  await prepareQualityChecks(companyId, { trigger: 'receipt', productIds: [], purchaseOrderId: orderId })
   return prisma.$transaction(async (tx) => {
     const order = await tx.purchaseOrder.findFirst({
       where: { id: orderId, companyId },
@@ -233,6 +242,7 @@ export async function receivePurchase(companyId: number, orderId: number, input:
     if (order.state !== 'purchase') {
       throw new AppError(409, 'Confirm the purchase before receiving it.')
     }
+    await assertQualityClear(tx, companyId, { trigger: 'receipt', productIds: [], purchaseOrderId: order.id })
 
     const pending = order.moves.filter((move) => move.state === 'draft')
     if (pending.length === 0) {

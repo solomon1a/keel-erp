@@ -2,6 +2,7 @@ import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { OrderInput } from '../../shared/schemas.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { assertQualityClear, ensureQualityChecks, prepareQualityChecks } from './quality.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty } from './stock.ts'
 import { assertCreditLimit, recordDelivery } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
@@ -252,6 +253,12 @@ export async function confirmOrder(companyId: number, orderId: number) {
       })
     }
 
+    await ensureQualityChecks(tx, companyId, {
+      trigger: 'delivery',
+      productIds: stocked.map((line) => line.productId),
+      salesOrderId: order.id,
+      quantity: stocked.reduce((sum, line) => sum + line.quantity, 0),
+    })
     await guardWorkflow(tx, {
       companyId,
       model: 'sale.order',
@@ -269,6 +276,7 @@ export async function confirmOrder(companyId: number, orderId: number) {
 }
 
 export async function deliverOrder(companyId: number, orderId: number) {
+  await prepareQualityChecks(companyId, { trigger: 'delivery', productIds: [], salesOrderId: orderId })
   return prisma.$transaction(async (tx) => {
     const order = await tx.salesOrder.findFirst({
       where: { id: orderId, companyId },
@@ -278,6 +286,7 @@ export async function deliverOrder(companyId: number, orderId: number) {
     if (order.state !== 'sale') {
       throw new AppError(409, 'Confirm the quotation before delivering it.')
     }
+    await assertQualityClear(tx, companyId, { trigger: 'delivery', productIds: [], salesOrderId: order.id })
     await guardWorkflow(tx, {
       companyId,
       model: 'sale.order',

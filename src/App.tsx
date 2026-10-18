@@ -26,6 +26,9 @@ import { BomPrintPage } from './pages/bom-print-page.tsx'
 import { BomsPage } from './pages/boms-page.tsx'
 import { InventoryPage } from './pages/inventory-page.tsx'
 import { RoutesPage } from './pages/routes-page.tsx'
+import { ProjectsPage } from './pages/projects-page.tsx'
+import { QualityPage } from './pages/quality-page.tsx'
+import { ReconcilePage } from './pages/reconcile-page.tsx'
 import { StatementsPage } from './pages/statements-page.tsx'
 import { ValuationPage } from './pages/valuation-page.tsx'
 import { MovesPage } from './pages/moves-page.tsx'
@@ -172,6 +175,11 @@ export default function App() {
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/settings/access" element={<AccessPage />} />
             <Route path="/accounting/statements" element={<StatementsPage />} />
+            <Route path="/accounting/statements/:id" element={<ReconcilePage />} />
+            <Route path="/quality/alerts" element={<QualityPage />} />
+            <Route path="/quality" element={<QualityPage />} />
+            <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:id" element={<ProjectsPage />} />
             <Route path="/inventory/valuation" element={<ValuationPage />} />
             <Route path="/inventory/routes" element={<RoutesPage />} />
           </Route>

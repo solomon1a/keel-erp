@@ -16,6 +16,7 @@ import { seedRichDemo } from './seed-rich.ts'
 import { forgetBooks } from '../server/services/accounting.ts'
 import { ensureDemoRates } from '../server/services/exchange-rates.ts'
 import { seedJiangbeiOperations } from './seed-operations.ts'
+import { seedPracticeDesk } from './seed-practice.ts'
 
 const prisma = new PrismaClient({ transactionOptions })
 
@@ -61,6 +62,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   await runStage('trade', () => seedTrade(client), failures)
   await runStage('floor', () => seedFloor(client), failures)
   await runStage('operations', () => seedJiangbeiOperations(client), failures)
+  await runStage('practice', () => seedPracticeDesk(client), failures)
   await runStage('rates', async () => {
     const companies = await client.company.findMany({ select: { id: true, currency: true } })
     for (const company of companies) await ensureDemoRates(client, company.id, company.currency)

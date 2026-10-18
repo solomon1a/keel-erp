@@ -170,7 +170,7 @@ export const appModules: AppModule[] = [
     description: 'mod.projects.desc',
     home: '/app/projects/projects',
     group: 'supply',
-    match: ['/app/projects'],
+    match: ['/app/projects', '/projects'],
     menu: moduleMenus.projects ?? [],
   },
   {
@@ -179,7 +179,7 @@ export const appModules: AppModule[] = [
     description: 'mod.quality.desc',
     home: '/app/quality/inspections',
     group: 'supply',
-    match: ['/app/quality'],
+    match: ['/app/quality', '/quality'],
     menu: moduleMenus.quality ?? [],
   },
   {

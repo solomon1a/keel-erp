@@ -4,7 +4,7 @@ import { requireAdmin, type AppEnv } from './auth.ts'
 import { prisma } from './db.ts'
 import { AppError } from './errors.ts'
 import { accessSnapshot, addRule, assertModelAccess, deleteRule, setGrant, setUserGroups } from './services/access.ts'
-import { getLockDates, importStatement, listStatements, reconcileLine, setLockDates, unreconcileLine } from './services/bank.ts'
+import { applyLine, createBankAccount, createRule, getLockDates, importMapped, importStatement, listBankAccounts, listRules, listStatements, parseMappedCsv, parseOfx, reconcileLine, setLockDates, statementDetail, unreconcileLine, type ColumnMapping } from './services/bank.ts'
 import { countStock } from './services/orders.ts'
 import { landedCost, listStockLedger, listValuation, setCostMethod } from './services/valuation.ts'
 
@@ -153,6 +153,49 @@ export function registerCoreRoutes(app: Hono<AppEnv>) {
     return c.json(row, 201)
   })
 
+  app.get('/api/bank/accounts', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'read')
+    return c.json(await listBankAccounts(user.companyId))
+  })
+
+  app.post('/api/bank/accounts', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'create')
+    const body = await c.req.json() as { name?: string; accountCode?: string; currency?: string }
+    if (!text(body.name)) throw new AppError(400, 'Name the bank account.')
+    return c.json(await createBankAccount(user.companyId, text(body.name), text(body.accountCode) || '1002', text(body.currency)), 201)
+  })
+
+  app.get('/api/bank/rules', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'read')
+    return c.json(await listRules(user.companyId))
+  })
+
+  app.post('/api/bank/rules', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'create')
+    const body = await c.req.json() as { name?: string; matchText?: string; action?: string; accountCode?: string }
+    if (!text(body.name) || !text(body.matchText) || !body.action || !text(body.accountCode)) {
+      throw new AppError(400, 'Name the rule, the text it looks for, and the account to post.')
+    }
+    return c.json(await createRule(user.companyId, {
+      name: text(body.name),
+      matchText: text(body.matchText),
+      action: body.action,
+      accountCode: text(body.accountCode),
+    }), 201)
+  })
+
+  app.post('/api/bank/preview', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'read')
+    const body = await c.req.json() as { csv?: string; ofx?: string; mapping?: ColumnMapping }
+    const lines = body.ofx ? parseOfx(body.ofx) : parseMappedCsv(body.csv ?? '', body.mapping ?? { date: 'date', description: 'description', amount: 'amount', reference: 'reference' })
+    return c.json({ lines: lines.map((line) => ({ ...line, lineDate: line.lineDate.toISOString() })) })
+  })
+
   app.get('/api/bank/statements', async (c) => {
     const user = c.get('user')
     await assertModelAccess(user, 'bank.statement', 'read')
@@ -162,10 +205,19 @@ export function registerCoreRoutes(app: Hono<AppEnv>) {
   app.post('/api/bank/statements', async (c) => {
     const user = c.get('user')
     await assertModelAccess(user, 'bank.statement', 'create')
-    const body = await c.req.json() as { name?: string; csv?: string }
+    const body = await c.req.json() as { name?: string; csv?: string; ofx?: string; mapping?: ColumnMapping; bankAccountId?: number | null; openingBalance?: number }
     const name = text(body.name)
-    if (!name || !text(body.csv)) throw new AppError(400, 'Name the statement and paste the lines.')
+    if (!name || (!text(body.csv) && !text(body.ofx))) throw new AppError(400, 'Name the statement and paste the lines.')
+    if (body.mapping || body.ofx || body.bankAccountId) {
+      return c.json(await importMapped(user.companyId, name, body), 201)
+    }
     return c.json(await importStatement(user.companyId, name, body.csv ?? ''), 201)
+  })
+
+  app.get('/api/bank/statements/:id', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'read')
+    return c.json(await statementDetail(user.companyId, Number(c.req.param('id'))))
   })
 
   app.post('/api/bank/lines/:id/reconcile', async (c) => {
@@ -174,6 +226,14 @@ export function registerCoreRoutes(app: Hono<AppEnv>) {
     const body = await c.req.json() as { invoiceId?: number; amount?: number }
     if (!body.invoiceId || body.amount == null) throw new AppError(400, 'Choose an invoice and an amount.')
     return c.json(await reconcileLine(user.companyId, Number(c.req.param('id')), body.invoiceId, body.amount))
+  })
+
+  app.post('/api/bank/lines/:id/apply', async (c) => {
+    const user = c.get('user')
+    await assertModelAccess(user, 'bank.statement', 'write')
+    const body = await c.req.json() as { kind?: 'invoice' | 'payment' | 'rule'; invoiceId?: number; amount?: number; action?: string; accountCode?: string }
+    if (!body.kind) throw new AppError(400, 'Choose how to clear this line.')
+    return c.json(await applyLine(user.companyId, Number(c.req.param('id')), { ...body, kind: body.kind }))
   })
 
   app.post('/api/bank/lines/:id/unreconcile', async (c) => {
