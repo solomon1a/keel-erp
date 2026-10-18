@@ -417,7 +417,7 @@ export function HomePage() {
   const hour = new Date().getHours()
 
   return (
-    <div className="keel-home mx-auto max-w-[1440px]">
+    <div className="keel-home">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="min-w-0">
           <h1 className="text-[28px] font-bold tracking-tight text-foreground">

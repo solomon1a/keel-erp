@@ -397,7 +397,7 @@ export function Shell() {
           </nav>
         ) : null}
       </header>
-      <main className="keel-page mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+      <main className="keel-page mx-auto max-w-[1600px] px-4 py-6 md:px-6 md:py-8 lg:px-8">
         {mod ? (
           <nav className="keel-crumbs" aria-label={t(mod.label)}>
             <Link to="/">{t('shell.apps')}</Link>

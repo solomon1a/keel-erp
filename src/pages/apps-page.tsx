@@ -23,7 +23,7 @@ export function AppsPage() {
   const modules = launcherModules()
 
   return (
-    <div className="mx-auto max-w-5xl py-6 md:py-10">
+    <div className="py-6 md:py-10">
       <div className="mb-10 text-center">
         <h1 className="keel-greeting">{name ? t(greetingKey(hour), { name }) : t('apps.title')}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -31,7 +31,7 @@ export function AppsPage() {
         </p>
       </div>
       <DemoLaunch place="launcher" />
-      <div className="keel-glass mx-auto grid max-w-[960px] grid-cols-3 justify-items-center gap-x-3 gap-y-8 rounded-[32px] px-4 py-8 sm:grid-cols-4 sm:px-8 lg:grid-cols-5">
+      <div className="keel-glass keel-launcher mx-auto max-w-[1280px] rounded-[32px] px-4 py-8 sm:px-8">
         {modules.map((mod) => (
           <LauncherTile key={mod.id} to={workspaceFor(mod.id) ? `/go/${mod.id}` : mod.home} label={t(mod.label)} icon={moduleIconId(mod.id)} accent={moduleAccent(mod.id)} />
         ))}

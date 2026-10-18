@@ -93,7 +93,8 @@ button, input, select, textarea {
   -webkit-backdrop-filter: blur(var(--kl-glass-blur)) saturate(1.35);
 }
 
-.keel-menu {
+.keel-menu,
+.keel-side {
   background: var(--kl-color-semantic-surface);
   color: var(--kl-color-semantic-text);
   border: 1px solid var(--kl-color-semantic-border);
@@ -101,6 +102,24 @@ button, input, select, textarea {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   opacity: 1;
+}
+
+.keel-side {
+  box-shadow: var(--kl-shadow-sm);
+}
+
+.keel-card-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+
+.keel-launcher {
+  display: grid;
+  justify-items: center;
+  column-gap: 12px;
+  row-gap: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
 }
 
 .keel-tour-card {
@@ -165,12 +184,10 @@ header.keel-glass {
 
 .keel-chip-block {
   width: 100%;
-  height: auto;
-  min-height: 36px;
+  height: 36px;
   justify-content: flex-start;
-  white-space: normal;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  overflow: hidden;
+  white-space: nowrap;
   text-align: left;
 }
 
