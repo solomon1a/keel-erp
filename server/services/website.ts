@@ -209,6 +209,24 @@ export async function submitContact(slug: string, input: { name: string; email: 
   return { id: submission.id, leadId: lead.id }
 }
 
+export async function publishedSlugs() {
+  const rows = await prisma.company.findMany({
+    where: { slug: { not: null }, sitePages: { some: { state: 'published' } } },
+    select: { slug: true },
+    orderBy: { slug: 'asc' },
+  })
+  return rows.flatMap((row) => (row.slug ? [row.slug] : []))
+}
+
+export function sitemapIndexXml(origin: string, slugs: string[]) {
+  const body = slugs.map((slug) => `<sitemap><loc>${origin}/site/${slug}/sitemap.xml</loc></sitemap>`).join('')
+  return `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${body}</sitemapindex>`
+}
+
+export function robotsIndexTxt(origin: string) {
+  return `User-agent: *\nAllow: /site/\nSitemap: ${origin}/sitemap.xml\n`
+}
+
 export function sitemapXml(origin: string, slug: string, pages: Array<{ slug: string }>, posts: Array<{ slug: string }>) {
   const urls = [
     `${origin}/site/${slug}`,
