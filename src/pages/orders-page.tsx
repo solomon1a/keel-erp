@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { PageHeader, TableFrame, Toolbar } from '../components/surface.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
+import { Input } from '../components/ui/input.tsx'
 import { orderStateLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
@@ -27,6 +29,7 @@ export function OrdersPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const state = params.get('state') ?? 'all'
+  const [q, setQ] = useState('')
   const orders = useQuery({
     queryKey: ['orders', state],
     queryFn: () => api<SalesOrder[]>(`/api/orders?state=${state}`),
@@ -37,11 +40,17 @@ export function OrdersPage() {
     else next.set('state', value)
     setParams(next)
   }
+  const needle = q.trim().toLowerCase()
+  const shown = (orders.data ?? []).filter((order) => {
+    if (!needle) return true
+    return `${order.name} ${order.customer.name}`.toLowerCase().includes(needle)
+  })
 
   return (
     <div className="grid gap-5">
       <PageHeader title={t('orders.title')} lead={t('orders.lead')} actions={<Link to="/orders/new"><Button>{t('orders.new')}</Button></Link>} />
       <Toolbar>
+        <Input className="w-full sm:w-56" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
         {filters.map(([value, label]) => (
           <Button key={value} size="sm" variant={state === value ? 'secondary' : 'outline'} onClick={() => setState(value)}>
             {t(label)}
@@ -53,7 +62,10 @@ export function OrdersPage() {
       {orders.data && orders.data.length === 0 ? (
         <EmptyState title={t('orders.emptyTitle')} body={t('orders.emptyBody')} action={{ to: '/orders/new', label: t('orders.new') }} />
       ) : null}
-      <TableFrame>
+      {orders.data && orders.data.length > 0 && shown.length === 0 ? (
+        <EmptyState title={t('desk.emptyTitle')} body={t('desk.emptyBody')} />
+      ) : null}
+      {shown.length > 0 ? <TableFrame>
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-muted-foreground">
             <tr>
@@ -65,7 +77,7 @@ export function OrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders.data?.map((order) => (
+            {shown.map((order) => (
               <tr key={order.id} className="record-row border-b border-border last:border-0" onClick={() => navigate(`/orders/${order.id}`)}>
                 <td className="px-4 py-3">
                   <Link className="font-semibold hover:underline" to={`/orders/${order.id}`}>{order.name}</Link>
@@ -79,7 +91,7 @@ export function OrdersPage() {
             ))}
           </tbody>
         </table>
-      </TableFrame>
+      </TableFrame> : null}
     </div>
   )
 }

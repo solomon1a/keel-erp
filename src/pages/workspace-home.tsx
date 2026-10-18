@@ -389,6 +389,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
         </nav>
       </aside>
       <div className="min-w-0">
+        <h1 className="mb-4 text-[28px] font-bold tracking-tight">{t(mod.label)}</h1>
         <section>
           <h2 className="text-lg font-semibold tracking-tight">{t('ws.shortcuts')}</h2>
           <div className="keel-glass mt-3 rounded-[28px] p-4 sm:p-5">

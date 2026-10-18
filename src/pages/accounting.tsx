@@ -338,7 +338,7 @@ export function ReportsPage() {
       balance: { assets: number; liabilities: number; equity: number; accounts: Array<{ code: string; name: string; amount: number }> }
       vat: { output: number; input: number; payable: number }
       aging: { receivable: { current: number; d30: number; d60: number; older: number; total: number } }
-    }>('/api/reports/pack?asOf=2026-10-16'),
+    }>('/api/reports/pack'),
   })
   if (pack.isLoading) return <p className="text-sm text-muted-foreground">{t('acct.loading')}</p>
   const pnl = { data: pack.data?.pnl }
