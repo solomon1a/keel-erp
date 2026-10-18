@@ -1,4 +1,4 @@
-import type { Hono } from 'hono'
+import type { Context, Hono } from 'hono'
 import { type AppEnv, readSessionToken, requireAdmin, userFromToken } from './auth.ts'
 import { prisma } from './db.ts'
 import { requestOrigin } from './invite-routes.ts'
@@ -24,12 +24,15 @@ import {
   publicSite,
   publishPage,
   publishPost,
+  publishedSlugs,
   reorderPages,
+  robotsIndexTxt,
   robotsTxt,
   saveMenu,
   savePage,
   savePost,
   saveTheme,
+  sitemapIndexXml,
   sitemapXml,
   submitContact,
 } from './services/website.ts'
@@ -44,6 +47,23 @@ function publishState(value: string) {
     default:
       throw new AppError(400, 'Choose draft or published.')
   }
+}
+
+function siteSlug(c: Context<AppEnv>) {
+  const slug = c.req.param('slug')
+  if (!slug) throw new AppError(404, 'That website is not published.')
+  return slug
+}
+
+async function companySitemap(c: Context<AppEnv>) {
+  const slug = siteSlug(c)
+  const site = await publicSite(slug, false)
+  const xml = sitemapXml(requestOrigin(c), slug, site.pages, site.posts)
+  return c.body(xml, 200, { 'content-type': 'application/xml; charset=utf-8' })
+}
+
+function companyRobots(c: Context<AppEnv>) {
+  return c.body(robotsTxt(requestOrigin(c), siteSlug(c)), 200, { 'content-type': 'text/plain; charset=utf-8' })
 }
 
 export function registerReachRoutes(app: Hono<AppEnv>) {
@@ -106,14 +126,17 @@ export function registerReachRoutes(app: Hono<AppEnv>) {
     return c.json(await publishPost(c.get('user').companyId, Number(c.req.param('id')), publishState(String(body.state ?? ''))))
   })
 
-  app.get('/api/site/:slug/sitemap.xml', async (c) => {
-    const site = await publicSite(c.req.param('slug'), false)
-    const xml = sitemapXml(requestOrigin(c), c.req.param('slug'), site.pages, site.posts)
+  app.get('/sitemap.xml', async (c) => {
+    const xml = sitemapIndexXml(requestOrigin(c), await publishedSlugs())
     return c.body(xml, 200, { 'content-type': 'application/xml; charset=utf-8' })
   })
-  app.get('/api/site/:slug/robots.txt', async (c) => {
-    return c.body(robotsTxt(requestOrigin(c), c.req.param('slug')), 200, { 'content-type': 'text/plain; charset=utf-8' })
+  app.get('/robots.txt', async (c) => {
+    return c.body(robotsIndexTxt(requestOrigin(c)), 200, { 'content-type': 'text/plain; charset=utf-8' })
   })
+  app.get('/site/:slug/sitemap.xml', (c) => companySitemap(c))
+  app.get('/site/:slug/robots.txt', (c) => companyRobots(c))
+  app.get('/api/site/:slug/sitemap.xml', (c) => companySitemap(c))
+  app.get('/api/site/:slug/robots.txt', (c) => companyRobots(c))
   app.get('/api/site/:slug', async (c) => {
     const preview = c.req.query('preview') === '1'
     if (preview) {

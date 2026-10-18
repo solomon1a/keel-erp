@@ -34,6 +34,49 @@ describe('vercel function', () => {
     expect(floorAt).toBeGreaterThan(tradeAt)
   })
 
+  it('sends crawl files to the /api function and keeps the original path', async () => {
+    const config = JSON.parse(readFileSync('vercel.json', 'utf8')) as {
+      rewrites: Array<{ source: string; destination: string }>
+    }
+    const rewrites = config.rewrites
+    const spa = rewrites.findIndex((rule) => rule.destination === '/index.html')
+    const expected = [
+      { source: '/site/:slug/sitemap.xml', destination: '/api' },
+      { source: '/site/:slug/robots.txt', destination: '/api' },
+      { source: '/sitemap.xml', destination: '/api' },
+      { source: '/robots.txt', destination: '/api' },
+    ]
+    for (const rule of expected) {
+      const index = rewrites.findIndex((item) => item.source === rule.source)
+      expect(rewrites[index], rule.source).toEqual(rule)
+      expect(index, rule.source).toBeGreaterThan(-1)
+      expect(index, rule.source).toBeLessThan(spa)
+    }
+    expect(rewrites.some((rule) => rule.destination.includes('/api/site/'))).toBe(false)
+
+    const headers = { 'x-forwarded-host': 'keel.example', 'x-forwarded-proto': 'https' }
+    const sitemap = await handler(new Request('https://keel.example/site/jiangbei/sitemap.xml', { headers }))
+    expect(sitemap.status).toBe(200)
+    expect(sitemap.headers.get('content-type')).toContain('xml')
+    const xml = await sitemap.text()
+    expect(xml).toContain('https://keel.example/site/jiangbei')
+    expect(xml).not.toContain('<html')
+
+    const robots = await handler(new Request('https://keel.example/site/jiangbei/robots.txt', { headers }))
+    expect(robots.status).toBe(200)
+    expect(robots.headers.get('content-type')).toContain('text/plain')
+    expect(await robots.text()).toContain('Sitemap: https://keel.example/site/jiangbei/sitemap.xml')
+
+    const index = await handler(new Request('https://keel.example/sitemap.xml', { headers }))
+    expect(index.status).toBe(200)
+    const indexXml = await index.text()
+    expect(indexXml).toContain('<sitemapindex')
+    expect(indexXml).toContain('https://keel.example/site/jiangbei/sitemap.xml')
+    const rootRobots = await handler(new Request('https://keel.example/robots.txt', { headers }))
+    expect(rootRobots.status).toBe(200)
+    expect(await rootRobots.text()).toContain('Sitemap: https://keel.example/sitemap.xml')
+  })
+
   it('serves health on the original /api path', async () => {
     const response = await handler(new Request('https://keel.example/api/health'))
     expect(response.status).toBe(200)
