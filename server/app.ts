@@ -58,7 +58,10 @@ import { registerTradeRoutes } from './trade-routes.ts'
 import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
 import { registerCoreRoutes } from './core-routes.ts'
+import { registerAssetRoutes } from './asset-routes.ts'
 import { registerHomeRoutes } from './home-routes.ts'
+import { registerInviteRoutes } from './invite-routes.ts'
+import { registerSubcontractRoutes } from './subcontract-routes.ts'
 import { registerDeskRoutes } from './desk-routes.ts'
 import { registerPayrollRoutes } from './payroll-routes.ts'
 import { registerShopRoutes } from './shop-routes.ts'
@@ -165,6 +168,8 @@ function isPublicApi(method: string, path: string) {
   if (method === 'GET' && path === '/api/health') return true
   if (method === 'POST' && path === '/api/session/login') return true
   if (method === 'POST' && path === '/api/signup') return true
+  if (method === 'POST' && path === '/api/invites/accept') return true
+  if (method === 'GET' && /^\/api\/invites\/[^/]+$/.test(path)) return true
   return path === '/api/shop' || path.startsWith('/api/shop/')
 }
 
@@ -1143,6 +1148,9 @@ export function createApp() {
   registerDeskRoutes(app)
   registerCoreRoutes(app)
   registerHomeRoutes(app)
+  registerAssetRoutes(app)
+  registerSubcontractRoutes(app)
+  registerInviteRoutes(app)
 
   return app
 }

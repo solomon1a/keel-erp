@@ -7,6 +7,9 @@ import { LocaleProvider } from './i18n/locale.tsx'
 import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
 import { AccessPage } from './pages/access-page.tsx'
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
+import { AssetsPage } from './pages/assets-page.tsx'
+import { InvitePage } from './pages/invite-page.tsx'
+import { SubcontractPage } from './pages/subcontract-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
@@ -83,6 +86,7 @@ export default function App() {
       <ToastProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/start" element={<StartPage />} />
           <Route path="/shop" element={<ShopCatalogPage />} />
@@ -160,6 +164,10 @@ export default function App() {
             <Route path="/inventory/warehouses/:id/edit" element={<WarehouseFormPage />} />
             <Route path="/inventory/warehouses/:id" element={<WarehouseDetailPage />} />
             <Route path="/account/password" element={<PasswordPage />} />
+            <Route path="/assets" element={<AssetsPage />} />
+            <Route path="/assets/:id" element={<AssetsPage />} />
+            <Route path="/subcontracting" element={<SubcontractPage />} />
+            <Route path="/subcontracting/:id" element={<SubcontractPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/settings/access" element={<AccessPage />} />

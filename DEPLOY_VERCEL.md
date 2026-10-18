@@ -90,6 +90,15 @@ Set these on the Vercel project for Production:
 | `DATABASE_URL` | yes | Neon pooled URL, with `sslmode=require`, `pgbouncer=true`, and `connection_limit=1` |
 | `DATABASE_URL_UNPOOLED` | yes | Neon direct URL, `sslmode=require`, no pooler |
 | `SESSION_SECRET` | yes | At least 16 characters. Generate with `openssl rand -base64 32`. Do not reuse `keel-dev-session-secret-change-me` |
+| `RESEND_API_KEY` | for email | Resend API key. With `MAIL_FROM`, People invites are emailed. |
+| `MAIL_FROM` | with a mailer | From address, for example `Keel <invites@your-domain>`. Required when `RESEND_API_KEY` or `SMTP_HOST` is set. |
+| `SMTP_HOST` | alternate mailer | SMTP server. Used only when `RESEND_API_KEY` is empty. |
+| `SMTP_PORT` | with SMTP | Usually `587` (STARTTLS) or `465`. |
+| `SMTP_USER` | with SMTP | SMTP username. |
+| `SMTP_PASS` | with SMTP | SMTP password. |
+| `APP_ORIGIN` | optional | Public site origin used in the invite link when the request has no host. Vercel sends the host, so this can stay empty. |
+
+Without `RESEND_API_KEY` and without `SMTP_HOST`, an admin still gets the invite link on screen and the server logs it. No email is sent.
 
 `NODE_ENV` and `VERCEL` are set by Vercel. Do not add a `PORT`. Changing `SESSION_SECRET` later signs everyone out.
 

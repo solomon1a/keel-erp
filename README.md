@@ -31,7 +31,7 @@ Sign in with email and password. The session is an httpOnly cookie, and it is ma
 | Hudson Yard Goods | Jordan Hale | admin | jordan@hudsonyard.example | keel-jordan-desk |
 | Hudson Yard Goods shop | Sam Ortiz | shop | sam@hudsonyard.example | keel-sam-shop |
 
-August, Amira, and Jordan are admins and can add people or reset passwords inside their own company. Anyone signed in can change their own password. The public shop at `/shop` is Jiangbei Goods Co. Staff includes payroll and expenses. Deduction rules are a labelled demo approximation for China, the UK, and New York.
+August, Amira, and Jordan are admins and can add people, invite by email, or reset passwords inside their own company. An invite link lets the person set a name and password and join that company. If `RESEND_API_KEY` and `MAIL_FROM` are set, Keel sends the link through Resend. Otherwise `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` send it by SMTP. With neither, the admin copies the link from the People screen. Anyone signed in can change their own password. The public shop at `/shop` is Jiangbei Goods Co. Staff includes payroll and expenses. Deduction rules are a labelled demo approximation for China, the UK, and New York. Jiangbei also has two depreciating assets and a partial dye subcontract with Suhang Weaving.
 
 To wipe the database in `DATABASE_URL_UNPOOLED` and load the sample companies again:
 
@@ -69,7 +69,7 @@ npm test
 
 ## What this slice leaves out
 
-Email delivery, a generated PDF file, Golden Tax / e-fapiao submission, multi-level manufacturing routes, more than one currency at once, and a live card or wallet gateway. Lot and serial numbers are recorded on the stock move; quantities are not split by lot. WeChat Pay and Alipay on the register are payment methods on the sale, not connections to those networks. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The app stores data in Postgres. Local setup is in [RUN_LOCAL.md](RUN_LOCAL.md), and the Vercel demo is in [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
+A generated PDF file, Golden Tax / e-fapiao submission, multi-level manufacturing routes, more than one currency at once, and a live card or wallet gateway. Lot and serial numbers are recorded on the stock move; quantities are not split by lot. WeChat Pay and Alipay on the register are payment methods on the sale, not connections to those networks. Roles are stored and checked for the people screen and for confirming a purchase or a manufacturing order; later modules can read the same `admin` or `user` value. The app stores data in Postgres. Local setup is in [RUN_LOCAL.md](RUN_LOCAL.md), and the Vercel demo is in [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
 
 ## REA
 
