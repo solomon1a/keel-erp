@@ -698,17 +698,19 @@ select option {
 .home-kpi-value { font-size: clamp(16px, 8cqi, 22px); }
 .home-kpi.keel-glass {
   background-color: var(--kl-glass-bg);
-  background-image:
-    radial-gradient(150px 120px at 8% 0%, color-mix(in srgb, var(--c, #0e6b5c) 32%, transparent), transparent 72%),
-    radial-gradient(180px 140px at 100% 110%, color-mix(in srgb, var(--c, #0e6b5c) 14%, transparent), transparent 70%);
+  background-image: radial-gradient(
+    ellipse 100% 100% at 0% 0%,
+    color-mix(in srgb, var(--c, #0e6b5c) 12%, var(--kl-glass-bg)),
+    var(--kl-glass-bg) 70%
+  );
 }
 .home-bank { order: 2; }
 .home-chart { order: 3; }
-.home-attention { order: 4; }
+.home-apps { order: 4; }
 .home-pipeline { order: 5; }
-.home-stock { order: 6; }
+.home-attention { order: 6; }
 .home-orders { order: 7; }
-.home-apps { order: 8; }
+.home-stock { order: 8; }
 
 .home-primary,
 .home-secondary {
@@ -828,9 +830,11 @@ select option {
   color: color-mix(in srgb, var(--c) 55%, white);
 }
 [data-theme='dark'] .home-kpi.keel-glass {
-  background-image:
-    radial-gradient(160px 130px at 8% 0%, color-mix(in srgb, var(--c, #7ddec8) 42%, transparent), transparent 70%),
-    radial-gradient(200px 150px at 100% 110%, color-mix(in srgb, var(--c, #7ddec8) 18%, transparent), transparent 72%);
+  background-image: radial-gradient(
+    ellipse 100% 100% at 0% 0%,
+    color-mix(in srgb, var(--c, #7ddec8) 16%, var(--kl-glass-bg)),
+    var(--kl-glass-bg) 70%
+  );
 }
 [data-theme='dark'] .home-tab[aria-selected='true'] {
   background: rgba(255, 255, 255, 0.16);
@@ -846,9 +850,9 @@ select option {
     grid-template-areas:
       'kpis kpis'
       'bank bank'
-      'chart attention'
-      'pipeline stock'
-      'orders apps';
+      'chart apps'
+      'pipeline attention'
+      'orders stock';
   }
 
   .home-kpis { grid-area: kpis; }

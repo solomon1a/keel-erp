@@ -2,7 +2,9 @@
 
 ## Dashboard two-column mock
 
-The overview keeps four KPI cards, drawn a little shorter, each with a soft radial tint in that card's colour. Revenue versus expenses takes two thirds of the next row, with Needs your attention on the right. The sales pipeline takes two thirds of the row under that, with low stock beside it. Recent orders and app shortcuts follow the same split. Below 1100px the rows stack into one column. This is a mock on `dashboard-2col-mock` for review.
+The overview keeps four KPI cards, drawn a little shorter. Each card has a very light radial tint, about the strength of an app icon, fading out across roughly seventy percent of the card. Revenue versus expenses takes two thirds of the next row, with app shortcuts on the right. The sales pipeline takes two thirds of the row under that, with Needs your attention beside it. Recent orders and low stock follow the same split. Below 1100px the rows stack into one column.
+
+English on this page shows PKR. The figures are the CNY ledger multiplied by a demo rate of 39, and a small line says so. Chinese shows the ledger in CNY. Nothing is rewritten in the database. This is a mock on `dashboard-2col-mock` for review.
 
 ## Desktop layout
 
