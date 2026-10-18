@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ExportButton } from '../components/export-button.tsx'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -52,7 +53,8 @@ export function PurchasesPage() {
           <h1 className="font-serif text-4xl tracking-tight">{t('purchases.title')}</h1>
           <p className="mt-1 text-muted-foreground">{t('purchases.lead')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ExportButton kind="purchase-orders" />
           <Link to="/vendors"><Button variant="outline">{t('purchases.vendors')}</Button></Link>
           <Link to="/purchases/new"><Button>{t('purchases.new')}</Button></Link>
         </div>

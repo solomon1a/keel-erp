@@ -4,6 +4,7 @@ import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import type { SessionUser } from '../auth.ts'
 import { applyQuant, companyLocations, onHand, roundQty, warehouseStockLocation } from './stock.ts'
+import { resolvePrice } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
 
 const orderInclude = {
@@ -183,32 +184,41 @@ export async function posCatalog(companyId: number, warehouseId: number) {
   return snapshot
 }
 
-async function pricedLines(tx: Tx, companyId: number, lines: PosOrderInput['lines'], taxRate: number) {
+async function pricedLines(tx: Tx, companyId: number, lines: PosOrderInput['lines'], taxRate: number, customerId: number | null) {
   const products = await tx.product.findMany({
     where: { companyId, id: { in: lines.map((line) => line.productId) } },
   })
   const byId = new Map(products.map((product) => [product.id, product]))
-  return lines.map((line) => {
+  const priced = []
+  for (const line of lines) {
     const product = byId.get(line.productId)
     if (!product || product.type !== 'product' || !product.active) {
       throw new AppError(400, 'Choose a product that is still for sale.')
     }
+    const quote = await resolvePrice(companyId, {
+      side: 'sales',
+      productId: product.id,
+      quantity: line.quantity,
+      customerId,
+    })
+    const discount = line.discount && line.discount > 0 ? line.discount : quote.discount
     const amounts = lineAmounts({
       quantity: line.quantity,
-      unitPrice: product.listPrice,
-      discount: line.discount ?? 0,
+      unitPrice: quote.unitPrice,
+      discount,
       taxRate,
     })
-    return {
+    priced.push({
       product,
       quantity: roundQty(line.quantity),
-      unitPrice: product.listPrice,
-      discount: line.discount ?? 0,
+      unitPrice: quote.unitPrice,
+      discount,
       taxRate,
       description: product.name,
       ...amounts,
-    }
-  })
+    })
+  }
+  return priced
 }
 
 export async function createPosOrder(companyId: number, userId: number, input: PosOrderInput) {
@@ -221,12 +231,8 @@ export async function createPosOrder(companyId: number, userId: number, input: P
       if (!customer) throw new AppError(400, 'Choose a customer.')
     }
     const company = await tx.company.findUniqueOrThrow({ where: { id: companyId } })
-    const priced = await pricedLines(tx, companyId, input.lines, company.defaultTaxRate)
+    const priced = await pricedLines(tx, companyId, input.lines, company.defaultTaxRate, input.customerId ?? null)
     const totals = sumLines(priced)
-    const paid = roundMoney(input.payments.reduce((sum, payment) => sum + payment.amount, 0))
-    if (!moneyMatches(paid, totals.amountTotal)) {
-      throw new AppError(400, 'Payments must equal the total.')
-    }
     const { location } = await warehouseStockLocation(tx, companyId, session.warehouseId)
     const { customer } = await companyLocations(tx, companyId)
     const needed = new Map<number, { name: string; quantity: number }>()
@@ -242,6 +248,10 @@ export async function createPosOrder(companyId: number, userId: number, input: P
       if (available + 0.0001 < need.quantity) {
         throw new AppError(409, `${need.name} has ${available} on hand and this sale needs ${need.quantity}.`)
       }
+    }
+    const paid = roundMoney(input.payments.reduce((sum, payment) => sum + payment.amount, 0))
+    if (!moneyMatches(paid, totals.amountTotal)) {
+      throw new AppError(400, 'Payments must equal the total.')
     }
     const name = await nextName(tx, 'pos.order', 'POS')
     const order = await tx.posOrder.create({

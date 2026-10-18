@@ -96,6 +96,15 @@ model Company {
   sitePages      SitePage[]
   blogPosts      BlogPost[]
   siteSubmissions SiteSubmission[]
+  paymentTerms     PaymentTerm[]
+  followUpLevels   FollowUpLevel[]
+  companyTaxes     CompanyTax[]
+  taxGroups        TaxGroup[]
+  fiscalPositions  FiscalPosition[]
+  recurringInvoices RecurringInvoice[]
+  mailLogs         MailLog[]
+  fileBlobs        FileBlob[]
+  documentTaxes    DocumentTax[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -207,6 +216,15 @@ model Contact {
   qualityChecks  QualityCheck[]  @relation("QualityVendor")
   qualityAlerts  QualityAlert[]  @relation("AlertVendor")
   projects       Project[]
+  salePriceListId Int?
+  salePriceList   PriceList? @relation("SaleList", fields: [salePriceListId], references: [id])
+  purchasePriceListId Int?
+  purchasePriceList   PriceList? @relation("BuyList", fields: [purchasePriceListId], references: [id])
+  paymentTermId Int?
+  paymentTerm   PaymentTerm? @relation(fields: [paymentTermId], references: [id])
+  fiscalPositionId Int?
+  fiscalPosition   FiscalPosition? @relation(fields: [fiscalPositionId], references: [id])
+  recurringInvoices RecurringInvoice[]
   createdAt      DateTime        @default(now())
   updatedAt   DateTime     @updatedAt
   createdById Int?
@@ -949,6 +967,13 @@ model Invoice {
   subcontractReceipts SubcontractReceipt[]
   projectId       Int?
   project         Project?         @relation(fields: [projectId], references: [id])
+  dueDate         DateTime?
+  paymentTermId   Int?
+  paymentTerm     PaymentTerm?     @relation(fields: [paymentTermId], references: [id])
+  recurringId     Int?
+  recurring       RecurringInvoice? @relation(fields: [recurringId], references: [id])
+  instalments     InvoiceInstalment[]
+  followUps       FollowUpLog[]
   timesheets      Timesheet[]
   milestones      ProjectMilestone[]
   createdAt       DateTime         @default(now())
@@ -1506,7 +1531,11 @@ model PriceList {
   companyId Int
   company   Company         @relation(fields: [companyId], references: [id])
   name      String
+  /// sales or purchase
+  side      String          @default("sales")
   items     PriceListItem[]
+  saleContacts Contact[] @relation("SaleList")
+  buyContacts  Contact[] @relation("BuyList")
 
   @@unique([companyId, name])
 }
@@ -2245,4 +2274,203 @@ model SiteSubmission {
   createdAt DateTime @default(now())
 
   @@index([companyId, createdAt])
+}
+
+model PaymentTerm {
+  id        Int               @id @default(autoincrement())
+  companyId Int
+  company   Company           @relation(fields: [companyId], references: [id])
+  name      String
+  lines     PaymentTermLine[]
+  contacts  Contact[]
+  invoices  Invoice[]
+
+  @@unique([companyId, name])
+}
+
+model PaymentTermLine {
+  id       Int         @id @default(autoincrement())
+  termId   Int
+  term     PaymentTerm @relation(fields: [termId], references: [id], onDelete: Cascade)
+  sequence Int
+  /// Share of the invoice total, 0 to 100.
+  percent  Float
+  /// Days after the invoice date.
+  days     Int
+
+  @@unique([termId, sequence])
+}
+
+model InvoiceInstalment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  sequence  Int
+  dueDate   DateTime
+  amount    Float
+  percent   Float
+
+  @@unique([invoiceId, sequence])
+}
+
+model FollowUpLevel {
+  id          Int           @id @default(autoincrement())
+  companyId   Int
+  company     Company       @relation(fields: [companyId], references: [id])
+  name        String
+  daysOverdue Int
+  sequence    Int
+  logs        FollowUpLog[]
+
+  @@unique([companyId, name])
+}
+
+model FollowUpLog {
+  id        Int            @id @default(autoincrement())
+  companyId Int
+  invoiceId Int
+  invoice   Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  levelId   Int
+  level     FollowUpLevel  @relation(fields: [levelId], references: [id])
+  channel   String
+  sentAt    DateTime       @default(now())
+
+  @@unique([invoiceId, levelId])
+}
+
+model RecurringInvoice {
+  id          Int       @id @default(autoincrement())
+  companyId   Int
+  company     Company   @relation(fields: [companyId], references: [id])
+  partnerId   Int
+  partner     Contact   @relation(fields: [partnerId], references: [id])
+  name        String
+  intervalDays Int
+  nextDate    DateTime
+  active      Boolean   @default(true)
+  description String
+  quantity    Float
+  unitPrice   Float
+  taxRate     Float     @default(0)
+  invoices    Invoice[]
+
+  @@unique([companyId, name])
+}
+
+model CompanyTax {
+  id           Int                @id @default(autoincrement())
+  companyId    Int
+  company      Company            @relation(fields: [companyId], references: [id])
+  name         String
+  code         String
+  /// percent or fixed
+  kind         String
+  amount       Float
+  priceInclude Boolean            @default(false)
+  compound     Boolean            @default(false)
+  withholding  Boolean            @default(false)
+  sequence     Int                @default(0)
+  active       Boolean            @default(true)
+  groupLines   TaxGroupTax[]
+  mapsFrom     FiscalPositionMap[] @relation("MapFrom")
+  mapsTo       FiscalPositionMap[] @relation("MapTo")
+  documentTaxes DocumentTax[]
+
+  @@unique([companyId, code])
+}
+
+model TaxGroup {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id])
+  name      String
+  lines     TaxGroupTax[]
+
+  @@unique([companyId, name])
+}
+
+model TaxGroupTax {
+  id       Int        @id @default(autoincrement())
+  groupId  Int
+  group    TaxGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  taxId    Int
+  tax      CompanyTax @relation(fields: [taxId], references: [id])
+  sequence Int
+
+  @@unique([groupId, taxId])
+}
+
+model FiscalPosition {
+  id          Int                 @id @default(autoincrement())
+  companyId   Int
+  company     Company             @relation(fields: [companyId], references: [id])
+  name        String
+  /// ISO country code, or empty for any country.
+  countryCode String              @default("")
+  /// company, person, or empty for any partner.
+  partnerKind String              @default("")
+  maps        FiscalPositionMap[]
+  contacts    Contact[]
+
+  @@unique([companyId, name])
+}
+
+model FiscalPositionMap {
+  id            Int             @id @default(autoincrement())
+  positionId    Int
+  position      FiscalPosition  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  taxId         Int
+  tax           CompanyTax      @relation("MapFrom", fields: [taxId], references: [id])
+  /// Empty removes the tax. Otherwise the replacement tax.
+  replacementId Int?
+  replacement   CompanyTax?     @relation("MapTo", fields: [replacementId], references: [id])
+
+  @@unique([positionId, taxId])
+}
+
+model DocumentTax {
+  id        Int        @id @default(autoincrement())
+  companyId Int
+  company   Company    @relation(fields: [companyId], references: [id])
+  taxId     Int
+  tax       CompanyTax @relation(fields: [taxId], references: [id])
+  model     String
+  recordId  Int
+  base      Float
+  amount    Float
+  withheld  Boolean    @default(false)
+
+  @@index([companyId, taxId])
+  @@index([companyId, model, recordId])
+}
+
+model MailLog {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  model     String
+  recordId  Int
+  to        String
+  subject   String
+  body      String
+  channel   String
+  createdAt DateTime @default(now())
+
+  @@index([companyId, model, recordId])
+}
+
+model FileBlob {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  model     String
+  recordId  Int
+  name      String
+  mime      String
+  size      Int
+  bytes     Bytes?
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@index([companyId, model, recordId])
 }

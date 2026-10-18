@@ -573,6 +573,11 @@ export function findDeskScreen(module: string, screen: string) {
   return deskScreens.find((row) => row.module === module && row.screen === screen) ?? null
 }
 
+/** Generic desk lists and fixed-number reports. They are sample rows, not the books. */
+export function sampleScreens() {
+  return deskScreens.filter((screen) => screen.kind === 'list' || screen.kind === 'report')
+}
+
 export function settingsScreen(module: string) {
   return deskScreens.find((row) => row.module === module && row.kind === 'settings') ?? null
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { CommercialPanel } from '../components/commercial-panel.tsx'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -208,6 +209,15 @@ export function ContactFormPage() {
       </form>
       {contact.data ? (
         <aside className="grid content-start gap-4">
+          <CommercialPanel
+            contactId={contact.data.id}
+            assigned={{
+              salePriceListId: contact.data.salePriceListId ?? null,
+              purchasePriceListId: contact.data.purchasePriceListId ?? null,
+              paymentTermId: contact.data.paymentTermId ?? null,
+              fiscalPositionId: contact.data.fiscalPositionId ?? null,
+            }}
+          />
           <div className="rounded-lg border border-border bg-card p-4 text-sm">
             <p className="font-semibold">{t('contact.record')}</p>
             <p className="mt-2 text-muted-foreground">

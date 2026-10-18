@@ -4,6 +4,7 @@ import type { ShopCheckoutInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { applyQuant, companyLocations, onHand, roundQty, warehouseStockLocation } from './stock.ts'
+import { resolvePrice } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
 
 const orderInclude = {
@@ -118,6 +119,21 @@ async function customerContact(
   })
 }
 
+export async function shopPrice(productId: number, quantity: number, shopCustomerId: number | null) {
+  const company = await prisma.company.findFirst({ orderBy: { id: 'asc' } })
+  if (!company) throw new AppError(500, 'The shop is not set up yet.')
+  if (!Number.isFinite(quantity) || quantity <= 0) throw new AppError(400, 'Quantity must be greater than zero.')
+  const shopCustomer = shopCustomerId
+    ? await prisma.shopCustomer.findFirst({ where: { id: shopCustomerId }, select: { contactId: true } })
+    : null
+  return resolvePrice(company.id, {
+    side: 'sales',
+    productId,
+    quantity,
+    customerId: shopCustomer?.contactId ?? null,
+  })
+}
+
 export async function checkoutShop(input: ShopCheckoutInput, shopCustomerId: number | null) {
   return prisma.$transaction(async (tx) => {
     const company = await tx.company.findFirst({ orderBy: { id: 'asc' } })
@@ -133,24 +149,35 @@ export async function checkoutShop(input: ShopCheckoutInput, shopCustomerId: num
       },
     })
     const productById = new Map(products.map((product) => [product.id, product]))
-    const lines = input.lines.map((line, index) => {
+    const shopCustomer = shopCustomerId
+      ? await tx.shopCustomer.findFirst({ where: { id: shopCustomerId }, select: { contactId: true } })
+      : null
+    const lines = []
+    for (const [index, line] of input.lines.entries()) {
       const product = productById.get(line.productId)
       if (!product) throw new AppError(400, `Line ${index + 1} is not for sale on the shop.`)
+      const priced = await resolvePrice(company.id, {
+        side: 'sales',
+        productId: product.id,
+        quantity: line.quantity,
+        customerId: shopCustomer?.contactId ?? null,
+      })
       const amounts = lineAmounts({
         quantity: line.quantity,
-        unitPrice: product.listPrice,
-        discount: 0,
+        unitPrice: priced.unitPrice,
+        discount: priced.discount,
         taxRate,
       })
-      return {
+      lines.push({
         product,
         quantity: roundQty(line.quantity),
-        unitPrice: product.listPrice,
+        unitPrice: priced.unitPrice,
+        discount: priced.discount,
         subtotal: amounts.subtotal,
         taxAmount: amounts.taxAmount,
         taxId: tax?.id ?? null,
-      }
-    })
+      })
+    }
     const source = await warehouseStockLocation(tx, company.id, company.onlineWarehouseId)
     const locations = await companyLocations(tx, company.id)
     const needed = new Map<number, { name: string; quantity: number }>()
@@ -189,7 +216,7 @@ export async function checkoutShop(input: ShopCheckoutInput, shopCustomerId: num
             description: line.product.name,
             quantity: line.quantity,
             unitPrice: line.unitPrice,
-            discount: 0,
+            discount: line.discount,
             taxId: line.taxId,
             subtotal: line.subtotal,
             taxAmount: line.taxAmount,

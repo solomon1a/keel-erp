@@ -5,6 +5,8 @@ import { ToastProvider } from './components/toast.tsx'
 import { ThemeProvider } from './brand/theme.tsx'
 import { LocaleProvider } from './i18n/locale.tsx'
 import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
+import { ImportPage } from './pages/import-page.tsx'
+import { TaxPage } from './pages/tax-page.tsx'
 import { AccessPage } from './pages/access-page.tsx'
 import { AdminUsersPage } from './pages/admin-users-page.tsx'
 import { AssetsPage } from './pages/assets-page.tsx'
@@ -126,6 +128,8 @@ export default function App() {
             <Route path="/products/new" element={<ProductFormPage />} />
             <Route path="/products/:id" element={<ProductFormPage />} />
             <Route path="/accounting" element={<AccountingPage />} />
+            <Route path="/accounting/import" element={<ImportPage />} />
+            <Route path="/accounting/taxes" element={<TaxPage />} />
             <Route path="/accounting/ledger" element={<LedgerPage />} />
             <Route path="/accounting/reports" element={<ReportsPage />} />
             <Route path="/accounting/:id" element={<InvoicePage />} />

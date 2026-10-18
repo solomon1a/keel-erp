@@ -2,7 +2,9 @@ import net from 'node:net'
 import tls from 'node:tls'
 import { AppError } from '../errors.ts'
 
-export type Mail = { to: string; subject: string; text: string; html?: string }
+export type MailAttachment = { filename: string; content: Buffer; contentType: string }
+
+export type Mail = { to: string; subject: string; text: string; html?: string; attachments?: MailAttachment[] }
 
 export type MailChannel = 'resend' | 'smtp' | 'log'
 
@@ -27,7 +29,17 @@ async function sendResend(mail: Mail): Promise<void> {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ from, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html }),
+    body: JSON.stringify({
+      from,
+      to: mail.to,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+      attachments: mail.attachments?.map((file) => ({
+        filename: file.filename,
+        content: file.content.toString('base64'),
+      })),
+    }),
   })
   if (!response.ok) throw new AppError(502, 'The invite email could not be sent.')
 }
@@ -96,16 +108,7 @@ async function sendSmtp(mail: Mail): Promise<void> {
     await command(current, `MAIL FROM:<${mailbox(from)}>`)
     await command(current, `RCPT TO:<${mail.to}>`)
     await command(current, 'DATA')
-    const body = [
-      `From: ${from}`,
-      `To: ${mail.to}`,
-      `Subject: ${mail.subject}`,
-      'MIME-Version: 1.0',
-      mail.html ? 'Content-Type: text/html; charset=utf-8' : 'Content-Type: text/plain; charset=utf-8',
-      '',
-      mail.html ?? mail.text,
-      '.',
-    ].join('\r\n')
+    const body = smtpBody(from, mail)
     await command(current, body)
     await command(current, 'QUIT')
     current.end()
@@ -114,6 +117,39 @@ async function sendSmtp(mail: Mail): Promise<void> {
     if (error instanceof AppError) throw error
     throw new AppError(502, 'The invite email could not be sent.')
   }
+}
+
+function smtpBody(from: string, mail: Mail) {
+  const headers = [`From: ${from}`, `To: ${mail.to}`, `Subject: ${mail.subject}`, 'MIME-Version: 1.0']
+  const files = mail.attachments ?? []
+  if (files.length === 0) {
+    return [
+      ...headers,
+      mail.html ? 'Content-Type: text/html; charset=utf-8' : 'Content-Type: text/plain; charset=utf-8',
+      '',
+      mail.html ?? mail.text,
+      '.',
+    ].join('\r\n')
+  }
+  const boundary = `keel-${Date.now()}`
+  const parts = [
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    mail.text,
+  ]
+  for (const file of files) {
+    parts.push(
+      `--${boundary}`,
+      `Content-Type: ${file.contentType}; name="${file.filename}"`,
+      `Content-Disposition: attachment; filename="${file.filename}"`,
+      'Content-Transfer-Encoding: base64',
+      '',
+      file.content.toString('base64'),
+    )
+  }
+  parts.push(`--${boundary}--`, '.')
+  return [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, '', ...parts].join('\r\n')
 }
 
 export async function sendMail(mail: Mail): Promise<MailResult> {

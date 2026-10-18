@@ -12,6 +12,7 @@
     { "source": "/((?!api/|api$).*)", "destination": "/index.html" }
   ],
   "regions": ["sin1"],
+  "crons": [{ "path": "/api/cron", "schedule": "0 8 * * *" }],
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 30

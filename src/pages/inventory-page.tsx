@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ExportButton } from '../components/export-button.tsx'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -95,6 +96,7 @@ export function InventoryPage() {
           <p className="mt-1 max-w-2xl text-muted-foreground">{t('stock.lead')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <ExportButton kind="stock" />
           <Link to="/inventory/warehouses"><Button variant="outline">{t('stock.warehousesLink')}</Button></Link>
           <Link to="/inventory/transfers"><Button variant="outline">{t('stock.transfersLink')}</Button></Link>
           <Link to="/inventory/replenish"><Button variant="outline">{t('stock.replenishLink')}</Button></Link>

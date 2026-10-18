@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ExportButton } from '../components/export-button.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -164,7 +165,10 @@ export function HrPage() {
         </form>
       </section>
       <section className="grid gap-3">
-        <h2 className="font-serif text-2xl">{t('hr.employees')}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-serif text-2xl">{t('hr.employees')}</h2>
+          <ExportButton kind="employees" />
+        </div>
         {employees.isLoading ? <p className="text-sm text-muted-foreground">{t('hr.loading')}</p> : null}
         {employees.data && employees.data.length === 0 ? <EmptyState title={t('hr.empty')} body={t('hr.lead')} /> : null}
         <div className="overflow-x-auto rounded-lg border border-border bg-card">

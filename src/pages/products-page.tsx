@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ExportButton } from '../components/export-button.tsx'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -29,7 +30,7 @@ export function ProductsPage() {
           <h1 className="font-serif text-4xl tracking-tight">{t('products.title')}</h1>
           <p className="mt-1 text-muted-foreground">{t('products.lead')}</p>
         </div>
-        <Link to="/products/new"><Button>{t('products.new')}</Button></Link>
+        <div className="flex flex-wrap gap-2"><ExportButton kind="products" /><Link to="/products/new"><Button>{t('products.new')}</Button></Link></div>
       </div>
       <Input className="max-w-sm" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
       {products.isLoading ? <p className="text-sm text-muted-foreground">{t('products.loading')}</p> : null}
