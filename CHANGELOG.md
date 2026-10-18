@@ -1,5 +1,9 @@
 # Changelog
 
+## Dashboard two-column mock
+
+The overview keeps four KPI cards, drawn a little shorter, each with a soft radial tint in that card's colour. Revenue versus expenses takes two thirds of the next row, with Needs your attention on the right. The sales pipeline takes two thirds of the row under that, with low stock beside it. Recent orders and app shortcuts follow the same split. Below 1100px the rows stack into one column. This is a mock on `dashboard-2col-mock` for review.
+
 ## Desktop layout
 
 Module homes use the width of the window, up to 1600px. Shortcut cards and the Reports & Masters groups fill the row with `auto-fill` and a 260px minimum, so a desktop shows three to five columns and a phone shows one. Links inside those cards stay on one line. The module menu sits in the page under the header, on a solid surface, and scrolls inside itself instead of sliding over the navigation or the cards.
