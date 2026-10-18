@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { BaseMoneyLabel } from '../components/base-currency.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
-import { useMoney, useShortDate } from '../lib/format.ts'
+import { useBaseCurrency, useMoney, useShortDate } from '../lib/format.ts'
 import type { User } from '../lib/types.ts'
 
 type SalaryRow = {
@@ -77,6 +78,7 @@ function Disclaimer() {
 export function PayrollPage() {
   const { t } = useI18n()
   const money = useMoney()
+  const base = useBaseCurrency()
   const queryClient = useQueryClient()
   const [error, setError] = useState('')
   const [period, setPeriod] = useState('2026-05')
@@ -146,7 +148,7 @@ export function PayrollPage() {
                             value={shown}
                             onChange={(event) => setGrosses({ ...grosses, [row.id]: event.target.value })}
                             required
-                            aria-label={t('pay.gross')}
+                            aria-label={`${t('pay.gross')} (${base})`}
                           />
                           <Button type="submit" size="sm" disabled={saveGross.isPending}>{t('pay.saveGross')}</Button>
                         </form>
@@ -389,7 +391,7 @@ export function ExpensesPage() {
         <Field label={t('pay.receipt')}>
           <Input value={form.receiptRef} onChange={(event) => setForm({ ...form, receiptRef: event.target.value })} required />
         </Field>
-        <Field label={t('pay.amount')}>
+        <Field label={<BaseMoneyLabel text={t('pay.amount')} />}>
           <Input inputMode="decimal" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} required />
         </Field>
         <Field label={t('pay.spent')}>

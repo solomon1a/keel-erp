@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { BarChart } from '../components/bar-chart.tsx'
+import { BaseCurrencyNote, BaseMoneyLabel } from '../components/base-currency.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { Kpi, KpiGrid, PageHeader, Panel } from '../components/surface.tsx'
 import { LanguageSwitcher } from '../components/language-switcher.tsx'
@@ -251,7 +252,8 @@ export function InvoicePage() {
             pay.mutate()
           }}
         >
-          <Field label={t('acct.amount')}><Input type="number" min="0" step="0.01" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} required /></Field>
+          <BaseCurrencyNote />
+          <Field label={<BaseMoneyLabel text={t('acct.amount')} />}><Input type="number" min="0" step="0.01" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} required /></Field>
           <Field label={t('acct.method')}>
             <select className="h-10 rounded-md border border-border bg-card px-3" value={method} onChange={(event) => setMethod(event.target.value)}>
               <option value="bank">{t('acct.bank')}</option>

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { BarChart } from '../components/bar-chart.tsx'
+import { BaseMoneyLabel } from '../components/base-currency.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { KanbanBoard, KanbanCard, KanbanColumn, PageHeader, Panel, TableFrame, Toolbar } from '../components/surface.tsx'
 import { useToast } from '../components/toast.tsx'
@@ -439,7 +440,7 @@ function RecordForm({ module, screen, id, spec, title }: { module: string; scree
         <Field label={t('desk.partner')}><Input value={source.partner ?? ''} onChange={(event) => setDraft({ ...source, partner: event.target.value })} /></Field>
         <Field label={t('desk.owner')}><Input value={source.owner ?? ''} onChange={(event) => setDraft({ ...source, owner: event.target.value })} /></Field>
         <Field label={t('desk.bucket')}><Input value={source.bucket ?? ''} onChange={(event) => setDraft({ ...source, bucket: event.target.value })} /></Field>
-        <Field label={t('desk.amount')}><Input type="number" step="0.01" value={source.amount ?? 0} onChange={(event) => setDraft({ ...source, amount: Number(event.target.value) })} /></Field>
+        <Field label={<BaseMoneyLabel text={t('desk.amount')} />}><Input type="number" step="0.01" value={source.amount ?? 0} onChange={(event) => setDraft({ ...source, amount: Number(event.target.value) })} /></Field>
         <Field label={t('desk.date')}><Input type="date" value={dateInput(source.recordDate)} onChange={(event) => setDraft({ ...source, recordDate: event.target.value })} /></Field>
         <div className="md:col-span-2">
           <Field label={t('desk.notes')}><Textarea value={source.notes ?? ''} onChange={(event) => setDraft({ ...source, notes: event.target.value })} /></Field>

@@ -9,7 +9,7 @@ import { payMethodLabel, posSessionLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { BaseCurrencyNote } from '../components/base-currency.tsx'
-import { useMoney } from '../lib/format.ts'
+import { useBaseCurrency, useMoney } from '../lib/format.ts'
 import type { Contact, PosCatalog, PosOrder, PosSession, User } from '../lib/types.ts'
 
 type CartLine = { productId: number; name: string; unitPrice: number; quantity: number; discount: number; onHand: number }
@@ -39,6 +39,7 @@ export function PosScreenPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
   const money = useMoney()
+  const base = useBaseCurrency()
   const queryClient = useQueryClient()
   const session = useQuery({ queryKey: ['pos-session', id], queryFn: () => api<PosSession>(`/api/pos/sessions/${id}`) })
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me') })
@@ -282,13 +283,13 @@ export function PosScreenPage() {
                 <span className="font-medium">{payMethodLabel(row.method, t)}</span>
                 <button type="button" className="text-sm underline" onClick={() => setPayments(payments.filter((_, rowIndex) => rowIndex !== index))}>{t('pos.remove')}</button>
               </div>
-              <Input className="h-11" type="number" min="0" step="0.01" aria-label={t('pos.amount')} value={row.amount} onChange={(event) => {
+              <Input className="h-11" type="number" min="0" step="0.01" aria-label={`${t('pos.amount')} (${base})`} value={row.amount} onChange={(event) => {
                 const next = [...payments]
                 next[index] = { ...row, amount: event.target.value }
                 setPayments(next)
               }} />
               {row.method === 'cash' ? (
-                <Input className="h-11" type="number" min="0" step="0.01" placeholder={t('pos.tendered')} value={row.tendered} onChange={(event) => {
+                <Input className="h-11" type="number" min="0" step="0.01" placeholder={`${t('pos.tendered')} (${base})`} aria-label={`${t('pos.tendered')} (${base})`} value={row.tendered} onChange={(event) => {
                   const next = [...payments]
                   next[index] = { ...row, tendered: event.target.value }
                   setPayments(next)
@@ -306,7 +307,7 @@ export function PosScreenPage() {
           <div className="mt-2 grid gap-2 border-t border-border pt-3">
             <h3 className="font-semibold">{t('pos.close')}</h3>
             <p className="text-sm text-muted-foreground">{t('pos.expected')} {money(row.summary.expectedCash)}</p>
-            <Input className="h-11" type="number" min="0" step="0.01" placeholder={t('pos.counted')} value={counted} onChange={(event) => setCounted(event.target.value)} />
+            <Input className="h-11" type="number" min="0" step="0.01" placeholder={`${t('pos.counted')} (${base})`} aria-label={`${t('pos.counted')} (${base})`} value={counted} onChange={(event) => setCounted(event.target.value)} />
             <Input className="h-11" placeholder={t('pos.note')} value={note} onChange={(event) => setNote(event.target.value)} />
             <Button variant="outline" className="h-11" disabled={close.isPending || counted === ''} onClick={() => close.mutate()}>{t('pos.close')}</Button>
           </div>
