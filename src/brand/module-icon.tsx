@@ -13,6 +13,7 @@ const iconNames = [
   'crm',
   'dashboard',
   'ecommerce',
+  'website',
   'expenses',
   'hr',
   'inventory',
@@ -60,6 +61,8 @@ const menuIcons: Record<string, ModuleIconId> = {
   'menu.daily': 'pos',
   'menu.storefront': 'ecommerce',
   'menu.websiteHome': 'ecommerce',
+  'mod.sites': 'website',
+  'menu.sitePages': 'website',
   'menu.invoices': 'accounting',
   'menu.ledger': 'accounting',
   'menu.reports': 'accounting',
@@ -85,6 +88,7 @@ const accents: Record<string, string> = {
   manufacturing: 'var(--kl-color-module-manufacturing)',
   pos: 'var(--kl-color-module-pos)',
   website: 'var(--kl-color-module-ecommerce)',
+  sites: 'var(--kl-color-module-website)',
   accounting: 'var(--kl-color-module-accounting)',
   hr: 'var(--kl-color-module-hr)',
   contacts: 'var(--kl-color-module-contacts)',
@@ -102,6 +106,7 @@ const accents: Record<string, string> = {
 
 export function moduleIconId(moduleId: string): ModuleIconId {
   if (moduleId === 'website') return 'ecommerce'
+  if (moduleId === 'sites') return 'website'
   if (moduleId === 'email') return 'crm'
   if (iconNames.some((name) => name === moduleId)) return moduleId as ModuleIconId
   return 'dashboard'
