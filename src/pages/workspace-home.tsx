@@ -254,11 +254,11 @@ function SideNode({ item, locale, t, pathname }: { item: WsSide; locale: Locale;
 
 function MasterLink({ link, locale, t }: { link: WsLink; locale: Locale; t: Translate }) {
   return (
-    <Link to={link.to} className="keel-chip keel-chip-block">
+    <Link to={link.to} title={text(link.label, locale, t)} className="keel-chip keel-chip-block">
       <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--kl-color-primary-100)] text-[var(--kl-color-primary-700)]">
         <SideGlyph label={link.label} />
       </span>
-      <span className="min-w-0">{text(link.label, locale, t)}</span>
+      <span className="min-w-0 truncate">{text(link.label, locale, t)}</span>
       {link.external ? <ArrowUpRight className="ml-auto size-3.5 opacity-70" aria-hidden /> : null}
     </Link>
   )
@@ -373,9 +373,9 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
   const percent = total === 0 ? 0 : Math.round((finished / total) * 100)
 
   return (
-    <div className={cn('lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:items-start lg:gap-6', panel && 'xl:grid-cols-[15.5rem_minmax(0,1fr)_19rem]')}>
+    <div className="lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:items-start lg:gap-6">
       <MobileSections workspace={workspace} locale={locale} t={t} pathname={pathname} onStarted={() => setPanel(true)} />
-      <aside className={cn('keel-glass sticky top-28 hidden rounded-[28px] p-3 lg:block', panel && 'lg:row-span-2 xl:row-span-1')}>
+      <aside className="keel-side sticky top-[112px] z-10 hidden max-h-[calc(100dvh-128px)] min-w-0 self-start overflow-y-auto rounded-[28px] p-3 lg:block">
         <nav className="grid gap-1" aria-label={t(mod.label)}>
           {workspace.sidebar.map((item) => (
             <SideNode key={text(item.label, 'en', t) + (item.to ?? '')} item={item} locale={locale} t={t} pathname={pathname} />
@@ -404,7 +404,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
             </div>
             <MonthChart points={chart} locale={locale} />
           </div>
-          <div className={cn('mt-3 grid gap-3 sm:grid-cols-2', !panel && 'xl:grid-cols-3')}>
+          <div className="keel-card-grid mt-3">
             {kpis.map((kpi, index) => {
               const Icon = kpiIcons[index % kpiIcons.length] ?? ClipboardList
               return (
@@ -431,7 +431,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
         </section>
         <section className="mt-8">
           <h2 className="text-lg font-semibold tracking-tight">{t('ws.masters')}</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="keel-card-grid mt-3">
             {workspace.groups.map((group) => (
               <div key={text(group.title, 'en', t)} className="keel-glass rounded-[28px] p-4">
                 <h3 className="mb-3 flex items-center gap-2 font-semibold">
@@ -453,7 +453,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
         </section>
       </div>
       {panel ? (
-        <aside className="keel-glass mt-6 rounded-[28px] p-4 lg:col-start-2 xl:col-start-auto xl:mt-0">
+        <aside className="keel-glass mt-6 rounded-[28px] p-4 lg:col-start-2">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">{t('ws.started')}</h2>
             <button type="button" className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-[var(--kl-color-primary-100)]" aria-label={t('ws.close')} onClick={() => setPanel(false)}>
@@ -481,7 +481,7 @@ export function WorkspaceHome({ mod, workspace }: { mod: AppModule; workspace: W
               {t('ws.skip')}
             </button>
           </div>
-          <ul className="mt-4 grid gap-2">
+          <ul className="mt-4 grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr))]">
             {workspace.steps.map((step, index) => {
               const id = String(index)
               const complete = done.includes(id)

@@ -1,5 +1,9 @@
 # Changelog
 
+## Desktop layout
+
+Module homes use the width of the window, up to 1600px. Shortcut cards and the Reports & Masters groups fill the row with `auto-fill` and a 260px minimum, so a desktop shows three to five columns and a phone shows one. Links inside those cards stay on one line. The module menu sits in the page under the header, on a solid surface, and scrolls inside itself instead of sliding over the navigation or the cards.
+
 ## Guided demo
 
 A presenter can start a guided demo from the app launcher or the account menu and walk one order from a lead to the dashboard. Each step spotlights the real control. Do it for me runs that step through the same APIs a person would use, including the shortage when the finished good is not on the shelf yet. Progress is saved on the company, so the walk can be resumed, skipped, or started again. Reset demo data, which only an admin can run, deletes that company's demo documents and puts stock, cost, and the ledger back to the baseline captured when the first walk began. Other companies are left alone. A company with no bill, customer, and supplier does not see the tour.
