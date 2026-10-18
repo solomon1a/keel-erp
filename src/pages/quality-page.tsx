@@ -177,7 +177,7 @@ function DeskView() {
           {(points.data ?? []).map((point) => <li key={point.id}>{point.product.name} · {point.name}</li>)}
         </ul>
       </form>
-      <section className="grid gap-3">
+      <section className="grid gap-3" data-tour="tour-quality">
         <h2 className="font-semibold">{t('quality.checks')}</h2>
         {(checks.data ?? []).length === 0 ? <p className="text-sm text-muted-foreground">{t('quality.empty')}</p> : null}
         {(checks.data ?? []).map((check) => (

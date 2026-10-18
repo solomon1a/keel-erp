@@ -5,6 +5,7 @@ import { hashPassword } from '../auth.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { ensureDemoRates } from './exchange-rates.ts'
+import { ensureSlug } from './website.ts'
 
 export type SignupCountry = (typeof signupCountries)[number]
 
@@ -101,6 +102,7 @@ export async function provisionCompany(input: {
         defaultTaxRate: preset.taxRate,
       },
     })
+    await ensureSlug(tx, company.id, input.companyName)
     const admin = await tx.user.create({
       data: {
         name: input.name,

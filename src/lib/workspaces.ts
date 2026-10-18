@@ -474,6 +474,7 @@ const website: Workspace = {
     { label: 'ws.dashboard', to: app('website', 'visitors') },
     { label: 'menu.products', to: '/products' },
     { label: desk('website', 'pages').label, to: app('website', 'pages') },
+    { label: 'menu.builder', to: '/sites' },
     { label: 'menu.storefront', to: '/shop' },
     { label: desk('website', 'coupons').label, to: app('website', 'coupons') },
     { label: 'menu.reporting', children: [desk('website', 'visitors')] },
@@ -485,6 +486,7 @@ const website: Workspace = {
       links: [
         { label: 'menu.websiteHome', to: '/website' },
         { label: 'menu.storefront', to: '/shop', external: true },
+        { label: 'menu.builder', to: '/sites' },
         desk('website', 'pages'),
         desk('website', 'coupons'),
       ],
@@ -961,6 +963,41 @@ const helpdesk: Workspace = {
   ],
 }
 
+const email: Workspace = {
+  chartTitle: copy('Opens', '打开'),
+  chart: series([4, 6, 5, 8, 7, 9, 6, 10, 8, 11, 9, 7]),
+  kpis: [
+    { label: copy('Campaigns', '活动'), value: 2, to: '/email' },
+    { label: copy('Lists', '名单'), value: 1, to: '/email/lists' },
+    { label: copy('Suppressed', '退订'), value: 0, to: '/email/suppression' },
+  ],
+  sidebar: [
+    { label: 'ws.home', to: '/go/email' },
+    { label: 'menu.campaigns', to: '/email' },
+    { label: 'menu.lists', to: '/email/lists' },
+    { label: 'menu.suppression', to: '/email/suppression' },
+  ],
+  groups: [
+    { title: copy('Mail', '邮件'), links: [
+      { label: 'menu.campaigns', to: '/email' },
+      { label: 'menu.lists', to: '/email/lists' },
+      { label: 'menu.suppression', to: '/email/suppression' },
+    ] },
+    { title: copy('Write', '撰写'), links: [
+      { label: copy('New campaign', '新建活动'), to: '/email/campaigns/new' },
+      { label: 'menu.lists', to: '/email/lists' },
+      { label: 'menu.suppression', to: '/email/suppression' },
+    ] },
+    { title: 'hub.reports', links: [{ label: copy('Open rate', '打开率'), to: '/email' }] },
+  ],
+  steps: [
+    { label: copy('Build a list', '建立名单'), to: '/email/lists' },
+    { label: copy('Write a campaign', '写一封活动邮件'), to: '/email/campaigns/new' },
+    { label: copy('Read the stats', '看统计'), to: '/email' },
+    { label: copy('Check suppression', '检查退订'), to: '/email/suppression' },
+  ],
+}
+
 const dashboard: Workspace = {
   chartTitle: copy('Open pipeline', '未结管道'),
   chart: series([4200, 4600, 4400, 5100, 4800, 5600, 5900, 5400, 6000, 6200, 5800, 6200]),
@@ -1009,6 +1046,7 @@ export const workspaces: Record<string, Workspace> = {
   quality,
   subcontracting,
   helpdesk,
+  email,
   dashboard,
 }
 

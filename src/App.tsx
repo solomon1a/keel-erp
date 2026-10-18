@@ -28,6 +28,9 @@ import { InventoryPage } from './pages/inventory-page.tsx'
 import { RoutesPage } from './pages/routes-page.tsx'
 import { ProjectsPage } from './pages/projects-page.tsx'
 import { QualityPage } from './pages/quality-page.tsx'
+import { EmailPage } from './pages/email-page.tsx'
+import { PublicSitePage } from './pages/public-site-page.tsx'
+import { SiteBuilderPage } from './pages/site-builder-page.tsx'
 import { ReconcilePage } from './pages/reconcile-page.tsx'
 import { StatementsPage } from './pages/statements-page.tsx'
 import { ValuationPage } from './pages/valuation-page.tsx'
@@ -92,6 +95,9 @@ export default function App() {
           <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/start" element={<StartPage />} />
+          <Route path="/site/:slug/blog/:post" element={<PublicSitePage />} />
+          <Route path="/site/:slug/:page" element={<PublicSitePage />} />
+          <Route path="/site/:slug" element={<PublicSitePage />} />
           <Route path="/shop" element={<ShopCatalogPage />} />
           <Route path="/shop/p/:id" element={<ShopProductPage />} />
           <Route path="/shop/cart" element={<ShopCartPage />} />
@@ -178,6 +184,12 @@ export default function App() {
             <Route path="/accounting/statements/:id" element={<ReconcilePage />} />
             <Route path="/quality/alerts" element={<QualityPage />} />
             <Route path="/quality" element={<QualityPage />} />
+            <Route path="/email/campaigns/:campaignId" element={<EmailPage />} />
+            <Route path="/email/:section" element={<EmailPage />} />
+            <Route path="/email" element={<EmailPage />} />
+            <Route path="/sites/:section/:pageId" element={<SiteBuilderPage />} />
+            <Route path="/sites/:section" element={<SiteBuilderPage />} />
+            <Route path="/sites" element={<SiteBuilderPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/:id" element={<ProjectsPage />} />
             <Route path="/inventory/valuation" element={<ValuationPage />} />

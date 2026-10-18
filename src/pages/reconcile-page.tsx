@@ -71,7 +71,7 @@ export function ReconcilePage() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Balance label={t('bank.statementBalance')} value={money(data.statementBalance)} />
         <Balance label={t('bank.book')} value={money(data.bookBalance)} />
-        <Balance label={t('bank.difference')} value={money(data.difference)} />
+        <div data-tour="tour-bank"><Balance label={t('bank.difference')} value={money(data.difference)} /></div>
       </div>
       <form className="grid max-w-3xl gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); addRule.mutate() }}>
         <h2 className="font-semibold md:col-span-4">{t('bank.rules')}</h2>

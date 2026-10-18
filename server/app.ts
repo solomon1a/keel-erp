@@ -61,6 +61,7 @@ import { registerCoreRoutes } from './core-routes.ts'
 import { registerAssetRoutes } from './asset-routes.ts'
 import { registerProjectRoutes } from './project-routes.ts'
 import { registerQualityRoutes } from './quality-routes.ts'
+import { registerReachRoutes } from './reach-routes.ts'
 import { registerHomeRoutes } from './home-routes.ts'
 import { registerInviteRoutes } from './invite-routes.ts'
 import { registerSubcontractRoutes } from './subcontract-routes.ts'
@@ -172,6 +173,10 @@ function isPublicApi(method: string, path: string) {
   if (method === 'POST' && path === '/api/signup') return true
   if (method === 'POST' && path === '/api/invites/accept') return true
   if (method === 'GET' && /^\/api\/invites\/[^/]+$/.test(path)) return true
+  if (method === 'GET' && /^\/api\/mail\/(open|click|unsubscribe)\/[^/]+$/.test(path)) return true
+  if (method === 'GET' && /^\/api\/site\/[^/]+$/.test(path)) return true
+  if (method === 'GET' && /^\/api\/site\/[^/]+\/(sitemap\.xml|robots\.txt)$/.test(path)) return true
+  if (method === 'POST' && /^\/api\/site\/[^/]+\/contact$/.test(path)) return true
   return path === '/api/shop' || path.startsWith('/api/shop/')
 }
 
@@ -1153,6 +1158,7 @@ export function createApp() {
   registerAssetRoutes(app)
   registerQualityRoutes(app)
   registerProjectRoutes(app)
+  registerReachRoutes(app)
   registerSubcontractRoutes(app)
   registerInviteRoutes(app)
 

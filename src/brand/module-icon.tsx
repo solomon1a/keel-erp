@@ -71,6 +71,7 @@ const menuIcons: Record<string, ModuleIconId> = {
   'mod.quality': 'quality',
   'mod.subcontracting': 'subcontracting',
   'mod.helpdesk': 'helpdesk',
+  'mod.email': 'crm',
   'mod.attendance': 'attendance',
   'mod.wastage': 'wastage',
 }
@@ -96,10 +97,12 @@ const accents: Record<string, string> = {
   helpdesk: 'var(--kl-color-module-helpdesk)',
   attendance: 'var(--kl-color-module-attendance)',
   wastage: 'var(--kl-color-module-wastage)',
+  email: 'var(--kl-color-module-crm)',
 }
 
 export function moduleIconId(moduleId: string): ModuleIconId {
   if (moduleId === 'website') return 'ecommerce'
+  if (moduleId === 'email') return 'crm'
   if (iconNames.some((name) => name === moduleId)) return moduleId as ModuleIconId
   return 'dashboard'
 }
