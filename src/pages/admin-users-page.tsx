@@ -3,13 +3,15 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
-import { Input } from '../components/ui/input.tsx'
+import { Input, Select } from '../components/ui/input.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import type { DeskUser, User } from '../lib/types.ts'
 import type { Role } from '../../shared/roles.ts'
 
-const selectClass = 'h-10 w-full rounded-md border border-border bg-card px-3 text-sm'
+type InviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
+type InviteRow = { id: number; email: string; role: Role; status: InviteStatus; expiresAt: string }
+type IssuedInvite = { link: string; emailed: boolean; channel: string }
 
 function roleText(role: Role, t: Translate) {
   switch (role) {
@@ -19,6 +21,23 @@ function roleText(role: Role, t: Translate) {
       return t('role.user')
     default: {
       const unexpected: never = role
+      return unexpected
+    }
+  }
+}
+
+function statusText(status: InviteStatus, t: Translate) {
+  switch (status) {
+    case 'pending':
+      return t('people.status.pending')
+    case 'accepted':
+      return t('people.status.accepted')
+    case 'revoked':
+      return t('people.status.revoked')
+    case 'expired':
+      return t('people.status.expired')
+    default: {
+      const unexpected: never = status
       return unexpected
     }
   }
@@ -34,7 +53,16 @@ export function AdminUsersPage() {
     enabled: me.data?.role === 'admin',
     retry: false,
   })
+  const invites = useQuery({
+    queryKey: ['invites'],
+    queryFn: () => api<InviteRow[]>('/api/invites'),
+    enabled: me.data?.role === 'admin',
+    retry: false,
+  })
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'user' as Role })
+  const [invite, setInvite] = useState({ email: '', role: 'user' as Role })
+  const [issued, setIssued] = useState<IssuedInvite | null>(null)
+  const [copied, setCopied] = useState(false)
   const [resets, setResets] = useState<Record<number, string>>({})
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -88,6 +116,44 @@ export function AdminUsersPage() {
     }
   }
 
+  async function sendInvite(event: FormEvent) {
+    event.preventDefault()
+    setError('')
+    setNotice('')
+    setPending(true)
+    try {
+      const created = await api<IssuedInvite & InviteRow>('/api/invites', {
+        method: 'POST',
+        body: JSON.stringify(invite),
+      })
+      setInvite({ email: '', role: 'user' })
+      setIssued({ link: created.link, emailed: created.emailed, channel: created.channel })
+      setCopied(false)
+      await queryClient.invalidateQueries({ queryKey: ['invites'] })
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : t('people.inviteFailed'))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function changeInvite(id: number, action: 'resend' | 'revoke') {
+    setError('')
+    setPending(true)
+    try {
+      const result = await api<IssuedInvite & InviteRow>(`/api/invites/${id}/${action}`, { method: 'POST' })
+      if (action === 'resend' && result.link) {
+        setIssued({ link: result.link, emailed: result.emailed, channel: result.channel })
+        setCopied(false)
+      }
+      await queryClient.invalidateQueries({ queryKey: ['invites'] })
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : t('people.inviteFailed'))
+    } finally {
+      setPending(false)
+    }
+  }
+
   return (
     <div className="grid gap-8">
       <div>
@@ -122,6 +188,66 @@ export function AdminUsersPage() {
           </article>
         ))}
       </div>
+      <section className="grid gap-3">
+        <h2 className="font-serif text-2xl">{t('people.inviteList')}</h2>
+        {invites.data?.length === 0 ? <p className="text-sm text-muted-foreground">{t('people.inviteEmpty')}</p> : null}
+        {invites.data?.map((row) => (
+          <article key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4">
+            <div>
+              <p className="font-medium">{row.email}</p>
+              <p className="text-sm text-muted-foreground">{roleText(row.role, t)} · {statusText(row.status, t)} · {row.expiresAt.slice(0, 10)}</p>
+            </div>
+            {row.status === 'pending' || row.status === 'expired' || row.status === 'revoked' ? (
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" disabled={pending} onClick={() => void changeInvite(row.id, 'resend')}>{t('people.resend')}</Button>
+                {row.status === 'pending' ? (
+                  <Button type="button" variant="outline" disabled={pending} onClick={() => void changeInvite(row.id, 'revoke')}>{t('people.revoke')}</Button>
+                ) : null}
+              </div>
+            ) : null}
+          </article>
+        ))}
+      </section>
+      <form className="grid max-w-lg gap-4 rounded-lg border border-border bg-card p-4" onSubmit={sendInvite}>
+        <h2 className="font-serif text-2xl">{t('people.invite')}</h2>
+        <p className="text-sm text-muted-foreground">{t('people.inviteLead')}</p>
+        <Field label={t('common.email')}>
+          <Input type="email" autoComplete="off" value={invite.email} onChange={(event) => setInvite({ ...invite, email: event.target.value })} required />
+        </Field>
+        <Field label={t('people.role')}>
+          <Select
+            value={invite.role}
+            onChange={(event) => {
+              const role = event.target.value
+              if (role === 'admin' || role === 'user') setInvite({ ...invite, role })
+            }}
+          >
+            <option value="user">{t('role.user')}</option>
+            <option value="admin">{t('role.admin')}</option>
+          </Select>
+        </Field>
+        <Button type="submit" disabled={pending}>{pending ? t('common.saving') : t('people.inviteSend')}</Button>
+      </form>
+      {issued ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => setIssued(null)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="invite-link-title" className="grid w-full max-w-lg gap-4 rounded-lg border border-border bg-card p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+            <h2 id="invite-link-title" className="font-serif text-2xl">{t('people.inviteLink')}</h2>
+            <p className="text-sm text-muted-foreground">{issued.emailed ? t('people.inviteEmailed') : t('people.inviteLogged')}</p>
+            <Input readOnly value={issued.link} onFocus={(event) => event.currentTarget.select()} />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(issued.link).then(() => setCopied(true))
+                }}
+              >
+                {copied ? t('people.inviteCopied') : t('people.inviteCopy')}
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setIssued(null)}>{t('people.inviteClose')}</Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <form className="grid max-w-lg gap-4 rounded-lg border border-border bg-card p-4" onSubmit={createUser}>
         <h2 className="font-serif text-2xl">{t('people.add')}</h2>
         <Field label={t('common.name')}>
@@ -147,8 +273,7 @@ export function AdminUsersPage() {
           />
         </Field>
         <Field label={t('people.role')}>
-          <select
-            className={selectClass}
+          <Select
             value={form.role}
             onChange={(event) => {
               const role = event.target.value
@@ -157,7 +282,7 @@ export function AdminUsersPage() {
           >
             <option value="user">{t('role.user')}</option>
             <option value="admin">{t('role.admin')}</option>
-          </select>
+          </Select>
         </Field>
         <Button type="submit" disabled={pending}>
           {pending ? t('common.saving') : t('people.create')}

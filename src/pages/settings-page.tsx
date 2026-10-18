@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { FapiaoNote } from '../components/money-totals.tsx'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -82,6 +83,7 @@ export function SettingsPage() {
       <div>
         <h1 className="font-serif text-4xl tracking-tight">{t('settings.title')}</h1>
         <p className="mt-2 text-muted-foreground">{t('settings.lead')}</p>
+        {isAdmin ? <Link className="mt-3 inline-block text-sm font-medium text-primary hover:underline" to="/admin/users">{t('people.title')}</Link> : null}
       </div>
       <form className="grid gap-4 rounded-lg border border-border bg-card p-4" onSubmit={onSubmit}>
         {error ? <Notice message={error} /> : null}

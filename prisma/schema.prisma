@@ -75,6 +75,10 @@ model Company {
   supplierQuotes SupplierQuotation[]
   demoRuns       DemoRun[]
   exchangeRates  ExchangeRate[]
+  assetCategories AssetCategory[]
+  assets         Asset[]
+  subcontractOrders SubcontractOrder[]
+  invites        UserInvite[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -105,6 +109,7 @@ model User {
   savedFilters         SavedFilter[]
   chatter              ChatterMessage[]
   demoRuns             DemoRun[]
+  invitesSent          UserInvite[]
   /// ISO code used only to format amounts. Empty follows the company currency. The books stay in that currency.
   displayCurrency      String?
   createdAt            DateTime            @default(now())
@@ -175,6 +180,8 @@ model Contact {
   invoices       Invoice[]
   quotations     Quotation[]
   supplierQuotes SupplierQuotation[]
+  subcontractLocations StockLocation[] @relation("SubcontractVendor")
+  subcontractOrders SubcontractOrder[] @relation("SubcontractVendor")
   customerRules  PricingRule[] @relation("RuleCustomer")
   vendorRules    PricingRule[] @relation("RuleVendor")
   leads          Lead[]
@@ -219,6 +226,8 @@ model Product {
   lines                    SalesOrderLine[]
   purchaseLines            PurchaseOrderLine[]
   boms                     BillOfMaterials[]        @relation("BomFinished")
+  subcontractFinished      SubcontractOrder[]       @relation("SubFinished")
+  subcontractParts         SubcontractComponent[]
   bomLines                 BomLine[]
   bomByproducts            BomByproduct[]           @relation("BomByproduct")
   wastageEntries           WastageEntry[]
@@ -415,6 +424,7 @@ model BillOfMaterials {
   operations BomOperation[]
   byproducts BomByproduct[]
   orders     ManufacturingOrder[]
+  subcontractOrders SubcontractOrder[]
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
@@ -636,8 +646,11 @@ model Warehouse {
 model StockLocation {
   id            Int                 @id @default(autoincrement())
   name          String
-  /// internal, customer, supplier, inventory, production
+  /// internal, customer, supplier, inventory, production, or subcontract
   type          String
+  vendorId      Int?
+  vendor        Contact?            @relation("SubcontractVendor", fields: [vendorId], references: [id])
+  subcontractOrders SubcontractOrder[]
   isDefault     Boolean             @default(false)
   companyId     Int
   company       Company             @relation(fields: [companyId], references: [id])
@@ -741,6 +754,8 @@ model StockMove {
   deliveryNote         DeliveryNote?       @relation(fields: [deliveryNoteId], references: [id])
   purchaseReceiptId    Int?
   purchaseReceipt      PurchaseReceipt?    @relation(fields: [purchaseReceiptId], references: [id])
+  subcontractOrderId   Int?
+  subcontractOrder     SubcontractOrder?   @relation(fields: [subcontractOrderId], references: [id])
   /// When set on a receipt, this unit cost is used instead of the product cost.
   unitCost             Float?
   date                 DateTime
@@ -843,6 +858,9 @@ model Account {
   companyId Int
   company   Company       @relation(fields: [companyId], references: [id])
   items     JournalItem[]
+  assetCategories AssetCategory[] @relation("AssetAccount")
+  accumCategories AssetCategory[] @relation("AccumAccount")
+  expenseCategories AssetCategory[] @relation("DepExpenseAccount")
 
   @@unique([companyId, code])
 }
@@ -900,6 +918,7 @@ model Invoice {
   payments        InvoicePayment[]
   entries         JournalEntry[]
   matches         ReconcileMatch[]
+  subcontractReceipts SubcontractReceipt[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -924,6 +943,7 @@ model InvoiceLine {
   salesOrderLine      SalesOrderLine?    @relation(fields: [salesOrderLineId], references: [id])
   purchaseOrderLineId Int?
   purchaseOrderLine   PurchaseOrderLine? @relation(fields: [purchaseOrderLineId], references: [id])
+  asset               Asset?
 }
 
 model InvoicePayment {
@@ -949,6 +969,8 @@ model JournalEntry {
   lines     JournalItem[]
   payrollRun PayrollRun?
   expenseClaim ExpenseClaim?
+  depreciation AssetDepreciation?
+  disposedAssets Asset[] @relation("AssetDisposal")
   valuations   ValuationLayer[]
 
   @@unique([companyId, name])
@@ -1629,4 +1651,141 @@ model DemoRun {
   updatedAt            DateTime @updatedAt
 
   @@index([companyId])
+}
+
+/// Default accounts for a class of fixed assets. Depreciation posts through these.
+model AssetCategory {
+  id               Int      @id @default(autoincrement())
+  companyId        Int
+  company          Company  @relation(fields: [companyId], references: [id])
+  name             String
+  assetAccountId   Int
+  assetAccount     Account  @relation("AssetAccount", fields: [assetAccountId], references: [id])
+  accumAccountId   Int
+  accumAccount     Account  @relation("AccumAccount", fields: [accumAccountId], references: [id])
+  expenseAccountId Int
+  expenseAccount   Account  @relation("DepExpenseAccount", fields: [expenseAccountId], references: [id])
+  /// straight_line or declining
+  method           String
+  months           Int
+  /// monthly
+  frequency        String   @default("monthly")
+  assets           Asset[]
+
+  @@unique([companyId, name])
+}
+
+model Asset {
+  id              Int                  @id @default(autoincrement())
+  companyId       Int
+  company         Company              @relation(fields: [companyId], references: [id])
+  name            String
+  categoryId      Int
+  category        AssetCategory        @relation(fields: [categoryId], references: [id])
+  purchaseValue   Float
+  salvageValue    Float
+  startDate       DateTime
+  /// straight_line or declining
+  method          String
+  months          Int
+  /// open, disposed, or sold
+  state           String
+  invoiceLineId   Int?                 @unique
+  invoiceLine     InvoiceLine?         @relation(fields: [invoiceLineId], references: [id])
+  disposalDate    DateTime?
+  disposalPrice   Float?
+  disposalEntryId Int?                 @unique
+  disposalEntry   JournalEntry?        @relation("AssetDisposal", fields: [disposalEntryId], references: [id])
+  lines           AssetDepreciation[]
+  createdAt       DateTime             @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model AssetDepreciation {
+  id      Int           @id @default(autoincrement())
+  assetId Int
+  asset   Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  date    DateTime
+  amount  Float
+  /// draft or posted
+  state   String
+  entryId Int?          @unique
+  entry   JournalEntry? @relation(fields: [entryId], references: [id])
+
+  @@unique([assetId, date])
+}
+
+model SubcontractOrder {
+  id         Int                     @id @default(autoincrement())
+  companyId  Int
+  company    Company                 @relation(fields: [companyId], references: [id])
+  name       String
+  vendorId   Int
+  vendor     Contact                 @relation("SubcontractVendor", fields: [vendorId], references: [id])
+  productId  Int
+  product    Product                 @relation("SubFinished", fields: [productId], references: [id])
+  bomId      Int
+  bom        BillOfMaterials         @relation(fields: [bomId], references: [id])
+  locationId Int
+  location   StockLocation           @relation(fields: [locationId], references: [id])
+  quantity   Float
+  /// Untaxed service fee for one finished unit.
+  fee        Float
+  /// draft, confirmed, progress, done, or cancel
+  state      String
+  received   Float                   @default(0)
+  lines      SubcontractComponent[]
+  receipts   SubcontractReceipt[]
+  moves      StockMove[]
+  createdAt  DateTime                @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model SubcontractComponent {
+  id        Int               @id @default(autoincrement())
+  orderId   Int
+  order     SubcontractOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product           @relation(fields: [productId], references: [id])
+  /// Component quantity for one finished unit.
+  perUnit   Float
+  sent      Float             @default(0)
+  consumed  Float             @default(0)
+  valueSent Float             @default(0)
+  valueUsed Float             @default(0)
+
+  @@unique([orderId, productId])
+}
+
+model SubcontractReceipt {
+  id            Int              @id @default(autoincrement())
+  orderId       Int
+  order         SubcontractOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  quantity      Float
+  componentCost Float
+  fee           Float
+  invoiceId     Int?
+  invoice       Invoice?         @relation(fields: [invoiceId], references: [id])
+  date          DateTime
+}
+
+model UserInvite {
+  id          Int       @id @default(autoincrement())
+  companyId   Int
+  company     Company   @relation(fields: [companyId], references: [id])
+  email       String
+  role        String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  invitedById Int
+  invitedBy   User      @relation(fields: [invitedById], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId, email])
 }

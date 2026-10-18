@@ -286,7 +286,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
   ],
   assets: [
     { label: label('assets', 'dashboard'), to: screen('assets', 'dashboard') },
-    { label: label('assets', 'register'), to: screen('assets', 'register') },
+    { label: label('assets', 'register'), to: '/assets' },
     { label: label('assets', 'movements'), to: screen('assets', 'movements') },
     { label: label('assets', 'depreciation'), to: screen('assets', 'depreciation') },
     { label: label('assets', 'maintenance'), to: screen('assets', 'maintenance') },
@@ -342,7 +342,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
   ],
   subcontracting: [
     { label: label('subcontracting', 'dashboard'), to: screen('subcontracting', 'dashboard') },
-    { label: label('subcontracting', 'orders'), to: screen('subcontracting', 'orders') },
+    { label: label('subcontracting', 'orders'), to: '/subcontracting' },
     { label: label('subcontracting', 'receipts'), to: screen('subcontracting', 'receipts') },
     { label: label('subcontracting', 'pending'), to: screen('subcontracting', 'pending') },
     { label: label('subcontracting', 'resupply'), to: screen('subcontracting', 'resupply') },

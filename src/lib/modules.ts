@@ -161,7 +161,7 @@ export const appModules: AppModule[] = [
     description: 'mod.assets.desc',
     home: '/app/assets/register',
     group: 'finance',
-    match: ['/app/assets'],
+    match: ['/app/assets', '/assets'],
     menu: moduleMenus.assets ?? [],
   },
   {
@@ -188,7 +188,7 @@ export const appModules: AppModule[] = [
     description: 'mod.subcontracting.desc',
     home: '/app/subcontracting/orders',
     group: 'supply',
-    match: ['/app/subcontracting'],
+    match: ['/app/subcontracting', '/subcontracting'],
     menu: moduleMenus.subcontracting ?? [],
   },
   {

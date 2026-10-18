@@ -788,14 +788,14 @@ const assets: Workspace = {
   chartTitle: copy('Asset value', '资产原值'),
   chart: series([12000, 12000, 12500, 12500, 12500, 14000, 14000, 14000, 13800, 13800, 13600, 13600]),
   kpis: [
-    { label: copy('Running assets', '在用资产'), value: 3, to: app('assets', 'register') },
+    { label: copy('Running assets', '在用资产'), value: 3, to: '/assets' },
     { label: copy('In maintenance', '维修中'), value: 1, to: app('assets', 'maintenance') },
     { label: copy('Gross value', '原值'), value: 23780, money: true, to: app('assets', 'analysis') },
   ],
   sidebar: [
     { label: 'ws.home', to: '/go/assets' },
     { label: 'ws.dashboard', to: app('assets', 'dashboard') },
-    { label: desk('assets', 'register').label, to: app('assets', 'register') },
+    { label: desk('assets', 'register').label, to: '/assets' },
     { label: desk('assets', 'categories').label, to: app('assets', 'categories') },
     { label: desk('assets', 'movements').label, to: app('assets', 'movements') },
     { label: desk('assets', 'depreciation').label, to: app('assets', 'depreciation') },
@@ -805,7 +805,7 @@ const assets: Workspace = {
     { label: 'hub.settings', to: app('assets', 'settings') },
   ],
   groups: [
-    { title: copy('Assets', '资产'), links: [desk('assets', 'register'), desk('assets', 'categories'), desk('assets', 'locations'), desk('assets', 'movements'), desk('assets', 'disposals')] },
+    { title: copy('Assets', '资产'), links: [{ ...desk('assets', 'register'), to: '/assets' }, desk('assets', 'categories'), desk('assets', 'locations'), desk('assets', 'movements'), desk('assets', 'disposals')] },
     { title: copy('Depreciation', '折旧'), links: [desk('assets', 'depreciation'), desk('assets', 'schedule'), desk('assets', 'analysis')] },
     { title: copy('Maintenance', '维护'), links: [desk('assets', 'maintenance'), desk('assets', 'maintenance-report')] },
     { title: 'hub.reports', links: [desk('assets', 'analysis'), desk('assets', 'schedule'), desk('assets', 'maintenance-report'), desk('assets', 'dashboard')] },
@@ -814,7 +814,7 @@ const assets: Workspace = {
   steps: [
     { label: copy('Add a category', '添加类别'), to: app('assets', 'categories') },
     { label: copy('Add a location', '添加地点'), to: app('assets', 'locations') },
-    { label: copy('Register an asset', '登记资产'), to: app('assets', 'register') },
+    { label: copy('Register an asset', '登记资产'), to: '/assets' },
     { label: copy('Post depreciation', '过账折旧'), to: app('assets', 'depreciation') },
     { label: copy('Schedule maintenance', '安排维护'), to: app('assets', 'maintenance') },
     { label: copy('Read the schedule', '查看折旧计划'), to: app('assets', 'schedule') },
@@ -897,14 +897,14 @@ const subcontracting: Workspace = {
   chartTitle: copy('Sent out', '发出金额'),
   chart: series([200, 180, 240, 160, 300, 220, 260, 190, 280, 310, 240, 200]),
   kpis: [
-    { label: copy('Open orders', '未结订单'), value: 2, to: app('subcontracting', 'orders') },
+    { label: copy('Open orders', '未结订单'), value: 2, to: '/subcontracting' },
     { label: copy('To receive', '待收货'), value: 1, to: app('subcontracting', 'pending') },
     { label: copy('Open value', '未结金额'), value: 820, money: true, to: app('subcontracting', 'analysis') },
   ],
   sidebar: [
     { label: 'ws.home', to: '/go/subcontracting' },
     { label: 'ws.dashboard', to: app('subcontracting', 'dashboard') },
-    { label: desk('subcontracting', 'orders').label, to: app('subcontracting', 'orders') },
+    { label: desk('subcontracting', 'orders').label, to: '/subcontracting' },
     { label: desk('subcontracting', 'receipts').label, to: app('subcontracting', 'receipts') },
     { label: desk('subcontracting', 'resupply').label, to: app('subcontracting', 'resupply') },
     { label: desk('subcontracting', 'boms').label, to: app('subcontracting', 'boms') },
@@ -912,14 +912,14 @@ const subcontracting: Workspace = {
     { label: 'hub.settings', to: app('subcontracting', 'settings') },
   ],
   groups: [
-    { title: copy('Orders', '订单'), links: [desk('subcontracting', 'orders'), desk('subcontracting', 'receipts'), desk('subcontracting', 'pending'), desk('subcontracting', 'resupply')] },
+    { title: copy('Orders', '订单'), links: [{ ...desk('subcontracting', 'orders'), to: '/subcontracting' }, desk('subcontracting', 'receipts'), desk('subcontracting', 'pending'), desk('subcontracting', 'resupply')] },
     { title: copy('Materials', '原料'), links: [desk('subcontracting', 'boms'), desk('subcontracting', 'consumed'), desk('subcontracting', 'resupply'), { label: 'menu.boms', to: '/boms', external: true }] },
     { title: 'hub.reports', links: [desk('subcontracting', 'analysis'), desk('subcontracting', 'order-summary'), desk('subcontracting', 'consumed'), desk('subcontracting', 'cost'), desk('subcontracting', 'dashboard')] },
     { title: 'hub.settings', links: [desk('subcontracting', 'settings')] },
   ],
   steps: [
     { label: copy('Write a subcontract BOM', '写一份委外物料清单'), to: app('subcontracting', 'boms') },
-    { label: copy('Send an order', '发出委外单'), to: app('subcontracting', 'orders') },
+    { label: copy('Send an order', '发出委外单'), to: '/subcontracting' },
     { label: copy('Resupply components', '补发组件'), to: app('subcontracting', 'resupply') },
     { label: copy('Receive the goods', '收回货物'), to: app('subcontracting', 'receipts') },
     { label: copy('Read the order summary', '查看订单汇总'), to: app('subcontracting', 'order-summary') },

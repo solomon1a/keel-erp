@@ -3,7 +3,7 @@ import { findDeskScreen } from '../shared/desk-screens.ts'
 import { appModules } from '../src/lib/modules.ts'
 import { workspaceFor, workspaceLinks, workspaces, type WsLabel } from '../src/lib/workspaces.ts'
 
-const roots = ['/desk', '/orders', '/products', '/contacts', '/purchases', '/vendors', '/inventory', '/manufacturing', '/boms', '/pos', '/website', '/shop', '/accounting', '/crm', '/hr', '/go']
+const roots = ['/desk', '/orders', '/products', '/contacts', '/purchases', '/vendors', '/inventory', '/manufacturing', '/boms', '/pos', '/website', '/shop', '/accounting', '/crm', '/hr', '/go', '/assets', '/subcontracting']
 
 function pathOk(to: string) {
   const path = to.split('?')[0] ?? ''

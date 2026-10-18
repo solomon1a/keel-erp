@@ -491,6 +491,62 @@ export const moduleSettingsSchema = z.object({
   })).max(40),
 })
 
+export const assetDraftSchema = z.object({
+  name: z.string().trim().min(1, 'Name the asset.').max(120),
+  purchaseValue: z.number().positive('Purchase value has to be above zero.'),
+  salvageValue: z.number().min(0, 'Salvage cannot be negative.'),
+  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-04-30.'),
+  method: z.enum(['straight_line', 'declining']),
+  months: z.number().int().min(1).max(600),
+  categoryId: z.number().int().positive().optional(),
+})
+
+export const assetFromBillSchema = assetDraftSchema.omit({ purchaseValue: true }).extend({
+  invoiceLineId: z.number().int().positive(),
+  purchaseValue: z.number().positive().optional(),
+})
+
+export const assetPostDueSchema = z.object({
+  asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-04-30.'),
+})
+
+export const assetDisposeSchema = z.object({
+  price: z.number().min(0, 'Sale price cannot be negative.'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-04-30.'),
+})
+
+export const subcontractDraftSchema = z.object({
+  vendorId: z.number().int().positive(),
+  productId: z.number().int().positive(),
+  bomId: z.number().int().positive(),
+  quantity: z.number().positive(),
+  fee: z.number().min(0),
+})
+
+export const subcontractSendSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-04-18.'),
+  lines: z.array(z.object({
+    productId: z.number().int().positive(),
+    quantity: z.number().min(0),
+  })).min(1),
+})
+
+export const subcontractFinishSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-04-18.'),
+  quantity: z.number().positive(),
+})
+
+export const inviteSchema = z.object({
+  email: emailSchema,
+  role: z.enum(roleValues),
+})
+
+export const acceptInviteSchema = z.object({
+  token: z.string().trim().min(20).max(200),
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  password: passwordSchema,
+})
+
 export type DeskRecordInput = z.infer<typeof deskRecordSchema>
 export type DeskRecordPatch = z.infer<typeof deskRecordPatchSchema>
 export type ModuleSettingsInput = z.infer<typeof moduleSettingsSchema>
