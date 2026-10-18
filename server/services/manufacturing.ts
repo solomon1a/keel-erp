@@ -2,6 +2,7 @@ import { roundMoney } from '../../src/domain/money.ts'
 import type { BomInput, ManufacturingInput, ProduceInput } from '../../shared/schemas.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { assertQualityClear, ensureQualityChecks, prepareQualityChecks } from './quality.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
 import { postValuationJournal, valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
@@ -456,6 +457,14 @@ export async function confirmManufacturing(companyId: number, orderId: number) {
       label: order.name,
     })
     await openJobCards(tx, companyId, order.id, order.bomId, order.quantity)
+    const cards = await tx.jobCard.findMany({ where: { orderId: order.id }, select: { operationName: true } })
+    await ensureQualityChecks(tx, companyId, {
+      trigger: 'operation',
+      productIds: [order.productId, ...order.lines.map((line) => line.productId)],
+      manufacturingOrderId: order.id,
+      operationNames: cards.map((card) => card.operationName),
+      quantity: order.quantity,
+    })
     return tx.manufacturingOrder.update({
       where: { id: order.id },
       data: { state: 'confirmed' },
@@ -567,6 +576,7 @@ async function operatingToAbsorb(tx: Tx, orderId: number, absorbed: number) {
 }
 
 export async function produceManufacturing(companyId: number, orderId: number, input: ProduceInput) {
+  await prepareQualityChecks(companyId, { trigger: 'operation', productIds: [], manufacturingOrderId: orderId })
   return prisma.$transaction(async (tx) => {
     const order = await tx.manufacturingOrder.findFirst({
       where: { id: orderId, companyId },
@@ -574,6 +584,13 @@ export async function produceManufacturing(companyId: number, orderId: number, i
     })
     if (!order) throw new AppError(404, 'Manufacturing order not found.')
     if (order.state !== 'progress') throw new AppError(409, 'Start the order before producing.')
+    const cards = await tx.jobCard.findMany({ where: { orderId: order.id }, select: { operationName: true } })
+    await assertQualityClear(tx, companyId, {
+      trigger: 'operation',
+      productIds: [],
+      manufacturingOrderId: order.id,
+      operationNames: cards.map((card) => card.operationName),
+    })
     const remaining = roundQty(order.quantity - order.quantityDone)
     const producing = roundQty(input.quantity ?? remaining)
     if (producing <= 0) throw new AppError(400, 'Quantity must be greater than zero.')

@@ -304,8 +304,8 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
   ],
   projects: [
     { label: label('projects', 'dashboard'), to: screen('projects', 'dashboard') },
-    { label: label('projects', 'projects'), to: screen('projects', 'projects') },
-    { label: label('projects', 'tasks'), to: screen('projects', 'tasks') },
+    { label: label('projects', 'projects'), to: '/projects' },
+    { label: label('projects', 'tasks'), to: '/projects' },
     { label: label('projects', 'updates'), to: screen('projects', 'updates') },
     { label: label('projects', 'timesheets'), to: screen('projects', 'timesheets') },
     { label: label('projects', 'billing'), to: screen('projects', 'billing') },
@@ -324,9 +324,9 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
   ],
   quality: [
     { label: label('quality', 'dashboard'), to: screen('quality', 'dashboard') },
-    { label: label('quality', 'inspections'), to: screen('quality', 'inspections') },
-    { label: label('quality', 'nonconformance'), to: screen('quality', 'nonconformance') },
-    { label: label('quality', 'alerts'), to: screen('quality', 'alerts') },
+    { label: label('quality', 'inspections'), to: '/quality' },
+    { label: label('quality', 'nonconformance'), to: '/quality/alerts' },
+    { label: label('quality', 'alerts'), to: '/quality/alerts' },
     { label: label('quality', 'goals'), to: screen('quality', 'goals') },
     { label: 'menu.reporting', children: [
       { label: label('quality', 'analysis'), to: screen('quality', 'analysis') },

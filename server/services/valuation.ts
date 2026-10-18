@@ -10,6 +10,7 @@ const stockAccounts = [
   ['2203', 'Goods received not invoiced', 'liability'],
   ['1407', 'Work in progress', 'asset'],
   ['1408', 'Subcontracted goods', 'asset'],
+  ['1410', 'Quarantine', 'asset'],
   ['1409', 'Landed cost clearing', 'liability'],
   ['2211', 'Accrued manufacturing labour', 'liability'],
   ['6603', 'Wastage', 'expense'],
@@ -48,6 +49,8 @@ function receiptCredit(fromType: string) {
       return '1407'
     case 'subcontract':
       return '1408'
+    case 'quarantine':
+      return '1410'
     case 'customer':
       return '6401'
     case 'supplier':
@@ -65,6 +68,8 @@ function issueDebit(toType: string) {
       return '1407'
     case 'subcontract':
       return '1408'
+    case 'quarantine':
+      return '1410'
     case 'customer':
     case 'supplier':
     case 'inventory':

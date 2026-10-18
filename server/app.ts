@@ -59,6 +59,8 @@ import { registerCrmRoutes } from './crm-routes.ts'
 import { registerHrRoutes } from './hr-routes.ts'
 import { registerCoreRoutes } from './core-routes.ts'
 import { registerAssetRoutes } from './asset-routes.ts'
+import { registerProjectRoutes } from './project-routes.ts'
+import { registerQualityRoutes } from './quality-routes.ts'
 import { registerHomeRoutes } from './home-routes.ts'
 import { registerInviteRoutes } from './invite-routes.ts'
 import { registerSubcontractRoutes } from './subcontract-routes.ts'
@@ -1149,6 +1151,8 @@ export function createApp() {
   registerCoreRoutes(app)
   registerHomeRoutes(app)
   registerAssetRoutes(app)
+  registerQualityRoutes(app)
+  registerProjectRoutes(app)
   registerSubcontractRoutes(app)
   registerInviteRoutes(app)
 
