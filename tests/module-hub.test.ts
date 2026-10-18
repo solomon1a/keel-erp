@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hubTiles, segmentTiles } from '../src/lib/module-hub.ts'
-import { appModules } from '../src/lib/modules.ts'
+import { appModules, launcherModules, moduleForPath } from '../src/lib/modules.ts'
 
 function labels(moduleId: string) {
   const mod = appModules.find((item) => item.id === moduleId)
@@ -125,5 +125,16 @@ describe('module hubs', () => {
       expect(tiles.length).toBeGreaterThan(0)
       for (const tile of tiles) expect(tile.to.startsWith('/')).toBe(true)
     }
+  })
+
+  it('gives the website builder its own tile next to eCommerce', () => {
+    const ids = launcherModules().map((mod) => mod.id)
+    expect(ids.indexOf('sites')).toBe(ids.indexOf('website') + 1)
+    expect(labels('sites')).toEqual(['menu.sitePages', 'menu.blog', 'menu.theme', 'menu.navigation', 'menu.inbox'])
+    expect(labels('website')).not.toContain('menu.builder')
+    expect(labels('website')).toEqual(expect.arrayContaining(['menu.websiteHome', 'menu.products', 'desk.s.website.coupons', 'hub.reports', 'hub.settings']))
+    expect(moduleForPath('/sites')?.id).toBe('sites')
+    expect(moduleForPath('/sites/blog')?.id).toBe('sites')
+    expect(moduleForPath('/website')?.id).toBe('website')
   })
 })

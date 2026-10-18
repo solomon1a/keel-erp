@@ -472,9 +472,8 @@ const website: Workspace = {
   sidebar: [
     { label: 'ws.home', to: '/go/website' },
     { label: 'ws.dashboard', to: app('website', 'visitors') },
+    { label: 'menu.websiteHome', to: '/website' },
     { label: 'menu.products', to: '/products' },
-    { label: desk('website', 'pages').label, to: app('website', 'pages') },
-    { label: 'menu.builder', to: '/sites' },
     { label: 'menu.storefront', to: '/shop' },
     { label: desk('website', 'coupons').label, to: app('website', 'coupons') },
     { label: 'menu.reporting', children: [desk('website', 'visitors')] },
@@ -486,8 +485,6 @@ const website: Workspace = {
       links: [
         { label: 'menu.websiteHome', to: '/website' },
         { label: 'menu.storefront', to: '/shop', external: true },
-        { label: 'menu.builder', to: '/sites' },
-        desk('website', 'pages'),
         desk('website', 'coupons'),
       ],
     },
@@ -497,10 +494,52 @@ const website: Workspace = {
   ],
   steps: [
     { label: copy('Publish a product', '上架产品'), to: '/products' },
-    { label: copy('Add a page', '添加页面'), to: app('website', 'pages') },
     { label: copy('Add a coupon', '添加优惠券'), to: app('website', 'coupons') },
+    { label: copy('Check the shop visitors', '查看网店访客'), to: app('website', 'visitors') },
     { label: copy('Open the storefront', '打开商店前台'), to: '/shop' },
     { label: copy('Review shop settings', '检查商店设置'), to: app('website', 'settings') },
+  ],
+}
+
+const sites: Workspace = {
+  chartTitle: copy('Site messages', '网站留言'),
+  chart: series([1, 2, 1, 3, 2, 4, 3, 2, 5, 3, 4, 2]),
+  kpis: [
+    { label: copy('Pages', '页面'), value: 4, to: '/sites' },
+    { label: copy('Blog posts', '博客文章'), value: 1, to: '/sites/blog' },
+    { label: copy('Messages', '留言'), value: 2, to: '/sites/inbox' },
+  ],
+  sidebar: [
+    { label: 'ws.home', to: '/go/sites' },
+    { label: 'menu.sitePages', to: '/sites' },
+    { label: 'menu.blog', to: '/sites/blog' },
+    { label: 'menu.theme', to: '/sites/theme' },
+    { label: 'menu.navigation', to: '/sites/menu' },
+    { label: 'menu.inbox', to: '/sites/inbox' },
+  ],
+  groups: [
+    {
+      title: copy('Content', '内容'),
+      links: [
+        { label: 'menu.sitePages', to: '/sites' },
+        { label: 'menu.blog', to: '/sites/blog' },
+      ],
+    },
+    {
+      title: copy('Design', '设计'),
+      links: [
+        { label: 'menu.theme', to: '/sites/theme' },
+        { label: 'menu.navigation', to: '/sites/menu' },
+      ],
+    },
+    { title: copy('Messages', '留言'), links: [{ label: 'menu.inbox', to: '/sites/inbox' }] },
+  ],
+  steps: [
+    { label: copy('Edit the home page', '编辑首页'), to: '/sites' },
+    { label: copy('Pick a theme', '选择主题'), to: '/sites/theme' },
+    { label: copy('Arrange the menu', '整理菜单'), to: '/sites/menu' },
+    { label: copy('Write a blog post', '撰写博客文章'), to: '/sites/blog' },
+    { label: copy('Answer site messages', '回复网站留言'), to: '/sites/inbox' },
   ],
 }
 
@@ -1035,6 +1074,7 @@ export const workspaces: Record<string, Workspace> = {
   wastage,
   pos,
   website,
+  sites,
   contacts,
   accounting,
   hr,
