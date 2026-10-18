@@ -8,7 +8,8 @@ import { menuIconId, moduleAccent, moduleIconId, ModuleIcon } from '../brand/mod
 import { ThemeToggle } from '../brand/theme.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api } from '../lib/api.ts'
-import { useMoney } from '../lib/format.ts'
+import { formatRate } from '../lib/display-money.ts'
+import { useDisplay, useMoney } from '../lib/format.ts'
 import { menuLabel } from '../lib/menu-label.ts'
 import { linkActive, moduleForPath, sectionForPath, type AppModule, type MenuEntry } from '../lib/modules.ts'
 import { prefetchHref } from '../lib/prefetch.ts'
@@ -16,6 +17,7 @@ import type { User } from '../lib/types.ts'
 import { cn } from '../lib/utils.ts'
 import { BarChart } from './bar-chart.tsx'
 import { DemoLaunch, DemoTour } from './demo-tour.tsx'
+import { CurrencySwitcher } from './currency-switcher.tsx'
 import { LanguageSwitcher } from './language-switcher.tsx'
 import { Button } from './ui/button.tsx'
 
@@ -194,7 +196,8 @@ function AccountMenu({ user }: { user: User }) {
         <div className="keel-menu absolute right-0 z-[60] mt-2 w-64 rounded-3xl p-3">
           <p className="truncate px-1 text-sm font-semibold">{user.name}</p>
           <p className="truncate px-1 text-xs text-muted-foreground">{roleText(user.role, t)}</p>
-          <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <CurrencySwitcher />
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
@@ -297,6 +300,7 @@ export function Shell() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const { locale, t } = useI18n()
+  const display = useDisplay()
   const me = useQuery({
     queryKey: ['me'],
     queryFn: () => api<User>('/api/session/me'),
@@ -357,6 +361,7 @@ export function Shell() {
           <div className="ml-auto flex shrink-0 items-center gap-1">
             <div className="hidden items-center gap-1 lg:flex">
               <DemoLaunch place="header" />
+              <CurrencySwitcher />
               <LanguageSwitcher />
               <ThemeToggle />
               {me.data.role === 'admin' ? (
@@ -391,6 +396,11 @@ export function Shell() {
             <AccountMenu user={me.data} />
           </div>
         </div>
+        {display.converted ? (
+          <p className="px-4 pb-2 text-[11px] text-muted-foreground">
+            {t('fx.hint', { display: display.currency, base: display.base, rate: formatRate(display.rate) })}
+          </p>
+        ) : null}
         {mod ? (
           <nav className="keel-scroll flex gap-1.5 overflow-x-auto px-3 pb-3" aria-label={t(mod.label)}>
             <MenuItems mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => undefined} />

@@ -1,5 +1,9 @@
 # Changelog
 
+## Display currency
+
+The header has its own currency pill, next to the language toggle. English and 中文 only change the language. The pill lists CNY, PKR, USD, GBP, and EUR, and it starts on the company's books currency. The choice is stored on the user, so it follows that person to another browser, and this browser keeps a copy if the save does not land. Dashboard figures, chart axes, lists, read-only totals, invoices, orders, reports, the till, and the shop all use that display currency. Amounts you type, and every API body, stay in the company currency. When the two differ, a short line names the rate. Each company has its own demo rate table under Settings, and a new company gets the same list relative to its own currency.
+
 ## Desktop layout
 
 Module homes use the width of the window, up to 1600px. Shortcut cards and the Reports & Masters groups fill the row with `auto-fill` and a 260px minimum, so a desktop shows three to five columns and a phone shows one. Links inside those cards stay on one line. The module menu sits in the page under the header, on a solid surface, and scrolls inside itself instead of sliding over the navigation or the cards.

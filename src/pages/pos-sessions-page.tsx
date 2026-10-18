@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { BaseMoneyLabel } from '../components/base-currency.tsx'
 import { Field, EmptyState, Notice } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -106,7 +107,7 @@ export function PosSessionsPage() {
             ))}
           </select>
         </Field>
-        <Field label={t('pos.opening')}>
+        <Field label={<BaseMoneyLabel text={t('pos.opening')} />}>
           <Input className="h-12 text-base" type="number" min="0" step="0.01" value={openingCash} onChange={(event) => setOpeningCash(event.target.value)} required />
         </Field>
         <Button className="h-12" type="submit" disabled={open.isPending}>{open.isPending ? t('common.saving') : t('pos.open')}</Button>

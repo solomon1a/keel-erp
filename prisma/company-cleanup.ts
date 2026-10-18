@@ -78,6 +78,7 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
     await tx.chargeTemplate.deleteMany({ where: { companyId } })
     await tx.accessGroup.deleteMany({ where: { companyId } })
     await tx.session.deleteMany({ where: { user: { companyId } } })
+    await tx.exchangeRate.deleteMany({ where: { companyId } })
     await tx.demoRun.deleteMany({ where: { companyId } })
     await tx.user.deleteMany({ where: { companyId } })
     await tx.sequence.deleteMany({

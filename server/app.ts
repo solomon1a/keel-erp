@@ -5,6 +5,8 @@ import { parseRole } from '../shared/roles.ts'
 import {
   changePasswordSchema,
   companySettingsSchema,
+  displayCurrencySchema,
+  exchangeRatesSchema,
   contactInputSchema,
   createUserSchema,
   bomInputSchema,
@@ -36,6 +38,7 @@ import {
   closeSession,
   closeUserSessions,
   findUserByEmail,
+  forgetCachedUser,
   hashPassword,
   openSession,
   passwordMatches,
@@ -48,6 +51,7 @@ import { cached } from './cache.ts'
 import { dbTarget, prisma } from './db.ts'
 import { startQueryTiming } from './timing.ts'
 import { roundMoney } from '../src/domain/money.ts'
+import { listRates, replaceRates } from './services/exchange-rates.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
 import { registerDemoTourRoutes } from './demo-tour-routes.ts'
 import { registerTradeRoutes } from './trade-routes.ts'
@@ -230,6 +234,7 @@ export function createApp() {
       role,
       companyId: account.companyId,
       company: account.company,
+      displayCurrency: account.displayCurrency,
     })
   })
 
@@ -341,6 +346,29 @@ export function createApp() {
       select: { name: true, city: true, currency: true, defaultTaxRate: true },
     })
     return c.json(company)
+  })
+
+  app.get('/api/exchange-rates', async (c) => {
+    const user = c.get('user')
+    return c.json(await listRates(prisma, user.companyId, user.company.currency))
+  })
+
+  app.put('/api/exchange-rates', async (c) => {
+    const user = c.get('user')
+    requireAdmin(user)
+    const input = parseBody(exchangeRatesSchema, await c.req.json())
+    return c.json(await replaceRates(prisma, user.companyId, user.company.currency, input.rates))
+  })
+
+  app.patch('/api/session/display-currency', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(displayCurrencySchema, await c.req.json())
+    const table = await listRates(prisma, user.companyId, user.company.currency)
+    const allowed = table.rates.some((row) => row.currency === input.currency) || input.currency === user.company.currency
+    if (!allowed) throw new AppError(400, 'That currency is not on this company.')
+    await prisma.user.update({ where: { id: user.id }, data: { displayCurrency: input.currency } })
+    forgetCachedUser(user.id)
+    return c.json({ ...user, displayCurrency: input.currency })
   })
 
   app.get('/api/desk', async (c) => {

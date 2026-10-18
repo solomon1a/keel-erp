@@ -695,14 +695,22 @@ select option {
 
 .home-kpis { order: 1; }
 .home-kpi { container-type: inline-size; }
-.home-kpi-value { font-size: clamp(15px, 10cqi, 26px); }
+.home-kpi-value { font-size: clamp(16px, 8cqi, 22px); }
+.home-kpi.keel-glass {
+  background-color: var(--kl-glass-bg);
+  background-image: radial-gradient(
+    ellipse 100% 100% at 0% 0%,
+    color-mix(in srgb, var(--c, #0e6b5c) 12%, var(--kl-glass-bg)),
+    var(--kl-glass-bg) 70%
+  );
+}
 .home-bank { order: 2; }
 .home-chart { order: 3; }
-.home-pipeline { order: 4; }
-.home-orders { order: 5; }
+.home-apps { order: 4; }
+.home-pipeline { order: 5; }
 .home-attention { order: 6; }
-.home-stock { order: 7; }
-.home-apps { order: 8; }
+.home-orders { order: 7; }
+.home-stock { order: 8; }
 
 .home-primary,
 .home-secondary {
@@ -821,25 +829,30 @@ select option {
   background: color-mix(in srgb, var(--c) 28%, transparent);
   color: color-mix(in srgb, var(--c) 55%, white);
 }
+[data-theme='dark'] .home-kpi.keel-glass {
+  background-image: radial-gradient(
+    ellipse 100% 100% at 0% 0%,
+    color-mix(in srgb, var(--c, #7ddec8) 16%, var(--kl-glass-bg)),
+    var(--kl-glass-bg) 70%
+  );
+}
 [data-theme='dark'] .home-tab[aria-selected='true'] {
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 1100px) {
   .home-board {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 18px;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+    gap: 16px;
+    align-items: start;
     grid-template-areas:
       'kpis kpis'
       'bank bank'
-      'chart chart'
-      'pipeline pipeline'
-      'orders orders'
-      'attention attention'
-      'stock apps';
+      'chart apps'
+      'pipeline attention'
+      'orders stock';
   }
 
   .home-kpis { grid-area: kpis; }
@@ -850,18 +863,4 @@ select option {
   .home-attention { grid-area: attention; }
   .home-stock { grid-area: stock; }
   .home-apps { grid-area: apps; }
-}
-
-@media (min-width: 1100px) {
-  .home-board {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 20px;
-    grid-template-areas:
-      'kpis kpis kpis kpis kpis kpis'
-      'bank bank bank bank bank bank'
-      'chart chart chart chart chart chart'
-      'pipeline pipeline pipeline pipeline pipeline pipeline'
-      'orders orders orders orders orders orders'
-      'attention attention stock stock apps apps';
-  }
 }

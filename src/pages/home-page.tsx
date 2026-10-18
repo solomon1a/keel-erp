@@ -23,7 +23,7 @@ import { Button } from '../components/ui/button.tsx'
 import { useI18n, type Locale, type Translate } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
 import { api } from '../lib/api.ts'
-import { useMoney } from '../lib/format.ts'
+import { useDisplay, useMoney } from '../lib/format.ts'
 import type { User } from '../lib/types.ts'
 import { cn } from '../lib/utils.ts'
 
@@ -495,6 +495,7 @@ function LiveBoard({
   t: Translate
   busy: boolean
 }) {
+  const display = useDisplay()
   const bankTrend = trend(data.bank.changePct)
   const revenueTrend = trend(data.kpis.revenue.changePct)
   return (
@@ -544,7 +545,17 @@ function LiveBoard({
               <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-full bg-[var(--home-exp)]" />{t('home.chart.expenses')}</span>
             </div>
           </div>
-          {chartReady(data.chart.months) ? <HomeChart months={data.chart.months} locale={locale} /> : (
+          {chartReady(data.chart.months) ? (
+            <HomeChart
+              months={data.chart.months.map((month) => ({
+                ...month,
+                income: display.convert(month.income),
+                expense: display.convert(month.expense),
+              }))}
+              locale={locale}
+              currency={display.currency}
+            />
+          ) : (
             <p className="py-24 text-center text-sm text-muted-foreground">{t('home.chart.empty')}</p>
           )}
         </section>
@@ -562,13 +573,13 @@ function LiveBoard({
 
 function Kpi({ icon, color, label, value, children }: { icon: ReactNode; color: string; label: string; value: string; children: ReactNode }) {
   return (
-    <article className="home-kpi keel-glass min-w-0 rounded-[22px] px-4 py-4 sm:px-5">
-      <div className="flex items-center gap-2.5">
-        <span className="home-icon grid size-10 shrink-0 place-items-center rounded-full" style={{ ['--c' as string]: color }}>{icon}</span>
+    <article className="home-kpi keel-glass min-w-0 rounded-[22px] px-3.5 py-3" style={{ ['--c' as string]: color }}>
+      <div className="flex items-center gap-2">
+        <span className="home-icon grid size-8 shrink-0 place-items-center rounded-full">{icon}</span>
         <h2 className="text-sm font-medium text-muted-foreground">{label}</h2>
       </div>
-      <p className="home-kpi-value mt-3 font-bold leading-none tracking-tight tabular-nums">{value}</p>
-      <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">{children}</div>
+      <p className="home-kpi-value mt-2 font-bold leading-none tracking-tight tabular-nums">{value}</p>
+      <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2">{children}</div>
     </article>
   )
 }

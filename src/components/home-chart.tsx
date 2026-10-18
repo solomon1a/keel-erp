@@ -31,7 +31,7 @@ function chartHeight(width: number) {
   return Math.min(460, Math.max(380, Math.round(width * 0.32)))
 }
 
-export function HomeChart({ months, locale }: { months: Month[]; locale: Locale }) {
+export function HomeChart({ months, locale, currency = 'CNY' }: { months: Month[]; locale: Locale; currency?: string }) {
   const frame = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState({ width: 960, height: 380 })
   useLayoutEffect(() => {
@@ -73,7 +73,12 @@ export function HomeChart({ months, locale }: { months: Month[]; locale: Locale 
   const lastExpense = expense[expense.length - 1]
   const firstIncome = income[0]
   const firstExpense = expense[0]
-  const formatter = new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : 'en-US', { notation: 'compact', maximumFractionDigits: 1 })
+  const formatter = new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : 'en-US', {
+    style: 'currency',
+    currency,
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  })
   const monthLabel = new Intl.DateTimeFormat(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', timeZone: 'UTC' })
   const ticks = [0, 0.33, 0.66, 1]
 

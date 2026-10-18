@@ -19,6 +19,7 @@ export type SessionUser = {
   role: Role
   companyId: number
   company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number }
+  displayCurrency: string | null
 }
 
 export type AppEnv = {
@@ -34,6 +35,7 @@ const userSelect = {
   role: true,
   companyId: true,
   company: { select: { id: true, name: true, city: true, currency: true, defaultTaxRate: true } },
+  displayCurrency: true,
 } as const
 
 export function hashPassword(password: string) {
@@ -85,6 +87,7 @@ function toSessionUser(row: {
   role: string
   companyId: number
   company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number }
+  displayCurrency: string | null
 }): SessionUser {
   const role = parseRole(row.role)
   if (!role) throw new AppError(500, 'This account has an unknown role.')
@@ -98,7 +101,7 @@ export function clearSessionCache() {
   sessionCache.clear()
 }
 
-function forgetCachedUser(userId: number) {
+export function forgetCachedUser(userId: number) {
   for (const [hash, entry] of sessionCache) {
     if (entry.user.id === userId) sessionCache.delete(hash)
   }

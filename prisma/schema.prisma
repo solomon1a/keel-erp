@@ -74,6 +74,7 @@ model Company {
   materialRequests MaterialRequest[]
   supplierQuotes SupplierQuotation[]
   demoRuns       DemoRun[]
+  exchangeRates  ExchangeRate[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -104,7 +105,21 @@ model User {
   savedFilters         SavedFilter[]
   chatter              ChatterMessage[]
   demoRuns             DemoRun[]
+  /// ISO code used only to format amounts. Empty follows the company currency. The books stay in that currency.
+  displayCurrency      String?
   createdAt            DateTime            @default(now())
+}
+
+/// How many units of `currency` equal one unit of the company currency. A demo table until an admin edits it.
+model ExchangeRate {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currency  String
+  rate      Float
+
+  @@unique([companyId, currency])
+  @@index([companyId])
 }
 
 model Session {

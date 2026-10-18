@@ -5,6 +5,7 @@ export type User = {
   name: string
   email: string
   role: Role
+  displayCurrency?: string | null
   company: { id: number; name: string; city: string; currency: string; defaultTaxRate: number }
 }
 
