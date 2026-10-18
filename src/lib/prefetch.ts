@@ -55,7 +55,7 @@ export function prefetchHref(client: QueryClient, href: string) {
       warm(client, ['invoices', ''], '/api/invoices')
       return
     case '/accounting/reports':
-      warm(client, ['reports-pack'], '/api/reports/pack?asOf=2026-10-16')
+      warm(client, ['reports-pack'], '/api/reports/pack')
       return
     case '/accounting/ledger':
       warm(client, ['ledger', ''], '/api/ledger')

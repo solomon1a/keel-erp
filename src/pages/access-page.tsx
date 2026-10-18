@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input, Select } from '../components/ui/input.tsx'
-import { useI18n } from '../i18n/locale.tsx'
+import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
+import { accessModels, isAccessModel, isGroupKey } from '../../shared/access.ts'
 
 type Grant = { model: string; canRead: boolean; canWrite: boolean; canCreate: boolean; canDelete: boolean }
 type Rule = { id: number; model: string; name: string; field: string; op: string; value: string }
@@ -14,6 +15,48 @@ type Person = { id: number; name: string; email: string; role: string }
 type Snapshot = { groups: Group[]; users: Person[] }
 
 const groupOrder = ['internal', 'manager', 'settings'] as const
+
+function groupLabel(key: string, t: Translate) {
+  if (!isGroupKey(key)) return key
+  switch (key) {
+    case 'internal':
+      return t('access.group.internal')
+    case 'manager':
+      return t('access.group.manager')
+    case 'settings':
+      return t('access.group.settings')
+    default: {
+      const unexpected: never = key
+      return unexpected
+    }
+  }
+}
+
+function modelLabel(model: string, t: Translate) {
+  if (!isAccessModel(model)) return model
+  switch (model) {
+    case 'desk.record':
+      return t('access.model.desk')
+    case 'sale.order':
+      return t('access.model.sale')
+    case 'purchase.order':
+      return t('access.model.purchase')
+    case 'mrp.order':
+      return t('access.model.mrp')
+    case 'stock.transfer':
+      return t('access.model.transfer')
+    case 'stock.valuation':
+      return t('access.model.valuation')
+    case 'account.move':
+      return t('access.model.move')
+    case 'bank.statement':
+      return t('access.model.bank')
+    default: {
+      const unexpected: never = model
+      return unexpected
+    }
+  }
+}
 
 export function AccessPage() {
   const { t } = useI18n()
@@ -68,7 +111,7 @@ export function AccessPage() {
           <thead className="text-muted-foreground">
             <tr>
               <th className="px-4 py-2 font-medium">{t('desk.name')}</th>
-              {groupOrder.map((key) => <th key={key} className="px-4 py-2 font-medium">{data.groups.find((row) => row.key === key)?.name ?? key}</th>)}
+              {groupOrder.map((key) => <th key={key} className="px-4 py-2 font-medium">{groupLabel(key, t)}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -103,8 +146,8 @@ export function AccessPage() {
       </section>
       <section className="grid gap-3">
         <label className="flex items-center gap-2 text-sm">
-          <Select aria-label={group.name} className="h-8 w-auto" value={group.key} onChange={(event) => setGroupKey(event.target.value)}>
-            {data.groups.map((row) => <option key={row.key} value={row.key}>{row.name}</option>)}
+          <Select aria-label={groupLabel(group.key, t)} className="h-8 w-auto" value={group.key} onChange={(event) => setGroupKey(event.target.value)}>
+            {data.groups.map((row) => <option key={row.key} value={row.key}>{groupLabel(row.key, t)}</option>)}
           </Select>
         </label>
         <div className="overflow-x-auto rounded-lg border border-border bg-card">
@@ -121,7 +164,7 @@ export function AccessPage() {
             <tbody>
               {group.grants.map((grant) => (
                 <tr key={grant.model} className="border-t border-border">
-                  <td className="px-4 py-2 font-medium">{grant.model}</td>
+                  <td className="px-4 py-2 font-medium">{modelLabel(grant.model, t)}</td>
                   {(['canRead', 'canWrite', 'canCreate', 'canDelete'] as const).map((flag) => (
                     <td key={flag} className="px-4 py-2">
                       <input
@@ -142,12 +185,16 @@ export function AccessPage() {
         <h2 className="font-semibold">{t('access.rules')}</h2>
         <ul className="grid gap-1 text-sm">
           {group.rules.map((row) => (
-            <li key={row.id}>{row.name} · {row.model} · {row.field} {row.op} {row.value}</li>
+            <li key={row.id}>{row.name} · {modelLabel(row.model, t)} · {row.field} {row.op} {row.value}</li>
           ))}
         </ul>
         <div className="grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-2">
           <Field label={t('access.ruleName')}><Input value={rule.name} onChange={(event) => setRule({ ...rule, name: event.target.value })} /></Field>
-          <Field label={t('desk.name')}><Input value={rule.model} onChange={(event) => setRule({ ...rule, model: event.target.value })} /></Field>
+          <Field label={t('access.model')}>
+            <Select value={rule.model} onChange={(event) => setRule({ ...rule, model: event.target.value })}>
+              {accessModels.map((model) => <option key={model} value={model}>{modelLabel(model, t)}</option>)}
+            </Select>
+          </Field>
           <Field label={t('access.field')}><Input value={rule.field} onChange={(event) => setRule({ ...rule, field: event.target.value })} /></Field>
           <Field label={t('access.value')}><Input value={rule.value} onChange={(event) => setRule({ ...rule, value: event.target.value })} /></Field>
         </div>

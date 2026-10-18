@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
+import { Input } from '../components/ui/input.tsx'
 import { manufacturingStateLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
@@ -22,6 +24,7 @@ export function ManufacturingPage() {
   const { t } = useI18n()
   const [params, setParams] = useSearchParams()
   const state = params.get('state') ?? 'all'
+  const [q, setQ] = useState('')
   const setState = (value: string) => {
     const next = new URLSearchParams(params)
     if (value === 'all') next.delete('state')
@@ -31,6 +34,11 @@ export function ManufacturingPage() {
   const orders = useQuery({
     queryKey: ['manufacturing', state],
     queryFn: () => api<ManufacturingOrder[]>(`/api/manufacturing?state=${state}`),
+  })
+  const needle = q.trim().toLowerCase()
+  const shown = (orders.data ?? []).filter((order) => {
+    if (!needle) return true
+    return `${order.name} ${order.product.name} ${order.product.sku}`.toLowerCase().includes(needle)
   })
 
   return (
@@ -48,6 +56,7 @@ export function ManufacturingPage() {
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
+        <Input className="w-full sm:w-56" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
         {filters.map(([value, label]) => (
           <Button key={value} size="sm" variant={state === value ? 'secondary' : 'outline'} onClick={() => setState(value)}>
             {t(label)}
@@ -59,7 +68,10 @@ export function ManufacturingPage() {
       {orders.data && orders.data.length === 0 ? (
         <EmptyState title={t('manufacturing.emptyTitle')} body={t('manufacturing.emptyBody')} />
       ) : null}
-      {orders.data && orders.data.length > 0 ? (
+      {orders.data && orders.data.length > 0 && shown.length === 0 ? (
+        <EmptyState title={t('desk.emptyTitle')} body={t('desk.emptyBody')} />
+      ) : null}
+      {shown.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-border bg-card">
           <table className="w-full min-w-[680px] text-left text-sm">
             <thead className="border-b border-border text-muted-foreground">
@@ -72,7 +84,7 @@ export function ManufacturingPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.data.map((order) => (
+              {shown.map((order) => (
                 <tr key={order.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3">
                     <Link className="font-semibold hover:underline" to={`/manufacturing/${order.id}`}>{order.name}</Link>

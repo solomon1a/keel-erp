@@ -145,6 +145,89 @@ function stateText(state: string, t: Translate) {
   }
 }
 
+type DeskMeasure = 'money' | 'hours' | 'minutes' | 'days' | 'qty' | 'percent'
+
+function deskMeasure(module: string, screen: string): DeskMeasure {
+  switch (`${module}.${screen}`) {
+    case 'projects.timesheets':
+    case 'projects.dashboard':
+    case 'attendance.overtime':
+    case 'attendance.overtime-report':
+    case 'manufacturing.work-orders':
+      return 'hours'
+    case 'attendance.late':
+    case 'attendance.late-report':
+      return 'minutes'
+    case 'manufacturing.lead-time':
+    case 'attendance.rate':
+      return 'days'
+    case 'sales.pricelists':
+      return 'percent'
+    case 'inventory.receipts':
+    case 'inventory.deliveries':
+    case 'inventory.adjustments':
+    case 'inventory.scrap':
+    case 'inventory.putaway':
+    case 'manufacturing.job-card':
+    case 'manufacturing.stock-entry':
+    case 'subcontracting.receipts':
+    case 'hr.dashboard':
+    case 'hr.analysis':
+      return 'qty'
+    default:
+      return 'money'
+  }
+}
+
+function plainNumber(value: number) {
+  if (!Number.isFinite(value)) return '0'
+  if (Number.isInteger(value)) return String(value)
+  return String(Math.round(value * 100) / 100)
+}
+
+function formatMeasure(measure: DeskMeasure, amount: number, money: (value: number) => string, t: Translate) {
+  const n = plainNumber(amount)
+  switch (measure) {
+    case 'money':
+      return money(amount)
+    case 'hours':
+      return t('desk.unit.hours', { n })
+    case 'minutes':
+      return t('desk.unit.minutes', { n })
+    case 'days':
+      return t('desk.unit.days', { n })
+    case 'qty':
+      return t('desk.unit.qty', { n })
+    case 'percent':
+      return t('desk.unit.percent', { n })
+    default: {
+      const unexpected: never = measure
+      return unexpected
+    }
+  }
+}
+
+function measureLabel(measure: DeskMeasure, t: Translate) {
+  switch (measure) {
+    case 'money':
+      return t('desk.amount')
+    case 'hours':
+      return t('desk.hours')
+    case 'minutes':
+      return t('desk.minutes')
+    case 'days':
+      return t('desk.days')
+    case 'qty':
+      return t('desk.qty')
+    case 'percent':
+      return t('desk.percent')
+    default: {
+      const unexpected: never = measure
+      return unexpected
+    }
+  }
+}
+
 function accountTypeText(type: string, t: Translate) {
   switch (type) {
     case 'asset':
@@ -221,6 +304,8 @@ export function DeskFormPage() {
 function ListView({ module, screen, title, lead, spec }: { module: string; screen: string; title: string; lead: string; spec: DeskScreen }) {
   const { t } = useI18n()
   const money = useMoney()
+  const measure = deskMeasure(module, screen)
+  const show = (amount: number) => formatMeasure(measure, amount, money, t)
   const shortDate = useShortDate()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -238,6 +323,9 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
     queryKey: ['saved-filters', deskListMeta.model, module, screen],
     queryFn: () => api<SavedFilter[]>(`/api/saved-filters?model=${encodeURIComponent(`${module}.${screen}`)}`),
   })
+  useEffect(() => {
+    setPage(1)
+  }, [q, state])
   const pageData = asPage(rows.data, deskListMeta.pageSize)
   const saveFilter = useMutation({
     mutationFn: () => api('/api/saved-filters', {
@@ -319,7 +407,7 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
                 <KanbanCard key={row.id} onClick={() => navigate(`/app/${module}/${screen}/${row.id}`)}>
                   <p className="font-semibold">{row.name}</p>
                   <p className="text-sm text-muted-foreground">{row.partner || row.owner || '—'}</p>
-                  <p className="text-sm tabular-nums">{money(row.amount)}</p>
+                  <p className="text-sm tabular-nums">{show(row.amount)}</p>
                 </KanbanCard>
               ))}
             </KanbanColumn>
@@ -337,7 +425,7 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
                 <th className="px-4 py-3 font-medium">{t('desk.owner')}</th>
                 <th className="px-4 py-3 font-medium">{t('desk.state')}</th>
                 <th className="px-4 py-3 font-medium">{t('desk.date')}</th>
-                <th className="px-4 py-3 font-medium">{t('desk.amount')}</th>
+                <th className="px-4 py-3 font-medium">{measureLabel(measure, t)}</th>
               </tr>
             </thead>
             <tbody>
@@ -348,7 +436,7 @@ function ListView({ module, screen, title, lead, spec }: { module: string; scree
                   <td className="px-4 py-3">{row.owner || '—'}</td>
                   <td className="px-4 py-3"><Badge tone={row.state}>{stateText(row.state, t)}</Badge></td>
                   <td className="px-4 py-3">{shortDate(row.recordDate)}</td>
-                  <td className="px-4 py-3">{money(row.amount)}</td>
+                  <td className="px-4 py-3">{show(row.amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -414,6 +502,14 @@ function RecordForm({ module, screen, id, spec, title }: { module: string; scree
       navigate(`/app/${module}/${screen}/${row.id}`)
     },
   })
+  const remove = useMutation({
+    mutationFn: () => api(`/api/desk-records/${id}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      toast(t('desk.deleted'))
+      await queryClient.invalidateQueries({ queryKey: ['desk-records', module, screen] })
+      navigate(`/app/${module}/${screen}`)
+    },
+  })
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
     save.mutate()
@@ -428,6 +524,7 @@ function RecordForm({ module, screen, id, spec, title }: { module: string; scree
         actions={<Link className="keel-back" to={`/app/${module}/${screen}`}>{t('desk.back')}</Link>}
       />
       {save.isError ? <Notice message={save.error instanceof ApiError ? save.error.message : t('desk.failed')} /> : null}
+      {remove.isError ? <Notice message={remove.error instanceof ApiError ? remove.error.message : t('desk.failed')} /> : null}
       <Panel className="grid gap-4 md:grid-cols-2">
         <Field label={t('desk.name')}><Input value={source.name ?? ''} onChange={(event) => setDraft({ ...source, name: event.target.value })} required /></Field>
         <Field label={t('desk.state')}>
@@ -440,13 +537,20 @@ function RecordForm({ module, screen, id, spec, title }: { module: string; scree
         <Field label={t('desk.partner')}><Input value={source.partner ?? ''} onChange={(event) => setDraft({ ...source, partner: event.target.value })} /></Field>
         <Field label={t('desk.owner')}><Input value={source.owner ?? ''} onChange={(event) => setDraft({ ...source, owner: event.target.value })} /></Field>
         <Field label={t('desk.bucket')}><Input value={source.bucket ?? ''} onChange={(event) => setDraft({ ...source, bucket: event.target.value })} /></Field>
-        <Field label={<BaseMoneyLabel text={t('desk.amount')} />}><Input type="number" step="0.01" value={source.amount ?? 0} onChange={(event) => setDraft({ ...source, amount: Number(event.target.value) })} /></Field>
+        <Field label={deskMeasure(module, screen) === 'money' ? <BaseMoneyLabel text={t('desk.amount')} /> : measureLabel(deskMeasure(module, screen), t)}><Input type="number" step="0.01" value={source.amount ?? 0} onChange={(event) => setDraft({ ...source, amount: Number(event.target.value) })} /></Field>
         <Field label={t('desk.date')}><Input type="date" value={dateInput(source.recordDate)} onChange={(event) => setDraft({ ...source, recordDate: event.target.value })} /></Field>
         <div className="md:col-span-2">
           <Field label={t('desk.notes')}><Textarea value={source.notes ?? ''} onChange={(event) => setDraft({ ...source, notes: event.target.value })} /></Field>
         </div>
       </Panel>
-      <div><Button type="submit" disabled={save.isPending}>{t('desk.save')}</Button></div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={save.isPending}>{t('desk.save')}</Button>
+        {creating ? null : (
+          <Button type="button" variant="destructive" disabled={remove.isPending} onClick={() => remove.mutate()}>
+            {t('common.delete')}
+          </Button>
+        )}
+      </div>
       {!creating ? <Chatter model="desk.record" recordId={Number(id)} /> : null}
     </form>
   )
@@ -490,6 +594,8 @@ function Chatter({ model, recordId }: { model: string; recordId: number }) {
 function ReportView({ module, screen, title, lead }: { module: string; screen: string; title: string; lead: string }) {
   const { t } = useI18n()
   const money = useMoney()
+  const measure = deskMeasure(module, screen)
+  const show = (amount: number) => formatMeasure(measure, amount, money, t)
   const rows = useQuery({
     queryKey: ['desk-records', module, screen, '', 'all'],
     queryFn: () => api<DeskRow[]>(`/api/desk-records?module=${encodeURIComponent(module)}&screen=${encodeURIComponent(screen)}`),
@@ -500,8 +606,8 @@ function ReportView({ module, screen, title, lead }: { module: string; screen: s
       const key = row.bucket || row.name
       totals.set(key, (totals.get(key) ?? 0) + row.amount)
     }
-    return [...totals.entries()].map(([label, value]) => ({ label, value, display: money(value) }))
-  }, [rows.data, money])
+    return [...totals.entries()].map(([label, value]) => ({ label, value, display: show(value) }))
+  }, [rows.data, show])
   return (
     <div className="grid gap-5">
       <PageHeader title={title} lead={lead} />
@@ -519,7 +625,7 @@ function ReportView({ module, screen, title, lead }: { module: string; screen: s
               <tr>
                 <th className="px-4 py-3 font-medium">{t('desk.name')}</th>
                 <th className="px-4 py-3 font-medium">{t('desk.bucket')}</th>
-                <th className="px-4 py-3 font-medium">{t('desk.amount')}</th>
+                <th className="px-4 py-3 font-medium">{measureLabel(measure, t)}</th>
               </tr>
             </thead>
             <tbody>
@@ -527,7 +633,7 @@ function ReportView({ module, screen, title, lead }: { module: string; screen: s
                 <tr key={row.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3 font-semibold">{row.name}</td>
                   <td className="px-4 py-3">{row.bucket || '—'}</td>
-                  <td className="px-4 py-3">{money(row.amount)}</td>
+                  <td className="px-4 py-3">{show(row.amount)}</td>
                 </tr>
               ))}
             </tbody>

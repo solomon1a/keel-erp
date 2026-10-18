@@ -402,7 +402,7 @@ export function Shell() {
           </p>
         ) : null}
         {mod ? (
-          <nav className="keel-scroll flex gap-1.5 overflow-x-auto px-3 pb-3" aria-label={t(mod.label)}>
+          <nav className="flex flex-wrap gap-1.5 px-3 pb-3" aria-label={t(mod.label)}>
             <MenuItems mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => undefined} />
           </nav>
         ) : null}

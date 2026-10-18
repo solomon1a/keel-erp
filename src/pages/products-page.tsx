@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/field.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
+import { Input } from '../components/ui/input.tsx'
 import { productKindLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api } from '../lib/api.ts'
@@ -12,7 +14,13 @@ import type { Product } from '../lib/types.ts'
 export function ProductsPage() {
   const { t } = useI18n()
   const money = useMoney()
+  const [q, setQ] = useState('')
   const products = useQuery({ queryKey: ['products'], queryFn: () => api<Product[]>('/api/products') })
+  const needle = q.trim().toLowerCase()
+  const shown = (products.data ?? []).filter((product) => {
+    if (!needle) return true
+    return `${product.name} ${product.sku}`.toLowerCase().includes(needle)
+  })
 
   return (
     <div className="grid gap-6">
@@ -23,10 +31,14 @@ export function ProductsPage() {
         </div>
         <Link to="/products/new"><Button>{t('products.new')}</Button></Link>
       </div>
+      <Input className="max-w-sm" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
       {products.isLoading ? <p className="text-sm text-muted-foreground">{t('products.loading')}</p> : null}
       {products.isError ? <p className="text-sm text-destructive">{products.error.message}</p> : null}
       {products.data && products.data.length === 0 ? (
         <EmptyState title={t('products.emptyTitle')} body={t('products.emptyBody')} />
+      ) : null}
+      {products.data && products.data.length > 0 && shown.length === 0 ? (
+        <EmptyState title={t('desk.emptyTitle')} body={t('desk.emptyBody')} />
       ) : null}
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
         <table className="w-full min-w-[760px] text-left text-sm">
@@ -42,7 +54,7 @@ export function ProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {products.data?.map((product) => (
+            {shown.map((product) => (
               <tr key={product.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">
                   <Link className="font-semibold hover:underline" to={`/products/${product.id}`}>{product.name}</Link>
