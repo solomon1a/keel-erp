@@ -296,8 +296,12 @@ export async function resolvePrice(
   const customer = input.customerId
     ? await prisma.contact.findFirst({ where: { id: input.customerId, companyId } })
     : null
+  const vendor = input.vendorId
+    ? await prisma.contact.findFirst({ where: { id: input.vendorId, companyId } })
+    : null
+  const assigned = input.side === 'purchase' ? vendor?.purchasePriceListId : customer?.salePriceListId
   const breaks = await prisma.priceListItem.findMany({
-    where: { productId: product.id, priceList: { companyId } },
+    where: { productId: product.id, priceList: { companyId, ...(assigned ? { id: assigned } : {}) } },
   })
   const rules = await prisma.pricingRule.findMany({
     where: { companyId, side: input.side, active: true },

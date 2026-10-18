@@ -1,4 +1,5 @@
 import { lineAmounts, roundMoney } from '../../src/domain/money.ts'
+import { scheduleInstalments } from '../../shared/payment-terms.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { assertYearOpen, ensureCompanyFrame } from './books.ts'
@@ -96,7 +97,7 @@ export async function ensureBooks(companyId: number) {
   booksReady.add(companyId)
 }
 
-async function nextName(tx: Tx, sequenceName: string, prefix: string) {
+export async function nextName(tx: Tx, sequenceName: string, prefix: string) {
   const sequence = await tx.sequence.update({
     where: { name: sequenceName },
     data: { next: { increment: 1 } },
@@ -438,6 +439,8 @@ export async function listInvoices(companyId: number, moveType?: string) {
       moveType: true,
       state: true,
       invoiceDate: true,
+      dueDate: true,
+      residual: true,
       amountTotal: true,
       partner: { select: { name: true } },
     },
@@ -507,11 +510,49 @@ export async function postInvoiceTx(tx: Tx, companyId: number, invoiceId: number
       lines: { create: lines.map((line) => ({ ...line, partnerId: invoice.partnerId, costCentreId: invoice.costCentreId })) },
     },
   })
+  const due = await dueForInvoice(tx, companyId, invoice.partnerId, invoice.paymentTermId, invoice.invoiceDate, invoice.amountTotal)
+  await tx.invoiceInstalment.deleteMany({ where: { invoiceId: invoice.id } })
+  if (due.instalments.length > 0) {
+    await tx.invoiceInstalment.createMany({
+      data: due.instalments.map((row) => ({
+        invoiceId: invoice.id,
+        sequence: row.sequence,
+        dueDate: new Date(row.dueDate),
+        amount: row.amount,
+        percent: row.percent,
+      })),
+    })
+  }
   return tx.invoice.update({
     where: { id: invoice.id },
-    data: { state: 'posted' },
+    data: { state: 'posted', dueDate: invoice.dueDate ?? due.dueDate, paymentTermId: invoice.paymentTermId ?? due.termId },
     include: invoiceInclude,
   })
+}
+
+async function dueForInvoice(
+  tx: Tx,
+  companyId: number,
+  partnerId: number,
+  paymentTermId: number | null,
+  invoiceDate: Date,
+  total: number,
+) {
+  const partner = await tx.contact.findFirst({
+    where: { id: partnerId, companyId },
+    select: { paymentTermId: true },
+  })
+  const termId = paymentTermId ?? partner?.paymentTermId ?? null
+  const term = termId
+    ? await tx.paymentTerm.findFirst({ where: { id: termId, companyId }, include: { lines: true } })
+    : null
+  const instalments = scheduleInstalments(
+    total,
+    invoiceDate,
+    (term?.lines ?? []).map((line) => ({ sequence: line.sequence, percent: line.percent, days: line.days })),
+  )
+  const first = instalments[0]
+  return { termId: term?.id ?? null, dueDate: first ? new Date(first.dueDate) : invoiceDate, instalments }
 }
 
 export async function postInvoice(companyId: number, invoiceId: number) {

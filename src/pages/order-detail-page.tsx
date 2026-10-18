@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { Notice } from '../components/field.tsx'
+import { RecordTools } from '../components/record-tools.tsx'
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -153,6 +154,7 @@ export function OrderDetailPage() {
         </div>
       </div>
       {error ? <Notice message={error} /> : null}
+      <RecordTools model="sale.order" recordId={row.id} />
       <div className="flex flex-wrap gap-2" data-tour="tour-deliver">
         {editable ? <Link to={`/orders/${row.id}/edit`}><Button variant="outline">{t('order.edit')}</Button></Link> : null}
         {row.state === 'draft' ? <Button variant="secondary" disabled={act.isPending} onClick={() => act.mutate('send')}>{t('order.markSent')}</Button> : null}

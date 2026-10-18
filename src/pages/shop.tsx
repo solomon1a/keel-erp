@@ -164,6 +164,14 @@ export function ShopProductPage() {
   const { t } = useI18n()
   const [qty, setQty] = useState(1)
   const [note, setNote] = useState('')
+  const quoted = useQuery({
+    queryKey: ['shop-price', id, qty],
+    queryFn: () => api<{ unitPrice: number; discount: number }>('/api/shop/price', {
+      method: 'POST',
+      body: JSON.stringify({ productId: Number(id), quantity: qty }),
+    }),
+    enabled: Boolean(id),
+  })
   const product = useQuery({
     queryKey: ['shop-product', id],
     queryFn: () => api<Catalog & { product: ShopProduct }>(`/api/shop/products/${id}`),
@@ -180,7 +188,7 @@ export function ShopProductPage() {
         <p className="text-sm text-muted-foreground">{row.categoryName ?? row.sku}</p>
         <h1 className="font-serif text-4xl tracking-tight">{row.name}</h1>
         <p className="text-muted-foreground">{row.description}</p>
-        <p className="text-xl font-semibold">{money(row.listPrice)}</p>
+        <p className="text-xl font-semibold">{money(quoted.data?.unitPrice ?? row.listPrice)}</p>
         <p className="text-sm text-muted-foreground">{t('shop.onHand', { count: row.onHand })}</p>
         <p className="text-sm text-muted-foreground">{t('shop.vat', { rate: product.data.company.taxRate })}</p>
         <Field label={t('shop.qty')}>
@@ -189,7 +197,7 @@ export function ShopProductPage() {
         {note ? <Notice message={note} /> : null}
         <Button
           onClick={() => {
-            addToCart({ productId: row.id, name: row.name, unitPrice: row.listPrice, quantity: qty })
+            addToCart({ productId: row.id, name: row.name, unitPrice: quoted.data?.unitPrice ?? row.listPrice, quantity: qty })
             setNote(t('shop.added'))
           }}
         >
@@ -205,6 +213,30 @@ export function ShopCartPage() {
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: () => api<Catalog>('/api/shop/catalog') })
   const money = useShopMoney(catalog.data?.company.currency)
   const [lines, setLines] = useState<CartLine[]>(() => readCart())
+  useEffect(() => {
+    let cancel = false
+    void (async () => {
+      const current = readCart()
+      const next: CartLine[] = []
+      for (const line of current) {
+        try {
+          const quote = await api<{ unitPrice: number }>('/api/shop/price', {
+            method: 'POST',
+            body: JSON.stringify({ productId: line.productId, quantity: line.quantity }),
+          })
+          next.push({ ...line, unitPrice: quote.unitPrice })
+        } catch {
+          next.push(line)
+        }
+      }
+      if (cancel) return
+      writeCart(next)
+      setLines(next)
+    })()
+    return () => {
+      cancel = true
+    }
+  }, [])
   const untaxed = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)
   return (
     <ShopFrame>

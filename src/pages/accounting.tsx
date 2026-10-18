@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { BarChart } from '../components/bar-chart.tsx'
+import { ExportButton } from '../components/export-button.tsx'
+import { RecordTools } from '../components/record-tools.tsx'
 import { BaseCurrencyNote, BaseMoneyLabel } from '../components/base-currency.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { Kpi, KpiGrid, PageHeader, Panel } from '../components/surface.tsx'
@@ -19,6 +21,7 @@ type Invoice = {
   moveType: string
   state: string
   invoiceDate: string
+  dueDate?: string | null
   amountUntaxed: number
   amountTax: number
   amountTotal: number
@@ -108,7 +111,10 @@ export function AccountingPage() {
           <h1 className="font-serif text-4xl tracking-tight">{t('acct.title')}</h1>
           <p className="mt-1 max-w-2xl text-muted-foreground">{t('acct.lead')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ExportButton kind="invoices" />
+          <Link to="/accounting/import"><Button variant="outline">{t('phase.import')}</Button></Link>
+          <Link to="/accounting/taxes"><Button variant="outline">{t('phase.taxes')}</Button></Link>
           <Link to="/accounting/ledger"><Button variant="outline">{t('acct.ledger')}</Button></Link>
           <Link to="/accounting/reports"><Button variant="outline">{t('acct.reports')}</Button></Link>
         </div>
@@ -132,7 +138,7 @@ export function AccountingPage() {
                 <td className="px-4 py-3">{typeLabel(invoice.moveType, t)}</td>
                 <td className="px-4 py-3">{invoice.partner.name}</td>
                 <td className="px-4 py-3">{stateLabel(invoice.state, t)}</td>
-                <td className="px-4 py-3">{shortDate(invoice.invoiceDate)}</td>
+                <td className="px-4 py-3">{shortDate(invoice.invoiceDate)}{invoice.dueDate ? ` · ${t('phase.due')} ${shortDate(invoice.dueDate)}` : ''}</td>
                 <td className="px-4 py-3">{money(invoice.amountTotal)}</td>
               </tr>
             ))}
@@ -147,11 +153,17 @@ export function InvoicePage() {
   const { id } = useParams()
   const { t } = useI18n()
   const money = useMoney()
+  const shortDate = useShortDate()
   const queryClient = useQueryClient()
   const [error, setError] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [method, setMethod] = useState('bank')
   const invoice = useQuery({ queryKey: ['invoice', id], queryFn: () => api<Invoice>(`/api/invoices/${id}`) })
+  const terms = useQuery({
+    queryKey: ['invoice-terms', id],
+    queryFn: () => api<{ dueDate: string | null; overdue: boolean; term: string | null; instalments: Array<{ id: number; dueDate: string; amount: number; percent: number }> }>(`/api/invoices/${id}/terms`),
+    enabled: Boolean(id),
+  })
   const [fapiao, setFapiao] = useState<{ buyerName: string; buyerTaxId: string; buyerAddress: string; fapiaoNumber: string; fapiaoType: string } | null>(null)
   const form = fapiao ?? {
     buyerName: invoice.data?.buyerName ?? '',
@@ -208,6 +220,19 @@ export function InvoicePage() {
         <Link className="text-sm font-semibold text-primary" to="/accounting">{t('acct.title')}</Link>
         <h1 className="font-serif text-4xl tracking-tight">{row.name}</h1>
         <p className="mt-1 text-muted-foreground">{typeLabel(row.moveType, t)} · {row.partner.name} · {stateLabel(row.state, t)}{source ? ` · ${source}` : ''}</p>
+        {terms.data?.dueDate ? (
+          <p className="mt-1 text-sm">
+            {terms.data.term ? `${terms.data.term} · ` : ''}{t('phase.due')} {shortDate(terms.data.dueDate)}
+            {terms.data.overdue ? ` · ${t('phase.overdue')}` : ''}
+          </p>
+        ) : null}
+        {terms.data && terms.data.instalments.length > 1 ? (
+          <ul className="mt-2 text-sm text-muted-foreground">
+            {terms.data.instalments.map((instalment) => (
+              <li key={instalment.id}>{t('phase.instalments')} {instalment.percent}% · {shortDate(instalment.dueDate)} · {money(instalment.amount)}</li>
+            ))}
+          </ul>
+        ) : null}
         {row.reversalOf ? (
           <p className="mt-1">
             <Link className="font-medium text-primary hover:underline" to={`/accounting/${row.reversalOf.id}`}>
@@ -217,6 +242,7 @@ export function InvoicePage() {
         ) : null}
       </div>
       {error ? <Notice message={error} /> : null}
+      <RecordTools model="account.move" recordId={row.id} />
       <p className="rounded-md border border-accent/40 bg-card px-4 py-3 text-sm">{t('acct.notSubmitted')}</p>
       <div className="flex flex-wrap gap-2">
         {row.state === 'draft' ? <Button disabled={act.isPending} onClick={() => act.mutate(`/api/invoices/${row.id}/post`)}>{t('acct.post')}</Button> : null}

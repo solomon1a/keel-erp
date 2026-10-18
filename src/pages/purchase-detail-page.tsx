@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Notice } from '../components/field.tsx'
+import { RecordTools } from '../components/record-tools.tsx'
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -86,6 +87,7 @@ export function PurchaseDetailPage() {
         <Badge tone={row.state}>{purchaseStateLabel(row.state, t)}</Badge>
       </div>
       {error ? <Notice message={error} /> : null}
+      <RecordTools model="purchase.order" recordId={row.id} />
       {editable && !isAdmin ? <p className="text-sm text-muted-foreground">{t('purchase.adminOnly')}</p> : null}
       <div className="flex flex-wrap gap-2">
         {editable ? <Link to={`/purchases/${row.id}/edit`}><Button variant="outline">{t('purchase.edit')}</Button></Link> : null}

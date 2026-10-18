@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ExportButton } from '../components/export-button.tsx'
 import { EmptyState } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -24,7 +25,10 @@ export function VendorsPage() {
           <h1 className="font-serif text-4xl tracking-tight">{t('vendors.title')}</h1>
           <p className="mt-1 text-muted-foreground">{t('vendors.lead')}</p>
         </div>
-        <Link to="/contacts/new?supplier=1"><Button>{t('vendors.new')}</Button></Link>
+        <div className="flex flex-wrap gap-2">
+          <ExportButton kind="vendors" />
+          <Link to="/contacts/new?supplier=1"><Button>{t('vendors.new')}</Button></Link>
+        </div>
       </div>
       <form
         className="flex max-w-md gap-2"

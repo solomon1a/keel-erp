@@ -8,6 +8,7 @@ import { lineAmounts, roundMoney, sumLines } from '../domain/money.ts'
 import { payMethodLabel, posSessionLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
+import { quotePrice } from '../lib/quote-price.ts'
 import { BaseCurrencyNote } from '../components/base-currency.tsx'
 import { useBaseCurrency, useMoney } from '../lib/format.ts'
 import type { Contact, PosCatalog, PosOrder, PosSession, User } from '../lib/types.ts'
@@ -76,12 +77,21 @@ export function PosScreenPage() {
     setError('')
     setCart((current) => {
       const existing = current.find((line) => line.productId === product.id)
-      if (existing) {
-        if (existing.quantity + 1 > product.onHand + 0.0001) return current
-        return current.map((line) => line.productId === product.id ? { ...line, quantity: line.quantity + 1, onHand: product.onHand } : line)
-      }
-      if (product.onHand <= 0) return current
-      return [...current, { productId: product.id, name: product.name, unitPrice: product.listPrice, quantity: 1, discount: 0, onHand: product.onHand }]
+      const quantity = existing ? existing.quantity + 1 : 1
+      if (existing && quantity > product.onHand + 0.0001) return current
+      if (!existing && product.onHand <= 0) return current
+      const next = existing
+        ? current.map((line) => line.productId === product.id ? { ...line, quantity, onHand: product.onHand } : line)
+        : [...current, { productId: product.id, name: product.name, unitPrice: product.listPrice, quantity: 1, discount: 0, onHand: product.onHand }]
+      void quotePrice({
+        side: 'sales',
+        productId: product.id,
+        quantity,
+        customerId: customerId ? Number(customerId) : null,
+      }).then((quote) => {
+        setCart((latest) => latest.map((line) => line.productId === product.id ? { ...line, unitPrice: quote.unitPrice, discount: quote.discount } : line))
+      }).catch(() => undefined)
+      return next
     })
   }
 

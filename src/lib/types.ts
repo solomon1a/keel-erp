@@ -45,6 +45,10 @@ export type Contact = {
   updatedAt: string
   createdBy?: { name: string } | null
   updatedBy?: { name: string } | null
+  salePriceListId?: number | null
+  purchasePriceListId?: number | null
+  paymentTermId?: number | null
+  fiscalPositionId?: number | null
   _count?: { children: number; orders: number }
 }
 

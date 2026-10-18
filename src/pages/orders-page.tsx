@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ExportButton } from '../components/export-button.tsx'
 import { EmptyState } from '../components/field.tsx'
 import { PageHeader, TableFrame, Toolbar } from '../components/surface.tsx'
 import { Badge } from '../components/ui/badge.tsx'
@@ -48,7 +49,7 @@ export function OrdersPage() {
 
   return (
     <div className="grid gap-5">
-      <PageHeader title={t('orders.title')} lead={t('orders.lead')} actions={<Link to="/orders/new"><Button>{t('orders.new')}</Button></Link>} />
+      <PageHeader title={t('orders.title')} lead={t('orders.lead')} actions={<div className="flex flex-wrap gap-2"><ExportButton kind="sales-orders" /><Link to="/orders/new"><Button>{t('orders.new')}</Button></Link></div>} />
       <Toolbar>
         <Input className="w-full sm:w-56" value={q} placeholder={t('desk.search')} aria-label={t('desk.search')} onChange={(event) => setQ(event.target.value)} />
         {filters.map(([value, label]) => (

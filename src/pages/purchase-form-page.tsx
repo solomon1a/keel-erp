@@ -11,6 +11,7 @@ import { singleTaxRate } from '../i18n/labels.ts'
 import { BaseCurrencyNote, BaseMoneyLabel } from '../components/base-currency.tsx'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
+import { quotePrice } from '../lib/quote-price.ts'
 import { taxIdForCompany } from '../lib/format.ts'
 import type { Contact, Product, PurchaseOrder, Tax, User, Warehouse } from '../lib/types.ts'
 
@@ -198,15 +199,17 @@ export function PurchaseFormPage() {
                     className="h-10 w-full rounded-md border border-border bg-background px-2"
                     value={line.productId}
                     onChange={(event) => {
-                      const product = offered.find((item) => item.id === Number(event.target.value))
+                      const productId = event.target.value
+                      const product = offered.find((item) => item.id === Number(productId))
                       const next = [...lines]
                       next[index] = {
                         ...line,
-                        productId: event.target.value,
+                        productId,
                         unitCost: product ? String(product.costPrice) : line.unitCost,
                         taxId: line.taxId || (defaultTaxId ? String(defaultTaxId) : ''),
                       }
                       setLines(next)
+                      if (product) void applyQuote(index, product.id, Number(line.quantity) || 1, next)
                     }}
                   >
                     <option value="">{t('common.choose')}</option>
@@ -215,7 +218,10 @@ export function PurchaseFormPage() {
                     ))}
                   </select>
                 </td>
-                <td className="px-3 py-2"><Input type="number" min="0" step="0.001" value={line.quantity} onChange={(event) => updateLine(index, { quantity: event.target.value })} /></td>
+                <td className="px-3 py-2"><Input type="number" min="0" step="0.001" value={line.quantity} onChange={(event) => {
+                  updateLine(index, { quantity: event.target.value })
+                  if (line.productId) void applyQuote(index, Number(line.productId), Number(event.target.value) || 1)
+                }} /></td>
                 <td className="px-3 py-2"><Input type="number" min="0" step="0.01" value={line.unitCost} onChange={(event) => updateLine(index, { unitCost: event.target.value })} /></td>
                 <td className="px-3 py-2">
                   <select className="h-10 w-full rounded-md border border-border bg-background px-2" value={line.taxId} onChange={(event) => updateLine(index, { taxId: event.target.value })}>
@@ -244,6 +250,24 @@ export function PurchaseFormPage() {
       </div>
     </form>
   )
+
+  function applyQuote(index: number, productId: number, quantity: number, base?: DraftLine[]) {
+    void quotePrice({
+      side: 'purchase',
+      productId,
+      quantity,
+      vendorId: vendorId ? Number(vendorId) : null,
+    }).then((quote) => {
+      setLines((current) => {
+        const source = base ?? current
+        const row = source[index]
+        if (!row || Number(row.productId) !== productId) return current
+        const next = [...source]
+        next[index] = { ...row, unitCost: String(quote.unitPrice) }
+        return next
+      })
+    }).catch(() => undefined)
+  }
 
   function updateLine(index: number, patch: Partial<DraftLine>) {
     const next = [...lines]

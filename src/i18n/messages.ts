@@ -9,6 +9,7 @@ import { enNav, zhNav } from './nav-messages.ts'
 import { enPay, zhPay } from './payroll-messages.ts'
 import { enShop, zhShop } from './shop-messages.ts'
 import { enReach, zhReach } from './reach-messages.ts'
+import { enPhase, zhPhase } from './phase-messages.ts'
 
 const enBase = {
   'lang.label': 'Language',
@@ -1642,8 +1643,8 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'invite.missing': '这条邀请链接无效。',
 }
 
-const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk, ...enPay, ...enNav, ...enDeskUi, ...enHome, ...enTour, ...enReach }
-const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk, ...zhPay, ...zhNav, ...zhDeskUi, ...zhHome, ...zhTour, ...zhReach }
+const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk, ...enPay, ...enNav, ...enDeskUi, ...enHome, ...enTour, ...enReach, ...enPhase }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk, ...zhPay, ...zhNav, ...zhDeskUi, ...zhHome, ...zhTour, ...zhReach, ...zhPhase }
 
 export const messages = { en, zh }
 

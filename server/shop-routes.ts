@@ -11,7 +11,7 @@ import {
   shopAccountFromToken,
   writeShopCookie,
 } from './shop-auth.ts'
-import { checkoutShop, shopCatalog, shopOrderByToken, shopOrdersForCustomer, shopProduct } from './services/shop.ts'
+import { checkoutShop, shopCatalog, shopOrderByToken, shopOrdersForCustomer, shopPrice, shopProduct } from './services/shop.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -23,6 +23,12 @@ function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; 
 
 export function registerShopRoutes(app: Hono<AppEnv>) {
   app.get('/api/shop/catalog', async (c) => c.json(await shopCatalog()))
+
+  app.post('/api/shop/price', async (c) => {
+    const body = await c.req.json() as { productId?: number; quantity?: number }
+    const account = await shopAccountFromToken(readShopToken(c))
+    return c.json(await shopPrice(Number(body.productId), Number(body.quantity), account?.id ?? null))
+  })
 
   app.get('/api/shop/products/:id', async (c) => c.json(await shopProduct(Number(c.req.param('id')))))
 
