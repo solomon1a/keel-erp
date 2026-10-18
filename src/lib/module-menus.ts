@@ -167,13 +167,22 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
     ] },
   ],
   website: [
+    { label: 'menu.builder', to: '/sites' },
+    { label: 'menu.blog', to: '/sites/blog' },
     { label: 'menu.websiteHome', to: '/website' },
     { label: 'menu.products', to: '/products' },
     { label: 'menu.storefront', to: '/shop' },
-    { label: label('website', 'pages'), to: screen('website', 'pages') },
+    { label: 'menu.theme', to: '/sites/theme' },
+    { label: 'menu.navigation', to: '/sites/menu' },
+    { label: 'menu.inbox', to: '/sites/inbox' },
     { label: label('website', 'coupons'), to: screen('website', 'coupons') },
     { label: 'menu.reporting', children: [{ label: label('website', 'visitors'), to: screen('website', 'visitors') }] },
     { label: 'desk.g.configuration', children: [{ label: label('website', 'settings'), to: screen('website', 'settings') }] },
+  ],
+  email: [
+    { label: 'menu.campaigns', to: '/email' },
+    { label: 'menu.lists', to: '/email/lists' },
+    { label: 'menu.suppression', to: '/email/suppression' },
   ],
   accounting: [
     { label: label('accounting', 'dashboard'), to: screen('accounting', 'dashboard') },

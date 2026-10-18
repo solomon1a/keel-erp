@@ -2,7 +2,7 @@ import net from 'node:net'
 import tls from 'node:tls'
 import { AppError } from '../errors.ts'
 
-export type Mail = { to: string; subject: string; text: string }
+export type Mail = { to: string; subject: string; text: string; html?: string }
 
 export type MailChannel = 'resend' | 'smtp' | 'log'
 
@@ -27,7 +27,7 @@ async function sendResend(mail: Mail): Promise<void> {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ from, to: mail.to, subject: mail.subject, text: mail.text }),
+    body: JSON.stringify({ from, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html }),
   })
   if (!response.ok) throw new AppError(502, 'The invite email could not be sent.')
 }
@@ -101,9 +101,9 @@ async function sendSmtp(mail: Mail): Promise<void> {
       `To: ${mail.to}`,
       `Subject: ${mail.subject}`,
       'MIME-Version: 1.0',
-      'Content-Type: text/plain; charset=utf-8',
+      mail.html ? 'Content-Type: text/html; charset=utf-8' : 'Content-Type: text/plain; charset=utf-8',
       '',
-      mail.text,
+      mail.html ?? mail.text,
       '.',
     ].join('\r\n')
     await command(current, body)

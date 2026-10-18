@@ -1,14 +1,18 @@
 import { Prisma } from '@prisma/client'
+import { roundMoney } from '../../src/domain/money.ts'
 import { demoStepIds, type DemoRunStatus, type DemoRunView, type DemoStepId, type DemoTourState } from '../../shared/demo-tour.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import type { SessionUser } from '../auth.ts'
-import { invoiceFromSales, payInvoice, postInvoice, profitAndLoss } from './accounting.ts'
+import { invoiceFromSales, postInvoice, profitAndLoss } from './accounting.ts'
+import { applyLine, importMapped, statementDetail } from './bank.ts'
 import { createLead } from './crm.ts'
 import { logJobTime, recordWastage } from './floor.ts'
 import { confirmManufacturing, createManufacturing, produceManufacturing, startManufacturing } from './manufacturing.ts'
 import { confirmOrder, deliverOrder } from './orders.ts'
+import { addTask, addTimesheet, approveTimesheet, createProject, invoiceProject, profitability } from './projects.ts'
 import { confirmPurchase, createPurchase, receivePurchase } from './purchases.ts'
+import { createPoint, prepareQualityChecks, recordCheck, resolveAlert } from './quality.ts'
 import { orderFromQuotation } from './trade.ts'
 
 type RunRow = {
@@ -26,6 +30,10 @@ type RunRow = {
   contactId: number | null
   finishedId: number | null
   componentId: number | null
+  qualityPointId: number | null
+  statementId: number | null
+  projectId: number | null
+  projectInvoiceId: number | null
   note: string | null
   snapshot: Prisma.JsonValue
 }
@@ -113,6 +121,8 @@ function viewOf(run: RunRow): DemoRunView {
     invoiceId: run.invoiceId,
     finishedId: run.finishedId,
     componentId: run.componentId,
+    statementId: run.statementId,
+    projectId: run.projectId,
     note: run.note,
     productName: story.productName,
     materialName: story.materialName,
@@ -379,12 +389,28 @@ async function actPurchase(actor: SessionUser, run: RunRow) {
     await confirmPurchase(actor.companyId, purchase.id)
     purchase = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: purchase.id } })
   }
-  if (purchase.state === 'purchase') {
-    await receivePurchase(actor.companyId, purchase.id, {})
-    purchase = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: purchase.id } })
+  let pointId = run.qualityPointId
+  if (!pointId) {
+    const named = `Guided demo ${material.name}`
+    const existing = await prisma.qualityPoint.findFirst({ where: { companyId: actor.companyId, productId: material.id, name: named } })
+    const point = existing ?? await createPoint(actor.companyId, { name: named, productId: material.id, trigger: 'receipt', checkType: 'pass_fail' })
+    pointId = point.id
+    await remember(run.id, { qualityPointId: pointId })
   }
-  await remember(run.id, { note: `Received 4 ${material.name} on ${purchase.name}.` })
-  return false
+  if (purchase.state === 'purchase') {
+    try {
+      await receivePurchase(actor.companyId, purchase.id, {})
+      purchase = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: purchase.id } })
+    } catch (error) {
+      if (error instanceof AppError && error.status === 409 && error.message.includes('quality check')) {
+        await remember(run.id, { note: error.message })
+        return true
+      }
+      throw error
+    }
+  }
+  await remember(run.id, { note: purchase.state === 'done' ? `Received 4 ${material.name} on ${purchase.name}.` : `${purchase.name} is waiting on the quality check.` })
+  return purchase.state !== 'done'
 }
 
 async function actMake(actor: SessionUser, run: RunRow) {
@@ -473,10 +499,143 @@ async function actDeliver(actor: SessionUser, run: RunRow) {
   let invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId: actor.companyId } })
   if (!invoice) throw new AppError(404, 'Invoice not found.')
   if (invoice.state === 'draft') invoice = await postInvoice(actor.companyId, invoice.id)
-  if (invoice.state === 'posted' && invoice.residual > 0.001) {
-    invoice = await payInvoice(actor.companyId, invoice.id, invoice.residual, 'bank')
+  await remember(run.id, { note: `Delivered ${order.name} and posted ${invoice.name}. The bank step matches the receipt.` })
+  return false
+}
+
+async function actQuality(actor: SessionUser, run: RunRow) {
+  if (!run.purchaseOrderId || !run.qualityPointId) throw new AppError(409, 'Order the cloth before the inspection.')
+  const material = asSnapshot(run.snapshot).materialName || 'The material'
+  let purchase = await prisma.purchaseOrder.findFirst({ where: { id: run.purchaseOrderId, companyId: actor.companyId } })
+  if (!purchase) throw new AppError(404, 'Purchase order not found.')
+  await prepareQualityChecks(actor.companyId, { trigger: 'receipt', productIds: [], purchaseOrderId: purchase.id })
+  let check = await prisma.qualityCheck.findFirst({
+    where: { companyId: actor.companyId, purchaseOrderId: purchase.id, pointId: run.qualityPointId },
+    include: { alert: true },
+  })
+  if (!check) throw new AppError(409, 'The quality check has not been raised yet.')
+  if (check.status === 'pending') {
+    await recordCheck(actor.companyId, check.id, { status: 'fail', notes: 'Guided demo hold' })
+    const failed = await prisma.qualityCheck.findFirst({ where: { id: check.id }, include: { alert: true } })
+    if (failed?.alert && failed.alert.status === 'open') await resolveAlert(actor.companyId, failed.alert.id, 'rework')
+    check = await prisma.qualityCheck.findFirstOrThrow({ where: { id: check.id }, include: { alert: true } })
   }
-  await remember(run.id, { note: `Delivered ${order.name}, invoiced ${invoice.name}, and registered the bank payment.` })
+  if (check.status === 'pending') await recordCheck(actor.companyId, check.id, { status: 'pass', notes: 'Guided demo pass' })
+  if (purchase.state === 'purchase') {
+    await receivePurchase(actor.companyId, purchase.id, {})
+    purchase = await prisma.purchaseOrder.findFirstOrThrow({ where: { id: purchase.id } })
+  }
+  await remember(run.id, { note: `${material} failed, sat in quarantine, then came back. The check passed and ${purchase.name} is received.` })
+  return false
+}
+
+async function bankBook(companyId: number) {
+  const account = await prisma.account.findFirst({ where: { companyId, code: '1002' } })
+  if (!account) return 0
+  const lines = await prisma.journalItem.findMany({ where: { accountId: account.id }, select: { debit: true, credit: true } })
+  return roundMoney(lines.reduce((sum, line) => sum + line.debit - line.credit, 0))
+}
+
+async function actBank(actor: SessionUser, run: RunRow) {
+  if (!run.invoiceId) throw new AppError(409, 'Deliver and invoice before matching the bank line.')
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: run.invoiceId, companyId: actor.companyId },
+    include: { partner: { select: { name: true } } },
+  })
+  if (!invoice) throw new AppError(404, 'Invoice not found.')
+  let statementId = run.statementId
+  if (!statementId) {
+    const account = await prisma.bankAccount.findFirst({ where: { companyId: actor.companyId }, orderBy: { id: 'asc' } })
+    const amount = roundMoney(invoice.residual > 0.001 ? invoice.residual : invoice.amountTotal)
+    const day = new Date().toISOString().slice(0, 10)
+    const csv = `date,description,amount,reference\n${day},${invoice.partner.name} ${invoice.name},${amount},${invoice.name}\n`
+    const statement = await importMapped(actor.companyId, `GD${run.serial} bank`, {
+      csv,
+      mapping: { date: 'date', description: 'description', amount: 'amount', reference: 'reference' },
+      bankAccountId: account?.id ?? null,
+      openingBalance: await bankBook(actor.companyId),
+    })
+    statementId = statement.id
+    await remember(run.id, { statementId })
+  }
+  const line = await prisma.bankStatementLine.findFirst({ where: { statementId, companyId: actor.companyId }, orderBy: { id: 'asc' } })
+  if (!line) throw new AppError(404, 'Statement line not found.')
+  const open = roundMoney(Math.abs(line.amount) - line.reconciled)
+  if (open > 0.001) {
+    const fresh = await prisma.invoice.findFirstOrThrow({ where: { id: invoice.id } })
+    if (fresh.residual > 0.001) await applyLine(actor.companyId, line.id, { kind: 'invoice', invoiceId: fresh.id, amount: Math.min(open, fresh.residual) })
+    else await applyLine(actor.companyId, line.id, { kind: 'payment', invoiceId: fresh.id, amount: open })
+  }
+  const detail = await statementDetail(actor.companyId, statementId)
+  await remember(run.id, { note: `Matched ${invoice.name}. Statement versus book is ${detail.difference}.` })
+  return false
+}
+
+async function actProject(actor: SessionUser, run: RunRow) {
+  if (!run.contactId) throw new AppError(409, 'Start the guided demo first.')
+  let projectId = run.projectId
+  if (!projectId) {
+    const project = await createProject(actor.companyId, {
+      name: `Showroom visit ${run.serial}`,
+      partnerId: run.contactId,
+      billingType: 'time',
+      hourlyRate: 120,
+    })
+    projectId = project.id
+    await remember(run.id, { projectId })
+  }
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, companyId: actor.companyId },
+    include: { tasks: true, stages: { orderBy: { sequence: 'asc' } }, timesheets: true },
+  })
+  if (!project) throw new AppError(404, 'Project not found.')
+  let task = project.tasks[0]
+  if (!task) {
+    const employee = await prisma.employee.findFirst({ where: { companyId: actor.companyId }, orderBy: { id: 'asc' } })
+    const updated = await addTask(actor.companyId, project.id, {
+      name: 'Walk the floor',
+      stageId: project.stages[0]?.id,
+      assigneeId: employee?.id ?? null,
+      startDate: '2026-10-18',
+      endDate: '2026-10-18',
+    })
+    task = updated.tasks[0]
+  }
+  if (!task) throw new AppError(409, 'The project needs a task.')
+  if (project.timesheets.length === 0) {
+    const employee = await prisma.employee.findFirst({ where: { companyId: actor.companyId }, orderBy: { id: 'asc' } })
+    if (!employee) throw new AppError(409, 'This company has no employee to log time.')
+    const withSheet = await addTimesheet(actor.companyId, project.id, {
+      taskId: task.id,
+      employeeId: employee.id,
+      workDate: '2026-10-18',
+      hours: 2,
+      description: 'Guided demo visit',
+    })
+    const sheet = withSheet.timesheets.find((row) => row.state === 'draft')
+    if (sheet) await approveTimesheet(actor.companyId, sheet.id)
+  }
+  await remember(run.id, { note: `${project.name} has an approved timesheet. Skip ahead, or invoice it next.` })
+  return false
+}
+
+async function actBill(actor: SessionUser, run: RunRow) {
+  if (!run.projectId) throw new AppError(409, 'Create the service project first.')
+  let invoiceId = run.projectInvoiceId
+  if (!invoiceId) {
+    const invoice = await invoiceProject(actor.companyId, run.projectId)
+    invoiceId = invoice.id
+    await remember(run.id, { projectInvoiceId: invoiceId })
+  }
+  const invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId: actor.companyId } })
+  await remember(run.id, { note: `Invoiced the visit on ${invoice?.name ?? ''}. The timesheet is marked invoiced.` })
+  return false
+}
+
+async function actProfit(actor: SessionUser, run: RunRow) {
+  if (!run.projectId) throw new AppError(409, 'Create the service project first.')
+  const profit = await profitability(actor.companyId, run.projectId)
+  await remember(run.id, { note: `Project revenue ${profit.revenue}, cost ${profit.timesheetCost}, profit ${profit.profit}.` })
   return false
 }
 
@@ -497,16 +656,26 @@ async function perform(step: DemoStepId, actor: SessionUser, run: RunRow) {
       return actConfirm(actor, run)
     case 'purchase':
       return actPurchase(actor, run)
+    case 'quality':
+      return actQuality(actor, run)
     case 'make':
       return actMake(actor, run)
     case 'wastage':
       return actWastage(actor, run)
     case 'deliver':
       return actDeliver(actor, run)
+    case 'bank':
+      return actBank(actor, run)
     case 'books':
       return actBooks(actor, run, false)
     case 'dashboard':
       return actBooks(actor, run, true)
+    case 'project':
+      return actProject(actor, run)
+    case 'bill':
+      return actBill(actor, run)
+    case 'profit':
+      return actProfit(actor, run)
     default: {
       const unexpected: never = step
       throw new AppError(400, unexpected)
@@ -561,9 +730,47 @@ export async function resetDemoData(companyId: number) {
   const salesIds = numberIds(runs.map((run) => run.salesOrderId))
   const purchaseIds = numberIds(runs.map((run) => run.purchaseOrderId))
   const makingIds = numberIds(runs.map((run) => run.manufacturingOrderId))
-  const invoiceIds = numberIds(runs.map((run) => run.invoiceId))
+  const invoiceIds = numberIds([...runs.map((run) => run.invoiceId), ...runs.map((run) => run.projectInvoiceId)])
+  const pointIds = numberIds(runs.map((run) => run.qualityPointId))
+  const statementIds = numberIds(runs.map((run) => run.statementId))
+  const projectIds = numberIds(runs.map((run) => run.projectId))
+  const reworkRefs = runs
+    .map((run) => asSnapshot(run.snapshot).materialName)
+    .filter((name) => name.length > 0)
+    .map((name) => `${name} rework`)
 
   await prisma.$transaction(async (tx) => {
+    const checkIds = new Set<number>()
+    if (purchaseIds.length > 0) {
+      const onOrders = await tx.qualityCheck.findMany({ where: { companyId, purchaseOrderId: { in: purchaseIds } }, select: { id: true } })
+      for (const row of onOrders) checkIds.add(row.id)
+    }
+    if (pointIds.length > 0) {
+      const onPoints = await tx.qualityCheck.findMany({ where: { pointId: { in: pointIds } }, select: { id: true } })
+      for (const row of onPoints) checkIds.add(row.id)
+    }
+    if (checkIds.size > 0) {
+      await tx.qualityAlert.deleteMany({ where: { checkId: { in: [...checkIds] } } })
+      await tx.qualityCheck.deleteMany({ where: { id: { in: [...checkIds] } } })
+    }
+    if (pointIds.length > 0) await tx.qualityPoint.deleteMany({ where: { companyId, id: { in: pointIds } } })
+    if (reworkRefs.length > 0) {
+      const reworkMoves = await tx.stockMove.findMany({ where: { reference: { in: reworkRefs }, product: { companyId } }, select: { id: true } })
+      const reworkIds = reworkMoves.map((move) => move.id)
+      if (reworkIds.length > 0) {
+        await tx.valuationLayer.deleteMany({ where: { companyId, moveId: { in: reworkIds } } })
+        await tx.stockLedger.deleteMany({ where: { companyId, moveId: { in: reworkIds } } })
+        await tx.stockMove.deleteMany({ where: { id: { in: reworkIds } } })
+      }
+    }
+    if (statementIds.length > 0) await tx.bankStatement.deleteMany({ where: { companyId, id: { in: statementIds } } })
+    if (projectIds.length > 0) {
+      await tx.timesheet.deleteMany({ where: { companyId, projectId: { in: projectIds } } })
+      await tx.projectMilestone.deleteMany({ where: { companyId, projectId: { in: projectIds } } })
+      await tx.taskDependency.deleteMany({ where: { companyId, task: { projectId: { in: projectIds } } } })
+      await tx.projectTask.deleteMany({ where: { companyId, projectId: { in: projectIds } } })
+      await tx.projectStage.deleteMany({ where: { companyId, projectId: { in: projectIds } } })
+    }
     const moveWhere: Prisma.StockMoveWhereInput[] = []
     if (salesIds.length > 0) moveWhere.push({ orderId: { in: salesIds } })
     if (purchaseIds.length > 0) moveWhere.push({ purchaseOrderId: { in: purchaseIds } })
@@ -586,6 +793,8 @@ export async function resetDemoData(companyId: number) {
       labels.add(`${row.name} scrap`)
       labels.add(`${row.name} WIP`)
     }
+    for (const row of purchases) labels.add(`${row.name} quarantine`)
+    for (const ref of reworkRefs) labels.add(ref)
 
     const labelled = labels.size === 0
       ? []
@@ -624,6 +833,7 @@ export async function resetDemoData(companyId: number) {
     if (salesIds.length > 0) await tx.salesOrder.deleteMany({ where: { companyId, id: { in: salesIds } } })
     if (purchaseIds.length > 0) await tx.purchaseOrder.deleteMany({ where: { companyId, id: { in: purchaseIds } } })
     if (leadIds.length > 0) await tx.lead.deleteMany({ where: { companyId, id: { in: leadIds } } })
+    if (projectIds.length > 0) await tx.project.deleteMany({ where: { companyId, id: { in: projectIds } } })
 
     const chatter: Prisma.ChatterMessageWhereInput[] = [
       ...salesIds.map((recordId) => ({ model: 'sale.order', recordId })),

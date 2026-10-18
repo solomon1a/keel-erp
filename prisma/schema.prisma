@@ -85,6 +85,17 @@ model Company {
   projects       Project[]
   bankAccounts   BankAccount[]
   reconcileRules ReconcileRule[]
+  /// Public website address, /site/<slug>. Empty until the company publishes.
+  slug           String?         @unique
+  mailLists      MailList[]
+  mailTemplates  MailTemplate[]
+  campaigns      Campaign[]
+  mailSuppressions MailSuppression[]
+  siteTheme      SiteTheme?
+  siteMenus      SiteMenuItem[]
+  sitePages      SitePage[]
+  blogPosts      BlogPost[]
+  siteSubmissions SiteSubmission[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -192,6 +203,7 @@ model Contact {
   customerRules  PricingRule[] @relation("RuleCustomer")
   vendorRules    PricingRule[] @relation("RuleVendor")
   leads          Lead[]
+  mailMembers    MailMember[]
   qualityChecks  QualityCheck[]  @relation("QualityVendor")
   qualityAlerts  QualityAlert[]  @relation("AlertVendor")
   projects       Project[]
@@ -1115,6 +1127,8 @@ model Lead {
   contact          Contact?   @relation(fields: [contactId], references: [id])
   orderId          Int?
   activities       Activity[]
+  mailMembers      MailMember[]
+  siteSubmissions  SiteSubmission[]
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -1685,6 +1699,10 @@ model DemoRun {
   contactId            Int?
   finishedId           Int?
   componentId          Int?
+  qualityPointId       Int?
+  statementId          Int?
+  projectId            Int?
+  projectInvoiceId     Int?
   note                 String?
   /// Baseline stock and the story (product, material, quantity) captured before the first change.
   snapshot             Json
@@ -2051,4 +2069,180 @@ model ReconcileRule {
   accountCode String
 
   @@unique([companyId, name])
+}
+
+/// A mailing list built from customers, leads, or both. tag narrows the pull.
+model MailList {
+  id        Int          @id @default(autoincrement())
+  companyId Int
+  company   Company      @relation(fields: [companyId], references: [id])
+  name      String
+  /// customers, leads, or both
+  segment   String       @default("both")
+  tag       String       @default("")
+  members   MailMember[]
+  campaigns Campaign[]
+
+  @@unique([companyId, name])
+}
+
+model MailMember {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  listId    Int
+  list      MailList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  email     String
+  name      String   @default("")
+  /// subscribed or unsubscribed
+  status    String   @default("subscribed")
+  contactId Int?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  leadId    Int?
+  lead      Lead?    @relation(fields: [leadId], references: [id])
+
+  @@unique([listId, email])
+  @@index([companyId, email])
+}
+
+/// Addresses that must not be mailed again, even if they reappear on a list.
+model MailSuppression {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  email     String
+  reason    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, email])
+}
+
+model MailTemplate {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  name      String
+  subject   String
+  blocks    Json
+
+  @@unique([companyId, name])
+}
+
+model Campaign {
+  id          Int                  @id @default(autoincrement())
+  companyId   Int
+  company     Company              @relation(fields: [companyId], references: [id])
+  listId      Int
+  list        MailList             @relation(fields: [listId], references: [id])
+  name        String
+  subject     String
+  /// Optional second subject. Recipients alternate when this is set.
+  subjectB    String               @default("")
+  /// draft, scheduled, or sent
+  state       String               @default("draft")
+  blocks      Json
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  /// resend, smtp, or simulate
+  channel     String               @default("")
+  recipients  CampaignRecipient[]
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model CampaignRecipient {
+  id         Int       @id @default(autoincrement())
+  companyId  Int
+  campaignId Int
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  email      String
+  name       String    @default("")
+  subject    String
+  /// a or b
+  variant    String    @default("a")
+  token      String    @unique
+  /// pending, sent, or bounced
+  status     String    @default("pending")
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  openCount  Int       @default(0)
+  clickCount Int       @default(0)
+  sentAt     DateTime?
+
+  @@index([companyId, sentAt])
+  @@index([campaignId])
+}
+
+model SiteTheme {
+  id        Int     @id @default(autoincrement())
+  companyId Int     @unique
+  company   Company @relation(fields: [companyId], references: [id])
+  siteName  String  @default("")
+  primary   String  @default("#0E6B5C")
+  ink       String  @default("#1C2B2A")
+  paper     String  @default("#F3F6F4")
+  /// serif or sans
+  font      String  @default("serif")
+  logoUrl   String  @default("")
+}
+
+model SiteMenuItem {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  label     String
+  href      String
+  sequence  Int     @default(0)
+
+  @@index([companyId, sequence])
+}
+
+model SitePage {
+  id             Int     @id @default(autoincrement())
+  companyId      Int
+  company        Company @relation(fields: [companyId], references: [id])
+  title          String
+  slug           String
+  seoTitle       String  @default("")
+  seoDescription String  @default("")
+  ogImage        String  @default("")
+  /// draft or published
+  state          String  @default("draft")
+  blocks         Json
+  sequence       Int     @default(0)
+
+  @@unique([companyId, slug])
+  @@index([companyId, state])
+}
+
+model BlogPost {
+  id             Int       @id @default(autoincrement())
+  companyId      Int
+  company        Company   @relation(fields: [companyId], references: [id])
+  title          String
+  slug           String
+  excerpt        String    @default("")
+  body           String    @default("")
+  coverUrl       String    @default("")
+  seoTitle       String    @default("")
+  seoDescription String    @default("")
+  /// draft or published
+  state          String    @default("draft")
+  publishedAt    DateTime?
+
+  @@unique([companyId, slug])
+}
+
+model SiteSubmission {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  email     String
+  message   String
+  leadId    Int?
+  lead      Lead?    @relation(fields: [leadId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
 }

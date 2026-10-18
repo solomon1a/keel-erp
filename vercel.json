@@ -5,6 +5,8 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/site/:slug/sitemap.xml", "destination": "/api/site/:slug/sitemap.xml" },
+    { "source": "/site/:slug/robots.txt", "destination": "/api/site/:slug/robots.txt" },
     { "source": "/((?!api/|api$).*)", "destination": "/index.html" }
   ],
   "regions": ["sin1"],

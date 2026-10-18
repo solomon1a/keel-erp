@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent, type PointerEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useState, type FormEvent, type PointerEvent } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { BaseCurrencyNote, BaseMoneyLabel } from '../components/base-currency.tsx'
 import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -123,7 +123,13 @@ function ProjectDesk({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient()
   const project = useQuery({ queryKey: ['project', projectId], queryFn: () => api<Project>(`/api/projects/${projectId}`) })
   const employees = useQuery({ queryKey: ['employees'], queryFn: () => api<Employee[]>('/api/employees') })
-  const [view, setView] = useState<View>('kanban')
+  const [params] = useSearchParams()
+  const asked = params.get('view')
+  const fromQuery: View | null = asked === 'kanban' || asked === 'gantt' || asked === 'time' || asked === 'bill' || asked === 'profit' ? asked : null
+  const [view, setView] = useState<View>(fromQuery ?? 'kanban')
+  useEffect(() => {
+    if (fromQuery) setView(fromQuery)
+  }, [fromQuery])
   const [error, setError] = useState('')
   const [task, setTask] = useState({ name: '', assigneeId: '', startDate: '', endDate: '', dependsOnId: '' })
   const [sheet, setSheet] = useState({ taskId: '', employeeId: '', workDate: '2026-10-12', hours: '4' })
@@ -216,7 +222,7 @@ function ProjectDesk({ projectId }: { projectId: number }) {
         ))}
       </div>
       {view === 'kanban' ? (
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="flex gap-3 overflow-x-auto pb-2" data-tour="tour-project">
           {row.stages.map((stage) => (
             <div
               key={stage.id}
@@ -302,7 +308,7 @@ function ProjectDesk({ projectId }: { projectId: number }) {
             </form>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => invoice.mutate()} disabled={invoice.isPending}>{t('projects.invoice')}</Button>
+            <Button data-tour="tour-bill" onClick={() => invoice.mutate()} disabled={invoice.isPending}>{t('projects.invoice')}</Button>
             {invoiceName ? <p className="text-sm">{invoiceName}</p> : null}
           </div>
         </div>
@@ -356,7 +362,7 @@ function ProfitCard({ profit }: { profit: Profit }) {
     [t('projects.margin'), profit.profit],
   ] as const
   return (
-    <section className="grid max-w-lg gap-2 rounded-lg border border-border bg-card p-4">
+    <section className="grid max-w-lg gap-2 rounded-lg border border-border bg-card p-4" data-tour="tour-margin">
       <h2 className="font-semibold">{t('projects.profit')}</h2>
       <BaseCurrencyNote />
       {rows.map(([label, value]) => (

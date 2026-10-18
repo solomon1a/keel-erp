@@ -10,6 +10,14 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': 'http://127.0.0.1:43124',
+      '^/site/[^/]+/sitemap\\.xml$': {
+        target: 'http://127.0.0.1:43124',
+        rewrite: (path) => path.replace(/^\/site\/([^/]+)\/sitemap\.xml$/, '/api/site/$1/sitemap.xml'),
+      },
+      '^/site/[^/]+/robots\\.txt$': {
+        target: 'http://127.0.0.1:43124',
+        rewrite: (path) => path.replace(/^\/site\/([^/]+)\/robots\.txt$/, '/api/site/$1/robots.txt'),
+      },
     },
   },
   test: {

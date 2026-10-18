@@ -37,6 +37,8 @@ type TourBody = {
     purchaseOrderId: number | null
     manufacturingOrderId: number | null
     invoiceId: number | null
+    statementId: number | null
+    projectId: number | null
     productName: string
     note: string | null
   } | null
@@ -52,7 +54,7 @@ describe('guided demo', () => {
     const body = response.body as TourBody
     expect(response.status).toBe(200)
     expect(body.available).toBe(true)
-    expect(body.steps).toEqual(['lead', 'confirm', 'purchase', 'make', 'wastage', 'deliver', 'books', 'dashboard'])
+    expect(body.steps).toEqual(['lead', 'confirm', 'purchase', 'quality', 'make', 'wastage', 'deliver', 'bank', 'books', 'dashboard', 'project', 'bill', 'profit'])
   })
 
   it('hides the walk when a new company has no sample data', async () => {
@@ -123,13 +125,31 @@ describe('guided demo', () => {
       expect((await prisma.salesOrder.findFirst({ where: { id: order?.id } }))?.state).toBe('draft')
 
       const purchase = await tour('/api/demo-tour/act', maya, { step: 2 })
+      const purchaseBody = purchase.body as TourBody
       expect(purchase.status).toBe(200)
-      const purchaseId = (purchase.body as TourBody).run?.purchaseOrderId ?? 0
+      expect(purchaseBody.blocked).toBe(true)
+      const purchaseId = purchaseBody.run?.purchaseOrderId ?? 0
       const po = await prisma.purchaseOrder.findFirst({ where: { id: purchaseId, companyId }, include: { lines: true } })
-      expect(po?.state).toBe('done')
+      expect(po?.state).toBe('purchase')
       expect(po?.lines[0]?.quantity).toBe(4)
+      const held = await prisma.qualityCheck.findFirst({
+        where: { companyId, purchaseOrderId: purchaseId },
+        include: { point: true },
+      })
+      expect(held?.status).toBe('pending')
+      expect(held?.point.name).toContain('Guided demo')
 
-      const made = await tour('/api/demo-tour/act', maya, { step: 3 })
+      const quality = await tour('/api/demo-tour/act', maya, { step: 3 })
+      expect(quality.status).toBe(200)
+      expect((quality.body as TourBody).run?.note).toContain('quarantine')
+      const received = await prisma.purchaseOrder.findFirst({ where: { id: purchaseId } })
+      expect(received?.state).toBe('done')
+      const passed = await prisma.qualityCheck.findFirst({ where: { id: held?.id }, include: { alert: true } })
+      expect(passed?.status).toBe('pass')
+      expect(passed?.alert?.status).toBe('resolved')
+      expect(passed?.alert?.action).toBe('rework')
+
+      const made = await tour('/api/demo-tour/act', maya, { step: 4 })
       expect(made.status).toBe(200)
       const moId = (made.body as TourBody).run?.manufacturingOrderId ?? 0
       const mo = await prisma.manufacturingOrder.findFirst({ where: { id: moId, companyId }, include: { jobCards: { include: { logs: true } } } })
@@ -138,25 +158,62 @@ describe('guided demo', () => {
       expect(mo?.jobCards[0]?.logs[0]?.minutes).toBe(30)
       expect(mo?.jobCards[0]?.logs[0]?.operatorName).toBe('August')
 
-      const wasted = await tour('/api/demo-tour/act', maya, { step: 4 })
+      const wasted = await tour('/api/demo-tour/act', maya, { step: 5 })
       expect(wasted.status).toBe(200)
       const finished = await prisma.manufacturingOrder.findFirst({ where: { id: moId }, include: { wastage: true } })
       expect(finished?.state).toBe('done')
       expect(finished?.quantityDone).toBe(1)
       expect(finished?.wastage.some((row) => row.reason === 'Guided demo fray' && row.kind === 'process_loss')).toBe(true)
 
-      const delivered = await tour('/api/demo-tour/act', maya, { step: 5 })
+      const delivered = await tour('/api/demo-tour/act', maya, { step: 6 })
       expect(delivered.status).toBe(200)
       const invoiceId = (delivered.body as TourBody).run?.invoiceId ?? 0
       const invoice = await prisma.invoice.findFirst({ where: { id: invoiceId, companyId } })
-      expect(invoice?.state).toBe('paid')
+      expect(invoice?.state).toBe('posted')
+      expect(invoice?.residual).toBeGreaterThan(0)
       const sold = await prisma.salesOrder.findFirst({ where: { id: order?.id } })
       expect(sold?.state).toBe('done')
       const during = await call('/api/reports/pnl', maya)
       expect(during.body?.profit).not.toBe(jiangbeiBooks.profit)
 
-      const books = await tour('/api/demo-tour/act', maya, { step: 6 })
+      const bank = await tour('/api/demo-tour/act', maya, { step: 7 })
+      const bankBody = bank.body as TourBody
+      expect(bank.status).toBe(200)
+      expect(bankBody.run?.note).toContain('Statement versus book is 0')
+      const paid = await prisma.invoice.findFirst({ where: { id: invoiceId } })
+      expect(paid?.state).toBe('paid')
+      const statement = await prisma.bankStatement.findFirst({
+        where: { id: bankBody.run?.statementId ?? 0, companyId },
+        include: { lines: true },
+      })
+      expect(statement?.name).toContain('bank')
+      expect(statement?.lines[0]?.reconciled).toBeGreaterThan(0)
+
+      const books = await tour('/api/demo-tour/act', maya, { step: 8 })
       expect((books.body as TourBody).run?.note).toContain('Profit is')
+
+      const project = await tour('/api/demo-tour/act', maya, { step: 10 })
+      const projectBody = project.body as TourBody
+      expect(project.status).toBe(200)
+      const visit = await prisma.project.findFirst({
+        where: { id: projectBody.run?.projectId ?? 0, companyId },
+        include: { timesheets: true },
+      })
+      expect(visit?.name).toContain('Showroom visit')
+      expect(visit?.timesheets[0]?.state).toBe('approved')
+      expect(visit?.timesheets[0]?.description).toBe('Guided demo visit')
+
+      const billed = await tour('/api/demo-tour/act', maya, { step: 11 })
+      expect(billed.status).toBe(200)
+      const invoicedSheet = await prisma.timesheet.findFirst({ where: { id: visit?.timesheets[0]?.id } })
+      expect(invoicedSheet?.state).toBe('invoiced')
+      const projectInvoice = await prisma.invoice.findFirst({
+        where: { companyId, id: invoicedSheet?.invoiceId ?? 0 },
+      })
+      expect(projectInvoice?.state).toBe('posted')
+
+      const margin = await tour('/api/demo-tour/act', maya, { step: 12 })
+      expect((margin.body as TourBody).run?.note).toContain('Project revenue')
       expect(await prisma.lead.count({ where: { companyId: harbourId } })).toBe(harbourLeads)
       expect(await prisma.journalEntry.count({ where: { companyId: harbourId } })).toBe(harbourJournals)
     } finally {
@@ -168,6 +225,15 @@ describe('guided demo', () => {
     expect(restored.body).toMatchObject({ profit: jiangbeiBooks.profit })
     expect(await prisma.quotation.count({ where: { companyId, name: { startsWith: 'GD' } } })).toBe(0)
     expect(await prisma.demoRun.count({ where: { companyId } })).toBe(0)
+    expect(await prisma.qualityPoint.count({ where: { companyId, name: { startsWith: 'Guided demo' } } })).toBe(0)
+    expect(await prisma.project.count({ where: { companyId, name: { startsWith: 'Showroom visit' } } })).toBe(0)
+    const october = await prisma.bankStatement.findFirst({
+      where: { companyId, name: 'Jiangbei October statement' },
+      include: { lines: true },
+    })
+    expect(october?.lines.every((line) => line.reconciled === 0)).toBe(true)
+    const fitOut = await prisma.timesheet.findFirst({ where: { companyId, description: 'Shelf frames along the west wall' } })
+    expect(fitOut?.state).toBe('approved')
     expect(await prisma.lead.count({ where: { companyId: harbourId } })).toBe(harbourLeads)
     expect(await prisma.journalEntry.count({ where: { companyId: harbourId } })).toBe(harbourJournals)
     const balance = await prisma.journalItem.findMany({

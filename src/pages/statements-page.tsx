@@ -133,7 +133,7 @@ export function StatementsPage() {
           {(accounts.data ?? []).map((account) => <li key={account.id}>{account.name} · {account.accountCode} · {account.currency}</li>)}
         </ul>
       </form>
-      <form className="grid gap-3 rounded-lg border border-border bg-card p-4" onSubmit={onImport}>
+      <form className="grid gap-3 rounded-lg border border-border bg-card p-4" data-tour="tour-bank" onSubmit={onImport}>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label={t('bank.name')}><Input value={name} onChange={(event) => setName(event.target.value)} required /></Field>
           <Field label={t('bank.account')}>

@@ -16,16 +16,26 @@ function titleKey(step: DemoStepId): MessageKey {
       return 'tour.confirm.title'
     case 'purchase':
       return 'tour.purchase.title'
+    case 'quality':
+      return 'tour.quality.title'
     case 'make':
       return 'tour.make.title'
     case 'wastage':
       return 'tour.wastage.title'
     case 'deliver':
       return 'tour.deliver.title'
+    case 'bank':
+      return 'tour.bank.title'
     case 'books':
       return 'tour.books.title'
     case 'dashboard':
       return 'tour.dashboard.title'
+    case 'project':
+      return 'tour.project.title'
+    case 'bill':
+      return 'tour.bill.title'
+    case 'profit':
+      return 'tour.profit.title'
     default: {
       const unexpected: never = step
       return unexpected
@@ -41,16 +51,26 @@ function bodyKey(step: DemoStepId): MessageKey {
       return 'tour.confirm.body'
     case 'purchase':
       return 'tour.purchase.body'
+    case 'quality':
+      return 'tour.quality.body'
     case 'make':
       return 'tour.make.body'
     case 'wastage':
       return 'tour.wastage.body'
     case 'deliver':
       return 'tour.deliver.body'
+    case 'bank':
+      return 'tour.bank.body'
     case 'books':
       return 'tour.books.body'
     case 'dashboard':
       return 'tour.dashboard.body'
+    case 'project':
+      return 'tour.project.body'
+    case 'bill':
+      return 'tour.bill.body'
+    case 'profit':
+      return 'tour.profit.body'
     default: {
       const unexpected: never = step
       return unexpected
