@@ -29,6 +29,9 @@ const liveTargets: Record<string, string> = {
   '/app/accounting/reconcile': '/accounting/statements',
   '/app/accounting/bank': '/accounting/statements',
   '/app/accounting/journals': '/accounting/ledger',
+  '/app/accounting/aged-receivable': '/accounting/reports?view=aged-receivable',
+  '/app/accounting/aged-payable': '/accounting/reports?view=aged-payable',
+  '/app/accounting/cash-flow': '/accounting/reports?view=cashflow',
 
   '/app/projects/dashboard': '/projects',
   '/app/projects/timesheets': '/projects?view=time',
@@ -61,11 +64,17 @@ const liveTargets: Record<string, string> = {
 
   '/app/hr/dashboard': '/hr',
   '/app/hr/departments': '/hr',
-  '/app/hr/leave': '/hr',
-  '/app/hr/approvals': '/hr',
+  '/app/hr/leave': '/hr/leave',
+  '/app/hr/leave-types': '/hr/leave?view=types',
+  '/app/hr/approvals': '/hr/leave?state=draft',
 
-  '/app/attendance/dashboard': '/hr',
-  '/app/attendance/check-in': '/hr',
+  '/app/attendance/dashboard': '/hr/attendance',
+  '/app/attendance/check-in': '/hr/attendance',
+  '/app/attendance/shifts': '/hr/attendance',
+  '/app/attendance/sheet': '/hr/attendance',
+  '/app/attendance/late': '/hr/attendance?late=1',
+  '/app/attendance/absent': '/hr/attendance?status=absent',
+  '/app/attendance/calendar': '/hr/leave?view=calendar',
 
   '/app/payroll/batches': '/hr/payroll',
   '/app/payroll/payslips': '/hr/payroll',
@@ -73,6 +82,15 @@ const liveTargets: Record<string, string> = {
 
   '/app/expenses/reports': '/hr/expenses',
   '/app/expenses/approvals': '/hr/expenses',
+
+  '/app/helpdesk/dashboard': '/helpdesk',
+  '/app/helpdesk/tickets': '/helpdesk',
+  '/app/helpdesk/sla': '/helpdesk/sla',
+  '/app/helpdesk/stages': '/helpdesk?view=kanban',
+  '/app/helpdesk/priorities': '/helpdesk/sla',
+  '/app/helpdesk/replies': '/helpdesk',
+  '/app/helpdesk/tags': '/helpdesk',
+  '/app/helpdesk/teams': '/helpdesk',
 }
 
 type NavEntry = {

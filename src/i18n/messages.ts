@@ -10,6 +10,8 @@ import { enPay, zhPay } from './payroll-messages.ts'
 import { enShop, zhShop } from './shop-messages.ts'
 import { enReach, zhReach } from './reach-messages.ts'
 import { enPhase, zhPhase } from './phase-messages.ts'
+import { enHelpdesk, zhHelpdesk } from './helpdesk-messages.ts'
+import { enAttendance, zhAttendance } from './attendance-messages.ts'
 
 const enBase = {
   'lang.label': 'Language',
@@ -1643,8 +1645,8 @@ const zhBase: { [K in keyof typeof enBase]: string } = {
   'invite.missing': '这条邀请链接无效。',
 }
 
-const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk, ...enPay, ...enNav, ...enDeskUi, ...enHome, ...enTour, ...enReach, ...enPhase }
-const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk, ...zhPay, ...zhNav, ...zhDeskUi, ...zhHome, ...zhTour, ...zhReach, ...zhPhase }
+const en = { ...enBase, ...enShop, ...enAccount, ...enCrm, ...enHr, ...enDesk, ...enPay, ...enNav, ...enDeskUi, ...enHome, ...enTour, ...enReach, ...enPhase, ...enHelpdesk, ...enAttendance }
+const zh: { [K in keyof typeof en]: string } = { ...zhBase, ...zhShop, ...zhAccount, ...zhCrm, ...zhHr, ...zhDesk, ...zhPay, ...zhNav, ...zhDeskUi, ...zhHome, ...zhTour, ...zhReach, ...zhPhase, ...zhHelpdesk, ...zhAttendance }
 
 export const messages = { en, zh }
 

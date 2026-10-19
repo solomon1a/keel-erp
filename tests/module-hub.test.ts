@@ -70,7 +70,10 @@ describe('module hubs', () => {
     expect(dest('accounting', 'desk.s.accounting.reconcile')).toBe('/accounting/statements')
     expect(dest('accounting', 'desk.s.accounting.journals')).toBe('/accounting/ledger')
     expect(segmentTiles(accounting, 'menu.reporting')?.tiles.map((tile) => tile.to).sort()).toEqual([
+      '/accounting/reports?view=aged-payable',
+      '/accounting/reports?view=aged-receivable',
       '/accounting/reports?view=balance',
+      '/accounting/reports?view=cashflow',
       '/accounting/reports?view=pnl',
       '/accounting/reports?view=vat',
     ])
@@ -78,11 +81,17 @@ describe('module hubs', () => {
 
   it('opens HR, attendance, finance, procurement, and wastage on their real sections', () => {
     expect(dest('hr', 'desk.s.hr.departments')).toBe('/hr')
-    expect(dest('hr', 'desk.s.hr.leave')).toBe('/hr')
-    expect(dest('hr', 'desk.s.hr.approvals')).toBe('/hr')
+    expect(dest('hr', 'desk.s.hr.leave')).toBe('/hr/leave')
+    expect(dest('hr', 'desk.s.hr.leave-types')).toBe('/hr/leave?view=types')
+    expect(dest('hr', 'desk.s.hr.approvals')).toBe('/hr/leave?state=draft')
     expect(dest('hr', 'desk.s.hr.jobs')).toBeUndefined()
-    expect(dest('attendance', 'desk.s.attendance.check-in')).toBe('/hr')
-    expect(dest('attendance', 'desk.s.attendance.shifts')).toBeUndefined()
+    expect(dest('attendance', 'desk.s.attendance.check-in')).toBe('/hr/attendance')
+    expect(dest('attendance', 'desk.s.attendance.dashboard')).toBe('/hr/attendance')
+    expect(dest('attendance', 'desk.s.attendance.shifts')).toBe('/hr/attendance')
+    expect(dest('attendance', 'desk.s.attendance.sheet')).toBe('/hr/attendance')
+    expect(dest('attendance', 'desk.s.attendance.late')).toBe('/hr/attendance?late=1')
+    expect(dest('attendance', 'desk.s.attendance.calendar')).toBe('/hr/leave?view=calendar')
+    expect(dest('attendance', 'desk.s.attendance.rosters')).toBeUndefined()
     expect(dest('payroll', 'desk.s.payroll.payslips')).toBe('/hr/payroll')
     expect(dest('payroll', 'desk.s.payroll.batches')).toBe('/hr/payroll')
     expect(dest('payroll', 'desk.s.payroll.structures')).toBe('/hr/payroll')
@@ -114,7 +123,11 @@ describe('module hubs', () => {
     expect(dest('website', 'desk.s.website.pages')).toBe('/sites')
     expect(dest('website', 'desk.s.website.coupons')).toBeUndefined()
     expect(dest('pos', 'desk.s.pos.payment-methods')).toBeUndefined()
-    expect(dest('helpdesk', 'desk.s.helpdesk.tickets')).toBeUndefined()
+    expect(dest('helpdesk', 'desk.s.helpdesk.tickets')).toBe('/helpdesk')
+    expect(dest('helpdesk', 'desk.s.helpdesk.dashboard')).toBe('/helpdesk')
+    expect(dest('helpdesk', 'desk.s.helpdesk.sla')).toBe('/helpdesk/sla')
+    expect(dest('helpdesk', 'desk.s.helpdesk.stages')).toBe('/helpdesk?view=kanban')
+    expect(dest('helpdesk', 'desk.s.helpdesk.analysis')).toBeUndefined()
     expect(dest('helpdesk', 'desk.s.helpdesk.settings')).toBe('/app/helpdesk/settings')
   })
 

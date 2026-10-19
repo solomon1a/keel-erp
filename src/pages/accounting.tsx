@@ -14,6 +14,7 @@ import { useI18n, type Translate } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
 import { api, ApiError } from '../lib/api.ts'
 import { useMoney, useShortDate } from '../lib/format.ts'
+import { AgedReport, CashFlowReport } from './statement-reports.tsx'
 
 type Invoice = {
   id: number
@@ -354,10 +355,17 @@ export function LedgerPage() {
 }
 
 export function ReportsPage() {
-  const { t } = useI18n()
-  const money = useMoney()
   const [params] = useSearchParams()
   const view = params.get('view')
+  if (view === 'aged-receivable') return <AgedReport side="receivable" />
+  if (view === 'aged-payable') return <AgedReport side="payable" />
+  if (view === 'cashflow') return <CashFlowReport />
+  return <ClassicReports view={view} />
+}
+
+function ClassicReports({ view }: { view: string | null }) {
+  const { t } = useI18n()
+  const money = useMoney()
   const pack = useQuery({
     queryKey: ['reports-pack'],
     queryFn: () => api<{

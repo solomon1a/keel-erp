@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { jiangbeiBooks, seedHealthyBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
+import { createApp } from '../server/app.ts'
 import { prisma } from '../server/db.ts'
+import { roundMoney } from '../src/domain/money.ts'
 import { call, signIn } from './http.ts'
 import { resetAndSeed } from './reset-db.ts'
 
@@ -115,5 +117,44 @@ describe('accounting', () => {
     const ledger = await call('/api/ledger?account=1122', maya)
     expect(ledger.status).toBe(200)
     expect((ledger.body as unknown as Array<{ label: string }>).some((row) => row.label === 'INV0002')).toBe(true)
+  })
+
+  it('ages open documents by due date and reads cash flow without posting', async () => {
+    await seedHealthyBooks(prisma)
+    const before = await call('/api/reports/pnl', maya)
+    const aged = await call('/api/reports/aged?side=receivable&asOf=2026-10-16', maya)
+    expect(aged.status).toBe(200)
+    const body = aged.body as {
+      partners: Array<{ name: string; documents: Array<{ name: string; bucket: string; amount: number }> }>
+      totals: { total: number }
+    }
+    const doc = (partner: string, name: string) => body.partners.find((row) => row.name === partner)?.documents.find((row) => row.name === name)
+    expect(doc('Milo Park', 'INV-S2006')?.bucket).toBe('d1_30')
+    expect(doc('Milo Park', 'INV-S2003')?.bucket).toBe('d90')
+    expect(doc('Cedar & Co', 'INV-S2004')?.bucket).toBe('d61_90')
+    expect(doc('Harbor Clinic', 'INV-S2005')?.bucket).toBe('d31_60')
+    const summed = roundMoney(body.partners.reduce((sum, partner) => sum + partner.documents.reduce((inner, row) => inner + row.amount, 0), 0))
+    expect(summed).toBe(body.totals.total)
+    const payable = await call('/api/reports/aged?side=payable&asOf=2026-10-16', maya)
+    const bill = (payable.body as { partners: Array<{ name: string; documents: Array<{ name: string; bucket: string }> }> }).partners
+      .find((row) => row.name === 'Qingpu Yarn')?.documents.find((row) => row.name === 'BILL-S2002')
+    expect(bill?.bucket).toBe('d31_60')
+    const csv = await createApp().request('/api/reports/aged?side=receivable&asOf=2026-10-16&format=csv', { headers: { cookie: maya } })
+    expect(csv.headers.get('content-type')).toContain('text/csv')
+    expect(await csv.text()).toContain('INV-S2006')
+    expect((await call('/api/reports/aged?side=other', maya)).status).toBe(400)
+    const amira = await signIn('amira@harbourline.example', demoPasswords.amira)
+    const hidden = await call('/api/reports/aged?side=receivable&asOf=2026-10-16', amira)
+    expect((hidden.body as { partners: Array<{ name: string }> }).partners.some((row) => row.name === 'Milo Park')).toBe(false)
+    const flow = await call('/api/reports/cashflow?from=2026-01-01&to=2026-04-30', maya)
+    const cash = flow.body as { operating: number; investing: number; financing: number; net: number; opening: number; closing: number; lines: Array<{ label: string; section: string; amount: number }> }
+    expect(cash.lines.some((line) => line.label === 'January studio rent' && line.section === 'operating' && line.amount === -2400)).toBe(true)
+    expect(cash.lines.some((line) => line.label === 'Cutting table' && line.section === 'investing' && line.amount === -12000)).toBe(true)
+    expect(cash.investing).toBe(-16800)
+    expect(cash.financing).toBe(0)
+    expect(cash.net).toBe(roundMoney(cash.operating + cash.investing + cash.financing))
+    expect(cash.closing).toBe(roundMoney(cash.opening + cash.net))
+    const after = await call('/api/reports/pnl', maya)
+    expect(after.body).toMatchObject(before.body as Record<string, unknown>)
   })
 })

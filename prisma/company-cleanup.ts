@@ -15,6 +15,12 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
     await tx.followUpLog.deleteMany({ where: { invoice: { companyId } } })
     await tx.invoiceInstalment.deleteMany({ where: { invoice: { companyId } } })
     await tx.documentTax.deleteMany({ where: { companyId } })
+    await tx.ticketMessage.deleteMany({ where: { ticket: { companyId } } })
+    await tx.ticketTag.deleteMany({ where: { ticket: { companyId } } })
+    await tx.ticket.deleteMany({ where: { companyId } })
+    await tx.helpdeskTag.deleteMany({ where: { companyId } })
+    await tx.slaPolicy.deleteMany({ where: { companyId } })
+    await tx.helpdeskTeam.deleteMany({ where: { companyId } })
     await tx.mailLog.deleteMany({ where: { companyId } })
     await tx.fileBlob.deleteMany({ where: { companyId } })
     await tx.recurringInvoice.deleteMany({ where: { companyId } })
@@ -105,9 +111,12 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
     await tx.purchaseOrder.deleteMany({ where: { companyId } })
     await tx.activity.deleteMany({ where: { lead: { companyId } } })
     await tx.lead.deleteMany({ where: { companyId } })
+    await tx.leaveAllocation.deleteMany({ where: { companyId } })
     await tx.attendance.deleteMany({ where: { employee: { companyId } } })
     await tx.leaveRequest.deleteMany({ where: { employee: { companyId } } })
     await tx.employee.deleteMany({ where: { companyId } })
+    await tx.workShift.deleteMany({ where: { companyId } })
+    await tx.leaveType.deleteMany({ where: { companyId } })
     await tx.department.deleteMany({ where: { companyId } })
     await tx.shopSession.deleteMany({ where: { customer: { companyId } } })
     await tx.shopCustomer.deleteMany({ where: { companyId } })
@@ -137,6 +146,7 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
             `account.out_refund.${companyId}`,
             `account.in_refund.${companyId}`,
             `account.entry.${companyId}`,
+            `helpdesk.ticket.${companyId}`,
           ],
         },
       },
