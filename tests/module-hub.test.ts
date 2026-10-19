@@ -128,6 +128,12 @@ describe('module hubs', () => {
     expect(dest('helpdesk', 'desk.s.helpdesk.sla')).toBe('/helpdesk/sla')
     expect(dest('helpdesk', 'desk.s.helpdesk.stages')).toBe('/helpdesk?view=kanban')
     expect(dest('helpdesk', 'desk.s.helpdesk.analysis')).toBeUndefined()
+    expect(dest('crm', 'desk.s.crm.activities')).toBe('/crm/activities')
+    expect(dest('crm', 'desk.s.crm.pipeline-analysis')).toBe('/crm/analysis?group=stage')
+    expect(dest('crm', 'desk.s.crm.leads-analysis')).toBe('/crm/analysis?group=user')
+    expect(dest('crm', 'desk.s.crm.tags')).toBe('/crm/tags')
+    expect(dest('crm', 'desk.s.crm.lost-reasons')).toBe('/crm/lost-reasons')
+    expect(dest('crm', 'desk.s.crm.teams')).toBeUndefined()
     expect(dest('helpdesk', 'desk.s.helpdesk.settings')).toBe('/app/helpdesk/settings')
   })
 
