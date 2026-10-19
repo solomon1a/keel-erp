@@ -1,4 +1,5 @@
 import type { MessageKey } from '../i18n/messages.ts'
+import { menuHasLinks, visibleEntries } from './live-links.ts'
 import { moduleMenus } from './module-menus.ts'
 
 export type MenuLink = { label: string; to: string }
@@ -247,11 +248,14 @@ const launcherOrder = [
 
 for (const mod of appModules) {
   mod.home = `/go/${mod.id}`
+  mod.menu = visibleEntries(mod.menu)
   if (!mod.match.includes(mod.home)) mod.match.push(mod.home)
 }
 
 export function launcherModules() {
-  return [...appModules].sort((a, b) => launcherOrder.indexOf(a.id) - launcherOrder.indexOf(b.id))
+  return [...appModules]
+    .filter((mod) => menuHasLinks(mod.menu))
+    .sort((a, b) => launcherOrder.indexOf(a.id) - launcherOrder.indexOf(b.id))
 }
 
 const groups = ['overview', 'sell', 'supply', 'finance', 'people'] as const
@@ -288,6 +292,7 @@ export function linkActive(to: string, pathname: string, search: string) {
   if (path === '/pos') return pathname === '/pos' || pathname.startsWith('/pos/sessions')
   if (path === '/accounting') return (pathname === '/accounting' && !current.get('moveType')) || /^\/accounting\/\d+/.test(pathname)
   if (path === '/accounting/reports') return pathname === '/accounting/reports' && !current.get('view')
+  if (path === '/projects') return (pathname === '/projects' || /^\/projects\/\d+/.test(pathname)) && !current.get('view')
   if (path === '/crm') return pathname === '/crm' || /^\/crm\/\d+/.test(pathname)
   return pathname === path || pathname.startsWith(`${path}/`)
 }

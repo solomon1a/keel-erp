@@ -86,6 +86,7 @@ const filters = [
   ['out_invoice', 'acct.out'],
   ['in_invoice', 'acct.in'],
   ['out_refund', 'acct.refund'],
+  ['in_refund', 'acct.type.in_refund'],
 ] as const satisfies ReadonlyArray<readonly [string, MessageKey]>
 
 export function AccountingPage() {

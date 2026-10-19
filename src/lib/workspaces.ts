@@ -1,3 +1,5 @@
+import { liveHref } from './live-links.ts'
+
 export type Copy = { en: string; zh: string }
 
 export type WsLabel = string | Copy
@@ -1090,8 +1092,42 @@ export const workspaces: Record<string, Workspace> = {
   dashboard,
 }
 
+function presentWorkspace(workspace: Workspace): Workspace {
+  return {
+    ...workspace,
+    kpis: workspace.kpis.flatMap((kpi) => {
+      const to = liveHref(kpi.to)
+      return to ? [{ ...kpi, to }] : []
+    }),
+    sidebar: workspace.sidebar.flatMap((item) => {
+      if (item.children) {
+        const children = item.children.flatMap((child) => {
+          const to = liveHref(child.to)
+          return to ? [{ ...child, to }] : []
+        })
+        return children.length > 0 ? [{ ...item, children }] : []
+      }
+      if (!item.to) return [item]
+      const to = liveHref(item.to)
+      return to ? [{ ...item, to }] : []
+    }),
+    groups: workspace.groups.flatMap((group) => {
+      const links = group.links.flatMap((link) => {
+        const to = liveHref(link.to)
+        return to ? [{ ...link, to }] : []
+      })
+      return links.length > 0 ? [{ ...group, links }] : []
+    }),
+    steps: workspace.steps.flatMap((step) => {
+      const to = liveHref(step.to)
+      return to ? [{ ...step, to }] : []
+    }),
+  }
+}
+
 export function workspaceFor(moduleId: string) {
-  return workspaces[moduleId] ?? null
+  const workspace = workspaces[moduleId]
+  return workspace ? presentWorkspace(workspace) : null
 }
 
 export function workspaceLinks(workspace: Workspace): WsLink[] {

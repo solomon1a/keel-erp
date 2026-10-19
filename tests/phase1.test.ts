@@ -232,4 +232,43 @@ describe('phase 1 foundations', () => {
     const after = await call('/api/reports/pnl', maya)
     expect(after.body).toMatchObject({ profit: jiangbeiBooks.profit })
   })
+
+  it('edits price lists and payment terms without posting journals', async () => {
+    const before = await call('/api/reports/pnl', maya)
+    const created = await call('/api/price-lists', maya, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Counter list', side: 'sales' }),
+    })
+    expect(created.status).toBe(201)
+    const listId = (created.body as { id?: number }).id
+    const notebook = await prisma.product.findFirstOrThrow({ where: { sku: 'NB-01', company: { name: 'Jiangbei Goods Co.' } } })
+    const line = await call(`/api/price-lists/${listId}/items`, maya, {
+      method: 'POST',
+      body: JSON.stringify({ productId: notebook.id, minQty: 2, price: 15 }),
+    })
+    expect(line.status).toBe(201)
+    const itemId = (line.body as { id?: number }).id
+    const patched = await call(`/api/price-lists/${listId}/items/${itemId}`, maya, {
+      method: 'PATCH',
+      body: JSON.stringify({ minQty: 2, price: 14 }),
+    })
+    expect(patched.status).toBe(200)
+    const lists = await call('/api/price-lists?side=sales', maya)
+    const found = (lists.body as unknown as Array<{ name: string; items: Array<{ price: number }> }>).find((row) => row.name === 'Counter list')
+    expect(found?.items[0]?.price).toBe(14)
+    const hidden = await call('/api/price-lists', amira)
+    expect((hidden.body as unknown as Array<{ name: string }>).some((row) => row.name === 'Counter list')).toBe(false)
+    const term = await call('/api/payment-terms', maya, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Net 45', lines: [{ percent: 100, days: 45 }] }),
+    })
+    expect(term.status).toBe(201)
+    const broken = await call('/api/payment-terms', maya, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Broken term', lines: [{ percent: 40, days: 10 }] }),
+    })
+    expect(broken.status).toBe(400)
+    const after = await call('/api/reports/pnl', maya)
+    expect(after.body).toMatchObject(before.body as Record<string, unknown>)
+  })
 })

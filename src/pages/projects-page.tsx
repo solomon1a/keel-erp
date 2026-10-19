@@ -58,6 +58,9 @@ export function ProjectsPage() {
 
 function ProjectList() {
   const { t } = useI18n()
+  const [params] = useSearchParams()
+  const asked = params.get('view')
+  const view = asked === 'kanban' || asked === 'gantt' || asked === 'time' || asked === 'bill' || asked === 'profit' ? asked : ''
   const queryClient = useQueryClient()
   const projects = useQuery({ queryKey: ['projects'], queryFn: () => api<ProjectRow[]>('/api/projects') })
   const customers = useQuery({ queryKey: ['customers'], queryFn: () => api<Contact[]>('/api/contacts?role=customer') })
@@ -109,7 +112,7 @@ function ProjectList() {
       <ul className="grid gap-2">
         {(projects.data ?? []).map((project) => (
           <li key={project.id}>
-            <Link className="block rounded-lg border border-border bg-card px-4 py-3" to={`/projects/${project.id}`}>{project.name} · {project.partner?.name ?? ''}</Link>
+            <Link className="block rounded-lg border border-border bg-card px-4 py-3" to={`/projects/${project.id}${view ? `?view=${view}` : ''}`}>{project.name} · {project.partner?.name ?? ''}</Link>
           </li>
         ))}
       </ul>
