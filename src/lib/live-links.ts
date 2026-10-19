@@ -17,6 +17,8 @@ const liveTargets: Record<string, string> = {
   '/app/purchase/receipts': '/purchases?state=purchase',
   '/app/purchase/bills': '/accounting?moveType=in_invoice',
   '/app/purchase/vendor-pricelists': '/sales/pricelists?side=purchase',
+  '/app/purchase/analysis': '/purchases/analysis?group=product',
+  '/app/purchase/spend': '/purchases/analysis?group=partner',
 
   '/app/crm/activities': '/crm/activities',
   '/app/crm/pipeline-analysis': '/crm/analysis?group=stage',
@@ -24,6 +26,7 @@ const liveTargets: Record<string, string> = {
   '/app/crm/tags': '/crm/tags',
   '/app/crm/lost-reasons': '/crm/lost-reasons',
 
+  '/app/sales/analysis': '/sales/analysis?group=product',
   '/app/sales/pricelists': '/sales/pricelists',
   '/app/sales/payment-terms': '/sales/payment-terms',
 
