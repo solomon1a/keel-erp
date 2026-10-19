@@ -4,7 +4,7 @@ Keel is a multi-tenant operations desk: contacts, quotations, stock, and the boo
 
 Open `/start` to create a company. The country sets the currency, default tax, and the language of that first session. The person who signs up is the admin and can invite more people. Optional sample data adds a notebook, a customer, a vendor, and a draft quotation. Every staff request is limited to that company.
 
-Three demo companies load with the seed. Jiangbei Goods Co. is Shanghai, CNY, and 13% VAT. Harbour & Line is London, GBP, and 20% VAT. Hudson Yard Goods is New York, USD, and 8.875% sales tax. Each person belongs to one company, and amounts on their desk use that currency. Running the seed again fills in anything those demos are missing, rewrites Jiangbei records that are still in Chinese, and deletes only companies that have no users. A company created from `/start` stays.
+Three demo companies load with the seed. Jiangbei Goods Co. is Shanghai, CNY, and 13% VAT, and a fresh seed also fills the trailing twelve months so its lists, kanban, and books look like a year of trade. Amounts stay fixed; the dates move with the clock. Harbour & Line is London, GBP, and 20% VAT. Hudson Yard Goods is New York, USD, and 8.875% sales tax. Each person belongs to one company, and amounts on their desk use that currency. Running the seed again fills in anything those demos are missing, rewrites Jiangbei records that are still in Chinese, and deletes only companies that have no users. A company created from `/start` stays.
 
 ## Run it
 

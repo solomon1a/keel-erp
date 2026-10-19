@@ -38,7 +38,7 @@ describe('asset depreciation', () => {
     const listed = await call('/api/assets', maya)
     expect(listed.status).toBe(200)
     const assets = listed.body as unknown as Array<{ id: number; name: string; postedDepreciation: number; bookValue: number; lines: Array<{ date: string; state: string; amount: number; entry: { lines: Array<{ debit: number; credit: number; account: { code: string } }> } | null }> }>
-    expect(assets.map((asset) => asset.name).sort()).toEqual(['Cutting table', 'Shop counter'])
+    expect(assets.map((asset) => asset.name).sort()).toEqual(['Cutting table', 'Delivery van', 'Embroidery machine', 'Shop counter'])
     const cutting = assets.find((asset) => asset.name === 'Cutting table')
     const counter = assets.find((asset) => asset.name === 'Shop counter')
     expect(cutting?.postedDepreciation).toBe(720)

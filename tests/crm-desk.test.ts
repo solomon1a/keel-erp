@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { jiangbeiBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
+import { volumeCrm } from '../prisma/volume-plan.ts'
+import { roundMoney } from '../src/domain/money.ts'
 import { createApp } from '../server/app.ts'
 import { prisma } from '../server/db.ts'
 import { call, signIn } from './http.ts'
@@ -30,7 +32,10 @@ describe('crm activities and analysis', () => {
   it('schedules real activities and summarises the pipeline without moving the books', async () => {
     const before = await call('/api/reports/pnl', maya)
     const desk = await call('/api/desk', maya)
-    expect(desk.body).toMatchObject({ pipelineValue: 6200, pipelineCount: 7 })
+    expect(desk.body).toMatchObject({
+      pipelineValue: roundMoney(6200 + volumeCrm.pipelineValue),
+      pipelineCount: 7 + volumeCrm.pipelineCount,
+    })
 
     const mine = await call('/api/crm/activities?mine=1', maya)
     const mayaRows = (mine.body as unknown as Board).activities
@@ -53,8 +58,14 @@ describe('crm activities and analysis', () => {
     expect(done.status).toBe(200)
 
     const stage = (await call('/api/crm/analysis?group=stage', maya)).body as unknown as Report
-    expect(stage.totals).toMatchObject({ open: 7, won: 2, lost: 2, expected: 9150, conversion: 50 })
-    expect(stage.rows.find((row) => row.label === 'qualified')?.expected).toBe(3000)
+    expect(stage.totals).toMatchObject({
+      open: 7 + volumeCrm.open,
+      won: 2 + volumeCrm.won,
+      lost: 2 + volumeCrm.lost,
+      expected: roundMoney(9150 + volumeCrm.expected),
+      conversion: 50,
+    })
+    expect(stage.rows.find((row) => row.label === 'qualified')?.expected).toBe(roundMoney(3000 + volumeCrm.qualifiedExpected))
     expect(stage.rows.reduce((sum, row) => sum + row.count, 0)).toBe(stage.totals.count)
 
     const people = (await call('/api/crm/analysis?group=user', maya)).body as unknown as Report
@@ -63,7 +74,7 @@ describe('crm activities and analysis', () => {
     expect(source.rows.find((row) => row.label === 'fair')?.expected).toBe(3600)
     const reasons = (await call('/api/crm/analysis?group=reason', maya)).body as unknown as Report
     expect(reasons.rows.find((row) => row.label === 'Price')?.expected).toBe(200)
-    expect(reasons.totals.lost).toBe(2)
+    expect(reasons.totals.lost).toBe(2 + volumeCrm.lost)
 
     const other = await call('/api/crm/tags', amira)
     expect(other.body).toEqual([])

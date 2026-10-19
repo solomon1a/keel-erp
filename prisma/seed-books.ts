@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import type { PrismaClient } from '@prisma/client'
 import { jiangbeiDepreciationTotal, jiangbeiSubcontractBooks } from '../shared/demo-adjustments.ts'
 import { roundMoney } from '../src/domain/money.ts'
+import { volumeBooks } from './volume-plan.ts'
 
 /** Books already posted by the rest of the Jiangbei seed, before this wholesale season. */
 const prior = {
@@ -237,13 +238,15 @@ function buildPlan() {
 
   const depreciation = jiangbeiDepreciationTotal()
   const sub = jiangbeiSubcontractBooks
-  const income = roundMoney(prior.income + salesIncome + tradeIncome)
-  const expense = roundMoney(prior.expense + costOfSales + operating + tradeExpense + depreciation)
+  const income = roundMoney(prior.income + salesIncome + tradeIncome + volumeBooks.income)
+  const expense = roundMoney(prior.expense + costOfSales + operating + tradeExpense + depreciation + volumeBooks.expense)
   const profit = roundMoney(income - expense)
-  const assets = roundMoney(prior.assets + assetDelta + tradeAssets + sub.assetIncrease - depreciation)
-  const liabilities = roundMoney(prior.liabilities + liabilityDelta + tradeLiabilities + sub.liabilityIncrease)
+  const assets = roundMoney(prior.assets + assetDelta + tradeAssets + sub.assetIncrease - depreciation + volumeBooks.assetDelta)
+  const liabilities = roundMoney(prior.liabilities + liabilityDelta + tradeLiabilities + sub.liabilityIncrease + volumeBooks.liabilityDelta)
   const balanced = roundMoney(assets - liabilities - profit) === 0
   if (!balanced) throw new Error('Jiangbei wholesale season does not balance.')
+  const outputVatTotal = roundMoney(prior.outputVat + outputVat + tradeOutputVat + volumeBooks.outputVat)
+  const inputVatTotal = roundMoney(prior.inputVat + inputVat + tradeInputVat + sub.inputVat + volumeBooks.inputVat)
 
   return {
     pricedSales,
@@ -256,11 +259,11 @@ function buildPlan() {
     liabilities,
     equity: profit,
     depreciation,
-    outputVat: roundMoney(prior.outputVat + outputVat + tradeOutputVat),
-    inputVat: roundMoney(prior.inputVat + inputVat + tradeInputVat + sub.inputVat),
-    vatPayable: roundMoney(prior.outputVat + outputVat + tradeOutputVat - (prior.inputVat + inputVat + tradeInputVat + sub.inputVat)),
-    receivable: roundMoney(prior.receivable + openReceivable + tradeReceivable),
-    payable: roundMoney(prior.payable + openPayable + tradePayable + sub.payable),
+    outputVat: outputVatTotal,
+    inputVat: inputVatTotal,
+    vatPayable: roundMoney(outputVatTotal - inputVatTotal),
+    receivable: roundMoney(prior.receivable + openReceivable + tradeReceivable + volumeBooks.receivable),
+    payable: roundMoney(prior.payable + openPayable + tradePayable + sub.payable + volumeBooks.payable),
   }
 }
 
