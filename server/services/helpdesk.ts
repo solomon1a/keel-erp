@@ -1,6 +1,8 @@
+import { randomBytes } from 'node:crypto'
 import { nextName } from './accounting.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { demoClockStale, demoOpenClocks, demoTicketTimes } from './demo-sla.ts'
 import { sendMail } from './mailer.ts'
 
 const stages = ['new', 'progress', 'waiting', 'solved', 'closed'] as const
@@ -112,7 +114,28 @@ async function replaceTags(tx: Tx, companyId: number, ticketId: number, names: s
   }
 }
 
+async function healDemoClocks(companyId: number) {
+  const company = await prisma.company.findFirst({
+    where: { id: companyId, users: { some: { email: 'maya@northline.example' } } },
+    select: { id: true },
+  })
+  if (!company) return
+  const numbers = Object.keys(demoOpenClocks)
+  const open = await prisma.ticket.findMany({
+    where: { companyId, resolvedAt: null, number: { in: numbers } },
+    select: { id: true, number: true, createdAt: true, slaDeadline: true },
+  })
+  const now = new Date()
+  for (const ticket of open) {
+    if (!demoClockStale(ticket.createdAt, ticket.slaDeadline, now)) continue
+    const times = demoTicketTimes(ticket.number, now)
+    if (!times) continue
+    await prisma.ticket.update({ where: { id: ticket.id }, data: times })
+  }
+}
+
 export async function helpdeskBoard(companyId: number) {
+  await healDemoClocks(companyId)
   const [rows, teams, tags, policies, users, customers] = await Promise.all([
     prisma.ticket.findMany({ where: { companyId }, include: ticketInclude, orderBy: { createdAt: 'desc' } }),
     prisma.helpdeskTeam.findMany({ where: { companyId }, orderBy: { name: 'asc' } }),
@@ -135,6 +158,7 @@ export async function helpdeskBoard(companyId: number) {
 }
 
 export async function getTicket(companyId: number, id: number) {
+  await healDemoClocks(companyId)
   return present(await owned(companyId, id))
 }
 
@@ -283,6 +307,8 @@ export async function createTeam(companyId: number, name: string) {
   return prisma.helpdeskTeam.create({ data: { companyId, name: trimmed } })
 }
 
+const unknownSenderName = 'Unknown sender'
+
 type Inbound = { from: string; subject: string; text: string }
 
 function inboundFrom(body: unknown): Inbound {
@@ -295,15 +321,61 @@ function inboundFrom(body: unknown): Inbound {
   return { from, subject, text }
 }
 
-export async function inboundTicket(body: unknown) {
+function newInboundToken() {
+  return randomBytes(24).toString('base64url')
+}
+
+export async function ensureInboundToken(companyId: number) {
+  const company = await prisma.company.findUnique({ where: { id: companyId }, select: { inboundToken: true } })
+  if (!company) throw new AppError(404, 'Company not found.')
+  if (company.inboundToken) return { token: company.inboundToken }
+  const token = newInboundToken()
+  const saved = await prisma.company.update({
+    where: { id: companyId },
+    data: { inboundToken: token },
+    select: { inboundToken: true },
+  })
+  return { token: saved.inboundToken ?? token }
+}
+
+export async function rotateInboundToken(companyId: number) {
+  const token = newInboundToken()
+  await prisma.company.update({ where: { id: companyId }, data: { inboundToken: token } })
+  return { token }
+}
+
+export async function companyIdForInboundToken(token: string) {
+  const company = await prisma.company.findUnique({ where: { inboundToken: token }, select: { id: true } })
+  if (!company) throw new AppError(401, 'That inbound secret is not valid.')
+  return company.id
+}
+
+async function senderInCompany(companyId: number, email: string) {
+  const partner = await prisma.contact.findFirst({
+    where: { companyId, email: { equals: email, mode: 'insensitive' } },
+  })
+  if (partner) return partner
+  const existing = await prisma.contact.findFirst({ where: { companyId, name: unknownSenderName } })
+  if (existing) return existing
+  return prisma.contact.create({
+    data: {
+      companyId,
+      name: unknownSenderName,
+      isCustomer: true,
+      notes: 'Mail that did not match a customer in this company.',
+    },
+  })
+}
+
+export async function inboundTicket(companyId: number, body: unknown) {
   const message = inboundFrom(body)
   const email = mailbox(message.from)
-  const partner = await prisma.contact.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } })
-  if (!partner) throw new AppError(404, 'No company matches that sender.')
-  return createTicket(partner.companyId, partner.name, {
+  const partner = await senderInCompany(companyId, email)
+  const fromLine = partner.name === unknownSenderName ? `\n\nFrom: ${email}` : ''
+  return createTicket(companyId, partner.name, {
     partnerId: partner.id,
     subject: message.subject,
-    description: message.text,
+    description: `${message.text}${fromLine}`,
     priority: 'normal',
   })
 }

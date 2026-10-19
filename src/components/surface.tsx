@@ -9,7 +9,7 @@ export function PageHeader({ title, lead, actions }: { title: string; lead?: str
         <h1>{title}</h1>
         {lead ? <p className="keel-lead">{lead}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="keel-actions">{actions}</div> : null}
     </div>
   )
 }

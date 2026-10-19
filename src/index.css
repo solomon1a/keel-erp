@@ -143,9 +143,66 @@ button, input, select, textarea {
 }
 
 header.keel-glass {
+  height: auto;
+  overflow: visible;
   border-width: 0 0 1px;
   border-radius: 0;
   box-shadow: 0 10px 30px rgba(18, 48, 42, 0.06);
+}
+
+.keel-module-nav {
+  position: relative;
+}
+
+.keel-module-nav-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 0 12px 12px;
+}
+
+.keel-module-nav[data-overflow='true'] .keel-module-nav-row {
+  mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 22px), transparent);
+}
+
+@media (min-width: 1024px) {
+  .keel-module-nav-row {
+    flex-wrap: wrap;
+    overflow: visible;
+    mask-image: none;
+  }
+}
+
+.keel-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.keel-actions > a,
+.keel-actions > button {
+  flex: none;
+}
+
+.keel-page,
+.keel-page .grid,
+.keel-page .grid > * {
+  min-width: 0;
+}
+
+.keel-page .overflow-x-auto,
+.keel-table {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .keel-scroll {

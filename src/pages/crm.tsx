@@ -10,6 +10,7 @@ import { useI18n, type Translate } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
 import { api, ApiError } from '../lib/api.ts'
 import { useMoney, useShortDate } from '../lib/format.ts'
+import { asSource, sourceLabel, sources } from './crm-desk.tsx'
 
 const stages = ['new', 'qualified', 'proposition', 'won', 'lost'] as const
 
@@ -29,6 +30,10 @@ type Lead = {
   phone: string | null
   expectedRevenue: number
   stage: string
+  source: string
+  lostReasonId: number | null
+  lostReason: { id: number; name: string } | null
+  tags: Array<{ id: number; name: string }>
   orderId: number | null
   user: { id: number; name: string } | null
   contact: { id: number; name: string } | null
@@ -73,6 +78,9 @@ function leadBody(lead: Lead, stage: string) {
     phone: lead.phone ?? '',
     expectedRevenue: lead.expectedRevenue,
     stage,
+    source: lead.source,
+    lostReasonId: lead.lostReasonId,
+    tags: lead.tags.map((tag) => tag.name),
   }
 }
 
@@ -209,6 +217,8 @@ export function LeadPage() {
   const queryClient = useQueryClient()
   const [error, setError] = useState('')
   const lead = useQuery({ queryKey: ['lead', id], queryFn: () => api<Lead>(`/api/leads/${id}`) })
+  const tagOptions = useQuery({ queryKey: ['crm-tags'], queryFn: () => api<Array<{ id: number; name: string }>>('/api/crm/tags') })
+  const reasons = useQuery({ queryKey: ['crm-reasons'], queryFn: () => api<Array<{ id: number; name: string }>>('/api/crm/lost-reasons') })
   const [draft, setDraft] = useState<Lead | null>(null)
   const current = draft ?? lead.data ?? null
   const [activity, setActivity] = useState({ kind: 'call', summary: '', dueOn: '' })
@@ -310,6 +320,47 @@ export function LeadPage() {
             ))}
           </select>
         </Field>
+        <Field label={t('crm.source')}>
+          <select
+            className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
+            value={current.source}
+            onChange={(event) => setDraft({ ...current, source: asSource(event.target.value) })}
+          >
+            <option value="">{t('crm.none')}</option>
+            {sources.map((source) => <option key={source} value={source}>{sourceLabel(source, t)}</option>)}
+          </select>
+        </Field>
+        <Field label={t('crm.reason')}>
+          <select
+            className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
+            value={current.lostReasonId ?? ''}
+            onChange={(event) => setDraft({ ...current, lostReasonId: event.target.value ? Number(event.target.value) : null, lostReason: null })}
+          >
+            <option value="">{t('crm.none')}</option>
+            {reasons.data?.map((reason) => <option key={reason.id} value={reason.id}>{reason.name}</option>)}
+          </select>
+        </Field>
+        <fieldset className="md:col-span-2">
+          <legend className="mb-2 text-sm font-medium">{t('crm.tags')}</legend>
+          <div className="flex flex-wrap gap-3">
+            {(tagOptions.data ?? []).map((tag) => {
+              const on = current.tags.some((row) => row.name === tag.name)
+              return (
+                <label key={tag.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => setDraft({
+                      ...current,
+                      tags: on ? current.tags.filter((row) => row.name !== tag.name) : [...current.tags, tag],
+                    })}
+                  />
+                  {tag.name}
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
         <div className="md:col-span-2">
           <Button type="submit" disabled={save.isPending}>{save.isPending ? t('crm.saving') : t('crm.save')}</Button>
         </div>

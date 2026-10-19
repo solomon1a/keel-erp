@@ -19,6 +19,7 @@ import { seedJiangbeiOperations } from './seed-operations.ts'
 import { seedPracticeDesk } from './seed-practice.ts'
 import { seedReach } from './seed-reach.ts'
 import { seedAttendance } from './seed-attendance.ts'
+import { seedCrm } from './seed-crm.ts'
 import { seedHelpdesk } from './seed-helpdesk.ts'
 import { seedPhase } from './seed-phase.ts'
 
@@ -71,6 +72,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   await runStage('phase', () => seedPhase(client), failures)
   await runStage('helpdesk', () => seedHelpdesk(client), failures)
   await runStage('attendance', () => seedAttendance(client), failures)
+  await runStage('crm', () => seedCrm(client), failures)
   await runStage('rates', async () => {
     const companies = await client.company.findMany({ select: { id: true, currency: true } })
     for (const company of companies) await ensureDemoRates(client, company.id, company.currency)

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, LogOut, Users } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { KeelMark } from '../brand/mark.tsx'
@@ -164,6 +164,27 @@ function MenuNode({ entry, pathname, search, onNavigate, label }: { entry: MenuE
       <MenuGlyph label={entry.label} />
       {label}
     </NavLink>
+  )
+}
+
+function ModuleNav({ label, watch, children }: { label: string; watch: string; children: ReactNode }) {
+  const scroller = useRef<HTMLDivElement>(null)
+  const [overflow, setOverflow] = useState(false)
+  useEffect(() => {
+    const node = scroller.current
+    if (!node) return
+    const measure = () => setOverflow(node.scrollWidth > node.clientWidth + 8)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [watch])
+  return (
+    <nav className="keel-module-nav" aria-label={label} data-overflow={overflow ? 'true' : 'false'}>
+      <div ref={scroller} className="keel-module-nav-row keel-scroll">
+        {children}
+      </div>
+    </nav>
   )
 }
 
@@ -402,12 +423,12 @@ export function Shell() {
           </p>
         ) : null}
         {mod ? (
-          <nav className="flex flex-wrap gap-1.5 px-3 pb-3" aria-label={t(mod.label)}>
+          <ModuleNav label={t(mod.label)} watch={`${location.pathname}${location.search}${locale}`}>
             <MenuItems mod={mod} pathname={location.pathname} search={location.search} onNavigate={() => undefined} />
-          </nav>
+          </ModuleNav>
         ) : null}
       </header>
-      <main className="keel-page mx-auto max-w-[1600px] px-4 py-6 md:px-6 md:py-8 lg:px-8">
+      <main className="keel-page mx-auto min-w-0 max-w-[1600px] px-4 py-6 md:px-6 md:py-8 lg:px-8">
         {mod ? (
           <nav className="keel-crumbs" aria-label={t(mod.label)}>
             <Link to="/">{t('shell.apps')}</Link>

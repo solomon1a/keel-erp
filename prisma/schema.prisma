@@ -109,9 +109,13 @@ model Company {
   helpdeskTags     HelpdeskTag[]
   slaPolicies      SlaPolicy[]
   tickets          Ticket[]
+  crmTags          CrmTag[]
+  lostReasons      LostReason[]
   workShifts       WorkShift[]
   leaveTypes       LeaveType[]
   leaveAllocations LeaveAllocation[]
+  /// Secret for POST /api/helpdesk/inbound. Mail for this company only.
+  inboundToken String? @unique
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -138,6 +142,7 @@ model User {
   closedSessions       PosSession[]        @relation("PosClosedBy")
   posOrders            PosOrder[]          @relation("PosOrderCreatedBy")
   leads                Lead[]
+  assignedActivities   Activity[]          @relation("ActivityAssignee")
   memberships          GroupMember[]
   savedFilters         SavedFilter[]
   chatter              ChatterMessage[]
@@ -1153,6 +1158,10 @@ model Lead {
   expectedRevenue  Float      @default(0)
   /// new, qualified, proposition, won, lost
   stage            String
+  /// website, referral, fair, phone, or email. Empty when nobody has set one.
+  source           String     @default("")
+  lostReasonId     Int?
+  lostReason       LostReason? @relation(fields: [lostReasonId], references: [id])
   companyId        Int
   company          Company    @relation(fields: [companyId], references: [id])
   userId           Int?
@@ -1161,6 +1170,7 @@ model Lead {
   contact          Contact?   @relation(fields: [contactId], references: [id])
   orderId          Int?
   activities       Activity[]
+  tags             LeadTag[]
   mailMembers      MailMember[]
   siteSubmissions  SiteSubmission[]
   createdAt        DateTime   @default(now())
@@ -1174,11 +1184,42 @@ model Activity {
   leadId    Int
   lead      Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
   /// call, meeting, todo
-  kind      String
-  summary   String
-  dueOn     DateTime?
-  done      Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  kind       String
+  summary    String
+  dueOn      DateTime?
+  done       Boolean   @default(false)
+  assigneeId Int?
+  assignee   User?     @relation("ActivityAssignee", fields: [assigneeId], references: [id])
+  createdAt  DateTime  @default(now())
+}
+
+model CrmTag {
+  id        Int       @id @default(autoincrement())
+  companyId Int
+  company   Company   @relation(fields: [companyId], references: [id])
+  name      String
+  leads     LeadTag[]
+
+  @@unique([companyId, name])
+}
+
+model LeadTag {
+  leadId Int
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tagId  Int
+  tag    CrmTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([leadId, tagId])
+}
+
+model LostReason {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  name      String
+  leads     Lead[]
+
+  @@unique([companyId, name])
 }
 
 model Department {

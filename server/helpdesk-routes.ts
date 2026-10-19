@@ -1,13 +1,18 @@
 import type { Hono } from 'hono'
 import type { AppEnv } from './auth.ts'
 import { AppError } from './errors.ts'
+import { inboundAllowed, inboundKey } from './rate-limit.ts'
+import { verifyResendSignature } from './services/inbound-signature.ts'
 import {
   addTicketMessage,
+  companyIdForInboundToken,
   createTeam,
   createTicket,
+  ensureInboundToken,
   getTicket,
   helpdeskBoard,
   inboundTicket,
+  rotateInboundToken,
   saveSlaPolicy,
   updateTicket,
 } from './services/helpdesk.ts'
@@ -25,8 +30,61 @@ function tagsOf(value: unknown) {
   return value.map((tag) => String(tag))
 }
 
+function presentedToken(pathToken: string | undefined, headerToken: string | undefined) {
+  const path = pathToken?.trim()
+  const header = headerToken?.trim()
+  if (path && header && path !== header) throw new AppError(401, 'That inbound secret is not valid.')
+  const token = path || header
+  if (!token) throw new AppError(401, 'That inbound secret is not valid.')
+  return token
+}
+
+async function receiveInbound(c: { req: { text: () => Promise<string>; header: (name: string) => string | undefined } }, token: string) {
+  if (!inboundAllowed(inboundKey(token))) throw new AppError(429, 'Too many inbound messages. Try again shortly.')
+  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET?.trim()
+  const raw = await c.req.text()
+  if (webhookSecret) {
+    const valid = verifyResendSignature(raw, {
+      id: c.req.header('svix-id') ?? c.req.header('webhook-id'),
+      timestamp: c.req.header('svix-timestamp') ?? c.req.header('webhook-timestamp'),
+      signature: c.req.header('svix-signature') ?? c.req.header('webhook-signature'),
+    }, webhookSecret)
+    if (!valid) throw new AppError(401, 'The inbound signature is not valid.')
+  }
+  let body: unknown = {}
+  if (raw.trim()) {
+    try {
+      body = JSON.parse(raw) as unknown
+    } catch {
+      throw new AppError(400, 'The inbound message needs a sender, subject, and body.')
+    }
+  }
+  const companyId = await companyIdForInboundToken(token)
+  return inboundTicket(companyId, body)
+}
+
 export function registerHelpdeskRoutes(app: Hono<AppEnv>) {
-  app.post('/api/helpdesk/inbound', async (c) => c.json(await inboundTicket(await c.req.json()), 201))
+  app.post('/api/helpdesk/inbound', async (c) => {
+    const token = presentedToken(undefined, c.req.header('x-keel-inbound-secret'))
+    return c.json(await receiveInbound(c, token), 201)
+  })
+
+  app.post('/api/helpdesk/inbound/:companyToken', async (c) => {
+    const token = presentedToken(c.req.param('companyToken'), c.req.header('x-keel-inbound-secret'))
+    return c.json(await receiveInbound(c, token), 201)
+  })
+
+  app.get('/api/helpdesk/inbound-token', async (c) => {
+    const user = c.get('user')
+    if (user.role !== 'admin') throw new AppError(403, 'Only an admin can see the inbound secret.')
+    return c.json(await ensureInboundToken(user.companyId))
+  })
+
+  app.post('/api/helpdesk/inbound-token', async (c) => {
+    const user = c.get('user')
+    if (user.role !== 'admin') throw new AppError(403, 'Only an admin can see the inbound secret.')
+    return c.json(await rotateInboundToken(user.companyId))
+  })
 
   app.get('/api/helpdesk', async (c) => c.json(await helpdeskBoard(c.get('user').companyId)))
 

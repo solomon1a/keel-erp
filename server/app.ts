@@ -64,6 +64,7 @@ import { registerQualityRoutes } from './quality-routes.ts'
 import { registerReachRoutes } from './reach-routes.ts'
 import { registerHomeRoutes } from './home-routes.ts'
 import { registerInviteRoutes } from './invite-routes.ts'
+import { registerAnalysisRoutes } from './analysis-routes.ts'
 import { registerAttendanceRoutes } from './attendance-routes.ts'
 import { registerHelpdeskRoutes } from './helpdesk-routes.ts'
 import { registerPhaseRoutes } from './phase-routes.ts'
@@ -182,6 +183,7 @@ function isPublicApi(method: string, path: string) {
   if (method === 'POST' && /^\/api\/site\/[^/]+\/contact$/.test(path)) return true
   if (method === 'GET' && path === '/api/cron') return true
   if (method === 'POST' && path === '/api/helpdesk/inbound') return true
+  if (method === 'POST' && /^\/api\/helpdesk\/inbound\/[^/]+$/.test(path)) return true
   return path === '/api/shop' || path.startsWith('/api/shop/')
 }
 
@@ -1169,6 +1171,7 @@ export function createApp() {
   registerPhaseRoutes(app)
   registerHelpdeskRoutes(app)
   registerAttendanceRoutes(app)
+  registerAnalysisRoutes(app)
 
   return app
 }

@@ -39,9 +39,10 @@ describe('module hubs', () => {
       'desk.s.sales.pricelists',
       'desk.s.sales.payment-terms',
       'hub.settings',
+      'hub.reports',
     ]))
-    expect(labels('sales')).not.toContain('hub.reports')
     const tiles = hubTiles(sales!)
+    expect(tiles.find((tile) => tile.label === 'hub.reports')?.to).toBe('/sales/analysis?group=product')
     expect(tiles.find((tile) => tile.label === 'desk.s.sales.pricelists')?.to).toBe('/sales/pricelists')
     expect(tiles.find((tile) => tile.label === 'desk.s.sales.payment-terms')?.to).toBe('/sales/payment-terms')
     expect(segmentTiles(sales!, 'desk.g.configuration')).toBeNull()
@@ -100,6 +101,10 @@ describe('module hubs', () => {
     expect(dest('purchase', 'desk.s.purchase.bills')).toBe('/accounting?moveType=in_invoice')
     expect(dest('purchase', 'desk.s.purchase.vendor-pricelists')).toBe('/sales/pricelists?side=purchase')
     expect(dest('purchase', 'desk.s.purchase.requisitions')).toBeUndefined()
+    expect(dest('purchase', 'desk.s.purchase.analysis')).toBe('/purchases/analysis?group=product')
+    expect(dest('purchase', 'desk.s.purchase.spend')).toBe('/purchases/analysis?group=partner')
+    expect(dest('purchase', 'desk.s.purchase.cycle')).toBeUndefined()
+    expect(dest('sales', 'desk.s.sales.analysis')).toBe('/sales/analysis?group=product')
     expect(dest('inventory', 'desk.s.inventory.receipts')).toBe('/inventory/transfers')
     expect(dest('inventory', 'desk.s.inventory.deliveries')).toBe('/inventory/transfers')
     expect(dest('inventory', 'desk.s.inventory.adjustments')).toBe('/inventory')
@@ -128,6 +133,12 @@ describe('module hubs', () => {
     expect(dest('helpdesk', 'desk.s.helpdesk.sla')).toBe('/helpdesk/sla')
     expect(dest('helpdesk', 'desk.s.helpdesk.stages')).toBe('/helpdesk?view=kanban')
     expect(dest('helpdesk', 'desk.s.helpdesk.analysis')).toBeUndefined()
+    expect(dest('crm', 'desk.s.crm.activities')).toBe('/crm/activities')
+    expect(dest('crm', 'desk.s.crm.pipeline-analysis')).toBe('/crm/analysis?group=stage')
+    expect(dest('crm', 'desk.s.crm.leads-analysis')).toBe('/crm/analysis?group=user')
+    expect(dest('crm', 'desk.s.crm.tags')).toBe('/crm/tags')
+    expect(dest('crm', 'desk.s.crm.lost-reasons')).toBe('/crm/lost-reasons')
+    expect(dest('crm', 'desk.s.crm.teams')).toBeUndefined()
     expect(dest('helpdesk', 'desk.s.helpdesk.settings')).toBe('/app/helpdesk/settings')
   })
 

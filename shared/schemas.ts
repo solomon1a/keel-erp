@@ -393,12 +393,17 @@ export type InvoicePayInput = z.infer<typeof invoicePaySchema>
 
 export const crmStages = ['new', 'qualified', 'proposition', 'won', 'lost'] as const
 
+export const leadSources = ['website', 'referral', 'fair', 'phone', 'email'] as const
+
 export const crmLeadSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(160),
   contactName: z.string().trim().min(1, 'Name is required').max(120),
   email: z.string().trim().max(160).optional().transform((value) => (value ? value : null)),
   phone: optionalText,
   expectedRevenue: z.number().min(0).default(0),
+  source: z.enum(['', ...leadSources]).optional(),
+  lostReasonId: z.number().int().positive().nullable().optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).optional(),
 })
 
 export const crmStageSchema = z.object({
@@ -409,6 +414,8 @@ export const crmActivitySchema = z.object({
   kind: z.enum(['call', 'meeting', 'todo']),
   summary: z.string().trim().min(1, 'Summary is required').max(240),
   dueOn: z.string().trim().max(10).optional().transform((value) => (value ? value : null)),
+  assigneeId: z.number().int().positive().nullable().optional(),
+  leadId: z.number().int().positive().optional(),
 })
 
 export type CrmLeadInput = z.infer<typeof crmLeadSchema>

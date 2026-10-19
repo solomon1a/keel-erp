@@ -14,6 +14,8 @@ import { InvitePage } from './pages/invite-page.tsx'
 import { SubcontractPage } from './pages/subcontract-page.tsx'
 import { ContactFormPage } from './pages/contact-form-page.tsx'
 import { ContactsPage } from './pages/contacts-page.tsx'
+import { ActivitiesPage, CrmAnalysisPage, CrmTagsPage, LostReasonsPage } from './pages/crm-desk.tsx'
+import { TradeAnalysisPage } from './pages/trade-analysis.tsx'
 import { CrmPage, LeadPage } from './pages/crm.tsx'
 import { AppsPage } from './pages/apps-page.tsx'
 import { DeskFormPage, DeskScreenPage } from './pages/desk-screen.tsx'
@@ -137,6 +139,10 @@ export default function App() {
             <Route path="/accounting/ledger" element={<LedgerPage />} />
             <Route path="/accounting/reports" element={<ReportsPage />} />
             <Route path="/accounting/:id" element={<InvoicePage />} />
+            <Route path="/crm/activities" element={<ActivitiesPage />} />
+            <Route path="/crm/analysis" element={<CrmAnalysisPage />} />
+            <Route path="/crm/tags" element={<CrmTagsPage />} />
+            <Route path="/crm/lost-reasons" element={<LostReasonsPage />} />
             <Route path="/crm" element={<CrmPage />} />
             <Route path="/crm/:id" element={<LeadPage />} />
             <Route path="/helpdesk" element={<HelpdeskPage />} />
@@ -149,6 +155,7 @@ export default function App() {
             <Route path="/hr/payroll/:id" element={<PayrollRunPage />} />
             <Route path="/hr/expenses" element={<ExpensesPage />} />
             <Route path="/hr/:id" element={<EmployeePage />} />
+            <Route path="/sales/analysis" element={<TradeAnalysisPage side="sales" />} />
             <Route path="/sales/pricelists" element={<PricelistsPage />} />
             <Route path="/sales/payment-terms" element={<PaymentTermsPage />} />
             <Route path="/sales/pricing" element={<PricingPage />} />
@@ -156,6 +163,7 @@ export default function App() {
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailPage />} />
             <Route path="/orders/:id/edit" element={<OrderFormPage />} />
+            <Route path="/purchases/analysis" element={<TradeAnalysisPage side="purchase" />} />
             <Route path="/purchases" element={<PurchasesPage />} />
             <Route path="/purchases/new" element={<PurchaseFormPage />} />
             <Route path="/purchases/:id" element={<PurchaseDetailPage />} />

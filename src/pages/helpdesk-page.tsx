@@ -10,6 +10,7 @@ import { Textarea } from '../components/ui/textarea.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { useShortDate } from '../lib/format.ts'
+import { slaClockParts } from '../lib/sla-clock.ts'
 
 const stages = ['new', 'progress', 'waiting', 'solved', 'closed'] as const
 const priorities = ['low', 'normal', 'high', 'urgent'] as const
@@ -125,14 +126,27 @@ function useClock() {
   return now
 }
 
-function clock(ms: number) {
-  const late = ms < 0
-  const total = Math.floor(Math.abs(ms) / 1000)
-  const hours = Math.floor(total / 3600)
-  const minutes = Math.floor((total % 3600) / 60)
-  const seconds = total % 60
-  const text = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-  return late ? `-${text}` : text
+function clockText(ms: number, t: Translate) {
+  const parts = slaClockParts(ms)
+  switch (parts.tone) {
+    case 'overdue':
+      return t('hd.overdueClock', { hours: parts.hours, minutes: parts.minutes })
+    case 'left':
+      switch (parts.style) {
+        case 'days':
+          return t('hd.leftDays', { days: parts.days, hours: parts.hours })
+        case 'hours':
+          return t('hd.leftHours', { hours: parts.hours, minutes: parts.minutes })
+        default: {
+          const unexpected: never = parts
+          return unexpected
+        }
+      }
+    default: {
+      const unexpected: never = parts
+      return unexpected
+    }
+  }
 }
 
 function Countdown({ deadline, resolved, breached, t }: { deadline: string | null; resolved: boolean; breached: boolean; t: Translate }) {
@@ -144,8 +158,7 @@ function Countdown({ deadline, resolved, breached, t }: { deadline: string | nul
   const ms = new Date(deadline).getTime() - now
   return (
     <span className={ms < 0 ? 'font-semibold text-[#B42323]' : 'font-semibold tabular-nums'}>
-      {clock(ms)}
-      {ms < 0 ? ` · ${t('hd.breached')}` : ''}
+      {clockText(ms, t)}
     </span>
   )
 }
@@ -549,6 +562,19 @@ export function SlaPage() {
     },
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('hd.failed')),
   })
+  const inbound = useQuery({
+    queryKey: ['helpdesk-inbound'],
+    queryFn: () => api<{ token: string }>('/api/helpdesk/inbound-token'),
+    retry: false,
+  })
+  const rotate = useMutation({
+    mutationFn: () => api<{ token: string }>('/api/helpdesk/inbound-token', { method: 'POST' }),
+    onSuccess: async () => {
+      setError('')
+      await queryClient.invalidateQueries({ queryKey: ['helpdesk-inbound'] })
+    },
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('hd.failed')),
+  })
   const addTeam = useMutation({
     mutationFn: () => api('/api/helpdesk/teams', { method: 'POST', body: JSON.stringify({ name: teamName }) }),
     onSuccess: async () => {
@@ -594,6 +620,23 @@ export function SlaPage() {
             <Button type="submit" disabled={save.isPending}>{save.isPending ? t('hd.saving') : t('hd.save')}</Button>
           </div>
         </form>
+      </Panel>
+      <Panel>
+        <h2 className="font-serif text-2xl">{t('hd.inbound')}</h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t('hd.inboundLead')}</p>
+        {inbound.data ? (
+          <div className="mt-3 grid gap-2">
+            <p className="text-xs font-semibold">{t('hd.inboundSecret')}</p>
+            <p className="break-all font-mono text-sm">{inbound.data.token}</p>
+            <p className="text-xs text-muted-foreground">{t('hd.inboundHeader')}</p>
+            <p className="break-all font-mono text-xs">X-Keel-Inbound-Secret: {inbound.data.token}</p>
+            <p className="text-xs text-muted-foreground">{t('hd.inboundPath')}</p>
+            <p className="break-all font-mono text-xs">/api/helpdesk/inbound/{inbound.data.token}</p>
+            <div>
+              <Button type="button" variant="outline" disabled={rotate.isPending} onClick={() => rotate.mutate()}>{t('hd.inboundRotate')}</Button>
+            </div>
+          </div>
+        ) : inbound.isError ? <p className="mt-3 text-sm text-muted-foreground">{inbound.error.message}</p> : <p className="mt-3 text-sm text-muted-foreground">{t('hd.loading')}</p>}
       </Panel>
       <Panel>
         <h2 className="font-serif text-2xl">{t('hd.team')}</h2>
