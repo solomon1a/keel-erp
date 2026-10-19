@@ -105,6 +105,10 @@ model Company {
   mailLogs         MailLog[]
   fileBlobs        FileBlob[]
   documentTaxes    DocumentTax[]
+  helpdeskTeams    HelpdeskTeam[]
+  helpdeskTags     HelpdeskTag[]
+  slaPolicies      SlaPolicy[]
+  tickets          Ticket[]
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
@@ -139,6 +143,7 @@ model User {
   /// ISO code used only to format amounts. Empty follows the company currency. The books stay in that currency.
   displayCurrency      String?
   qualityOverrides     QualityCheck[]      @relation("QualityOverride")
+  assignedTickets      Ticket[]            @relation("TicketAssignee")
   createdAt            DateTime            @default(now())
 }
 
@@ -205,6 +210,7 @@ model Contact {
   posOrders      PosOrder[]
   shopCustomers  ShopCustomer[]
   invoices       Invoice[]
+  tickets        Ticket[]
   quotations     Quotation[]
   supplierQuotes SupplierQuotation[]
   subcontractLocations StockLocation[] @relation("SubcontractVendor")
@@ -2473,4 +2479,85 @@ model FileBlob {
   createdAt DateTime @default(now())
 
   @@index([companyId, model, recordId])
+}
+
+model HelpdeskTeam {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  tickets   Ticket[]
+
+  @@unique([companyId, name])
+}
+
+model HelpdeskTag {
+  id        Int         @id @default(autoincrement())
+  companyId Int
+  company   Company     @relation(fields: [companyId], references: [id])
+  name      String
+  tickets   TicketTag[]
+
+  @@unique([companyId, name])
+}
+
+model SlaPolicy {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  /// low, normal, high, or urgent
+  priority  String
+  /// Hours from the ticket's creation until the deadline.
+  hours     Int
+
+  @@unique([companyId, priority])
+}
+
+model Ticket {
+  id          Int             @id @default(autoincrement())
+  companyId   Int
+  company     Company         @relation(fields: [companyId], references: [id])
+  number      String
+  partnerId   Int
+  partner     Contact         @relation(fields: [partnerId], references: [id])
+  subject     String
+  description String          @default("")
+  teamId      Int?
+  team        HelpdeskTeam?   @relation(fields: [teamId], references: [id])
+  assigneeId  Int?
+  assignee    User?           @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  /// low, normal, high, or urgent
+  priority    String          @default("normal")
+  /// new, progress, waiting, solved, or closed
+  stage       String          @default("new")
+  slaDeadline DateTime?
+  resolvedAt  DateTime?
+  tags        TicketTag[]
+  messages    TicketMessage[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([companyId, number])
+  @@index([companyId, stage])
+}
+
+model TicketTag {
+  ticketId Int
+  ticket   Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tagId    Int
+  tag      HelpdeskTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, tagId])
+}
+
+model TicketMessage {
+  id         Int      @id @default(autoincrement())
+  ticketId   Int
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorName String
+  body       String
+  internal   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([ticketId, createdAt])
 }

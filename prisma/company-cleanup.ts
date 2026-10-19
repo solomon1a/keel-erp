@@ -15,6 +15,12 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
     await tx.followUpLog.deleteMany({ where: { invoice: { companyId } } })
     await tx.invoiceInstalment.deleteMany({ where: { invoice: { companyId } } })
     await tx.documentTax.deleteMany({ where: { companyId } })
+    await tx.ticketMessage.deleteMany({ where: { ticket: { companyId } } })
+    await tx.ticketTag.deleteMany({ where: { ticket: { companyId } } })
+    await tx.ticket.deleteMany({ where: { companyId } })
+    await tx.helpdeskTag.deleteMany({ where: { companyId } })
+    await tx.slaPolicy.deleteMany({ where: { companyId } })
+    await tx.helpdeskTeam.deleteMany({ where: { companyId } })
     await tx.mailLog.deleteMany({ where: { companyId } })
     await tx.fileBlob.deleteMany({ where: { companyId } })
     await tx.recurringInvoice.deleteMany({ where: { companyId } })
@@ -137,6 +143,7 @@ async function deleteCompany(client: PrismaClient, companyId: number) {
             `account.out_refund.${companyId}`,
             `account.in_refund.${companyId}`,
             `account.entry.${companyId}`,
+            `helpdesk.ticket.${companyId}`,
           ],
         },
       },

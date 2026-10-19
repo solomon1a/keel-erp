@@ -20,6 +20,7 @@ import { DeskFormPage, DeskScreenPage } from './pages/desk-screen.tsx'
 import { ModuleHubPage } from './pages/module-hub.tsx'
 import { DeskPage } from './pages/desk-page.tsx'
 import { WebsitePage } from './pages/website-page.tsx'
+import { HelpdeskPage, SlaPage, TicketPage } from './pages/helpdesk-page.tsx'
 import { EmployeePage, HrPage } from './pages/hr.tsx'
 import { ExpensesPage, PayrollPage, PayrollRunPage } from './pages/payroll.tsx'
 import { BomDetailPage } from './pages/bom-detail-page.tsx'
@@ -137,6 +138,9 @@ export default function App() {
             <Route path="/accounting/:id" element={<InvoicePage />} />
             <Route path="/crm" element={<CrmPage />} />
             <Route path="/crm/:id" element={<LeadPage />} />
+            <Route path="/helpdesk" element={<HelpdeskPage />} />
+            <Route path="/helpdesk/sla" element={<SlaPage />} />
+            <Route path="/helpdesk/:id" element={<TicketPage />} />
             <Route path="/hr" element={<HrPage />} />
             <Route path="/hr/payroll" element={<PayrollPage />} />
             <Route path="/hr/payroll/:id" element={<PayrollRunPage />} />

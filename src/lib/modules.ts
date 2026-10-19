@@ -216,7 +216,7 @@ export const appModules: AppModule[] = [
     description: 'mod.helpdesk.desc',
     home: '/app/helpdesk/tickets',
     group: 'sell',
-    match: ['/app/helpdesk'],
+    match: ['/app/helpdesk', '/helpdesk'],
     menu: moduleMenus.helpdesk ?? [],
   },
 ]
@@ -293,6 +293,7 @@ export function linkActive(to: string, pathname: string, search: string) {
   if (path === '/accounting') return (pathname === '/accounting' && !current.get('moveType')) || /^\/accounting\/\d+/.test(pathname)
   if (path === '/accounting/reports') return pathname === '/accounting/reports' && !current.get('view')
   if (path === '/projects') return (pathname === '/projects' || /^\/projects\/\d+/.test(pathname)) && !current.get('view')
+  if (path === '/helpdesk') return (pathname === '/helpdesk' || /^\/helpdesk\/\d+$/.test(pathname)) && !current.get('view')
   if (path === '/crm') return pathname === '/crm' || /^\/crm\/\d+/.test(pathname)
   return pathname === path || pathname.startsWith(`${path}/`)
 }

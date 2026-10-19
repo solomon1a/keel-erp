@@ -117,7 +117,11 @@ describe('module hubs', () => {
     expect(dest('website', 'desk.s.website.pages')).toBe('/sites')
     expect(dest('website', 'desk.s.website.coupons')).toBeUndefined()
     expect(dest('pos', 'desk.s.pos.payment-methods')).toBeUndefined()
-    expect(dest('helpdesk', 'desk.s.helpdesk.tickets')).toBeUndefined()
+    expect(dest('helpdesk', 'desk.s.helpdesk.tickets')).toBe('/helpdesk')
+    expect(dest('helpdesk', 'desk.s.helpdesk.dashboard')).toBe('/helpdesk')
+    expect(dest('helpdesk', 'desk.s.helpdesk.sla')).toBe('/helpdesk/sla')
+    expect(dest('helpdesk', 'desk.s.helpdesk.stages')).toBe('/helpdesk?view=kanban')
+    expect(dest('helpdesk', 'desk.s.helpdesk.analysis')).toBeUndefined()
     expect(dest('helpdesk', 'desk.s.helpdesk.settings')).toBe('/app/helpdesk/settings')
   })
 

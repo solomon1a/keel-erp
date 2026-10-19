@@ -76,6 +76,15 @@ const liveTargets: Record<string, string> = {
 
   '/app/expenses/reports': '/hr/expenses',
   '/app/expenses/approvals': '/hr/expenses',
+
+  '/app/helpdesk/dashboard': '/helpdesk',
+  '/app/helpdesk/tickets': '/helpdesk',
+  '/app/helpdesk/sla': '/helpdesk/sla',
+  '/app/helpdesk/stages': '/helpdesk?view=kanban',
+  '/app/helpdesk/priorities': '/helpdesk/sla',
+  '/app/helpdesk/replies': '/helpdesk',
+  '/app/helpdesk/tags': '/helpdesk',
+  '/app/helpdesk/teams': '/helpdesk',
 }
 
 type NavEntry = {
