@@ -70,7 +70,10 @@ describe('module hubs', () => {
     expect(dest('accounting', 'desk.s.accounting.reconcile')).toBe('/accounting/statements')
     expect(dest('accounting', 'desk.s.accounting.journals')).toBe('/accounting/ledger')
     expect(segmentTiles(accounting, 'menu.reporting')?.tiles.map((tile) => tile.to).sort()).toEqual([
+      '/accounting/reports?view=aged-payable',
+      '/accounting/reports?view=aged-receivable',
       '/accounting/reports?view=balance',
+      '/accounting/reports?view=cashflow',
       '/accounting/reports?view=pnl',
       '/accounting/reports?view=vat',
     ])

@@ -29,6 +29,9 @@ const liveTargets: Record<string, string> = {
   '/app/accounting/reconcile': '/accounting/statements',
   '/app/accounting/bank': '/accounting/statements',
   '/app/accounting/journals': '/accounting/ledger',
+  '/app/accounting/aged-receivable': '/accounting/reports?view=aged-receivable',
+  '/app/accounting/aged-payable': '/accounting/reports?view=aged-payable',
+  '/app/accounting/cash-flow': '/accounting/reports?view=cashflow',
 
   '/app/projects/dashboard': '/projects',
   '/app/projects/timesheets': '/projects?view=time',

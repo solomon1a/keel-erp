@@ -20,6 +20,7 @@ import {
   vatReport,
 } from './services/accounting.ts'
 import { agingReport, applyChargeTemplate, assignCostCentre, centreReport, closeFiscalYear, listFiscalYears, openFiscalYear } from './services/books.ts'
+import { agedCsv, agedStatement, cashFlow, type AgedSide } from './services/cash-reports.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -84,6 +85,28 @@ export function registerAccountingRoutes(app: Hono<AppEnv>) {
   app.get('/api/reports/aging', async (c) => {
     const asOf = c.req.query('asOf') || new Date().toISOString().slice(0, 10)
     return c.json(await agingReport(c.get('user').companyId, asOf))
+  })
+
+  app.get('/api/reports/aged', async (c) => {
+    const side = c.req.query('side')
+    if (side !== 'receivable' && side !== 'payable') throw new AppError(400, 'Choose receivable or payable.')
+    const asOf = c.req.query('asOf') || new Date().toISOString().slice(0, 10)
+    const report = await agedStatement(c.get('user').companyId, side as AgedSide, asOf)
+    if (c.req.query('format') === 'csv') {
+      return new Response(agedCsv(report), {
+        headers: {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': `attachment; filename="aged-${side}.csv"`,
+        },
+      })
+    }
+    return c.json(report)
+  })
+
+  app.get('/api/reports/cashflow', async (c) => {
+    const from = c.req.query('from') || `${new Date().getUTCFullYear()}-01-01`
+    const to = c.req.query('to') || new Date().toISOString().slice(0, 10)
+    return c.json(await cashFlow(c.get('user').companyId, from, to))
   })
 
   app.get('/api/reports/centres', async (c) => c.json(await centreReport(c.get('user').companyId)))
