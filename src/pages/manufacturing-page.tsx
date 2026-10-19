@@ -48,11 +48,11 @@ export function ManufacturingPage() {
           <h1 className="font-serif text-4xl tracking-tight">{t('manufacturing.title')}</h1>
           <p className="mt-1 text-muted-foreground">{t('manufacturing.lead')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="keel-actions">
           <Link to="/manufacturing/plan"><Button variant="outline">{t('floor.plan')}</Button></Link>
           <Link to="/manufacturing/wastage"><Button variant="outline">{t('floor.wastage')}</Button></Link>
           <Link to="/boms"><Button variant="outline">{t('manufacturing.boms')}</Button></Link>
-          <Link to="/manufacturing/new"><Button>{t('manufacturing.new')}</Button></Link>
+          <Link to="/manufacturing/new"><Button size="lg">{t('manufacturing.new')}</Button></Link>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
