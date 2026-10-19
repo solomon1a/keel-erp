@@ -502,14 +502,23 @@ model BomLine {
 }
 
 model Workstation {
-  id        Int            @id @default(autoincrement())
-  companyId Int
-  company   Company        @relation(fields: [companyId], references: [id])
-  name      String
-  hourRate  Float
-  operations BomOperation[]
-  jobCards  JobCard[]
-  wastage   WastageEntry[]
+  id            Int            @id @default(autoincrement())
+  companyId     Int
+  company       Company        @relation(fields: [companyId], references: [id])
+  name          String
+  hourRate      Float
+  /// Scheduled hours in one working day.
+  capacityHours Float          @default(8)
+  /// Minutes from midnight. 540 is 09:00.
+  startMinutes  Int            @default(540)
+  endMinutes    Int            @default(1020)
+  /// ISO weekdays, 1 = Monday … 7 = Sunday.
+  workingDays   String         @default("1,2,3,4,5")
+  /// Expected efficiency, percent. 100 leaves operating cost unchanged.
+  efficiency    Float          @default(100)
+  operations    BomOperation[]
+  jobCards      JobCard[]
+  wastage       WastageEntry[]
 
   @@unique([companyId, name])
 }
@@ -598,7 +607,7 @@ model JobCard {
   completedQty  Float        @default(0)
   processLoss   Float        @default(0)
   rejectedQty   Float        @default(0)
-  /// pending, open, done
+  /// pending, running, paused, open, done
   status        String
   logs          JobTimeLog[]
   wastage       WastageEntry[]
@@ -608,12 +617,15 @@ model JobCard {
 }
 
 model JobTimeLog {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   jobCardId    Int
-  jobCard      JobCard  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  jobCard      JobCard   @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
   operatorName String
   minutes      Float
   note         String?
+  /// Set together when the operator starts the clock. endedAt stays empty until pause or finish.
+  startedAt    DateTime?
+  endedAt      DateTime?
 }
 
 model WastageEntry {

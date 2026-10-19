@@ -135,6 +135,7 @@ async function seedCompanyFloor(client: PrismaClient, company: { id: number; nam
     line: { productId: cloth.id, quantity: 2.52, consumed: 0, lossPercent: 5 },
   }, added)
   await ensurePlan(client, company.id, apron.id, apronBom.id, cloth.id, added)
+  await seedShopCenters(client, company.id, admin.id, warehouse.id, bench.id, apron.id, apronBom.id, added)
 
   console.log(`seed-floor: ${company.name} ${added.length > 0 ? `added ${added.join(', ')}` : 'already had the named floor documents'}.`)
 }
@@ -314,6 +315,243 @@ async function ensureWastage(
       reason: 'Frayed edge',
       kind: 'process_loss',
       cost: 2.02,
+    },
+  })
+}
+
+async function ensureNamedStation(
+  client: PrismaClient,
+  companyId: number,
+  input: {
+    name: string
+    hourRate: number
+    capacityHours: number
+    startMinutes: number
+    endMinutes: number
+    workingDays: string
+    efficiency: number
+  },
+  added: string[],
+) {
+  const existing = await client.workstation.findFirst({ where: { companyId, name: input.name } })
+  if (existing) return existing
+  added.push(input.name)
+  return client.workstation.create({ data: { companyId, ...input } })
+}
+
+async function seedShopCenters(
+  client: PrismaClient,
+  companyId: number,
+  adminId: number,
+  warehouseId: number,
+  benchId: number,
+  apronId: number,
+  apronBomId: number,
+  added: string[],
+) {
+  const dye = await ensureNamedStation(client, companyId, {
+    name: 'Dye vat',
+    hourRate: 48,
+    capacityHours: 8,
+    startMinutes: 540,
+    endMinutes: 1020,
+    workingDays: '1,2,3,4,5',
+    efficiency: 92,
+  }, added)
+  const hem = await ensureNamedStation(client, companyId, {
+    name: 'Hem station',
+    hourRate: 36,
+    capacityHours: 6,
+    startMinutes: 480,
+    endMinutes: 840,
+    workingDays: '1,2,3,4,5',
+    efficiency: 88,
+  }, added)
+  const tag = `FL${companyId}`
+  const dyed = await ensureProduct(client, companyId, {
+    name: 'Dyed shop apron',
+    sku: `${tag}-DYED`,
+    kind: 'finished',
+    listPrice: 88,
+    costPrice: 40,
+    purchasable: false,
+  }, added)
+  const dyedBom = await ensureBom(client, companyId, dyed.id, {
+    notes: 'Dye a shop apron, then hem it.',
+    lines: [{ productId: apronId, quantity: 1, lossPercent: 0 }],
+    operations: [
+      { sequence: 1, name: 'Dye', workstationId: dye.id, hours: 1.2, lossPercent: 0 },
+      { sequence: 2, name: 'Hem', workstationId: hem.id, hours: 0.4, lossPercent: 0 },
+    ],
+  }, added, 'Dyed shop apron bill')
+
+  const queue = await ensureOrder(client, {
+    companyId,
+    name: `MO-QUEUE-${companyId}`,
+    state: 'confirmed',
+    purpose: 'stock',
+    productId: apronId,
+    bomId: apronBomId,
+    quantity: 4,
+    quantityDone: 0,
+    transferred: false,
+    sourceWarehouseId: warehouseId,
+    destWarehouseId: warehouseId,
+    wipWarehouseId: null,
+    scrapWarehouseId: null,
+    createdById: adminId,
+    line: { productId: apronId, quantity: 4, consumed: 0, lossPercent: 0 },
+  }, added)
+  await ensureDemoCard(client, {
+    companyId,
+    orderId: queue.id,
+    name: `JC-QUEUE-${companyId}`,
+    workstationId: benchId,
+    operationName: 'Cut and hem',
+    status: 'pending',
+    plannedQty: 4,
+    completedQty: 0,
+    rejectedQty: 0,
+  }, added)
+
+  const running = await ensureOrder(client, {
+    companyId,
+    name: `MO-RUN-${companyId}`,
+    state: 'progress',
+    purpose: 'stock',
+    productId: dyed.id,
+    bomId: dyedBom.id,
+    quantity: 4,
+    quantityDone: 0,
+    transferred: false,
+    sourceWarehouseId: warehouseId,
+    destWarehouseId: warehouseId,
+    wipWarehouseId: null,
+    scrapWarehouseId: null,
+    createdById: adminId,
+    line: { productId: apronId, quantity: 4, consumed: 0, lossPercent: 0 },
+  }, added)
+  const runningCard = await ensureDemoCard(client, {
+    companyId,
+    orderId: running.id,
+    name: `JC-RUN-${companyId}`,
+    workstationId: dye.id,
+    operationName: 'Dye',
+    status: 'running',
+    plannedQty: 4,
+    completedQty: 3,
+    rejectedQty: 0,
+    logs: [
+      { operatorName: 'Mina Cole', minutes: 400, note: 'Morning dye lot.' },
+      { operatorName: 'Wen Li', minutes: 0, note: null, startedAt: new Date(Date.now() - 25 * 60 * 1000) },
+    ],
+  }, added)
+  await client.jobTimeLog.updateMany({
+    where: { jobCardId: runningCard.id, operatorName: 'Wen Li', endedAt: null },
+    data: { startedAt: new Date(Date.now() - 25 * 60 * 1000), minutes: 0 },
+  })
+
+  const held = await ensureOrder(client, {
+    companyId,
+    name: `MO-HOLD-${companyId}`,
+    state: 'stopped',
+    purpose: 'stock',
+    productId: dyed.id,
+    bomId: dyedBom.id,
+    quantity: 5,
+    quantityDone: 0,
+    transferred: false,
+    sourceWarehouseId: warehouseId,
+    destWarehouseId: warehouseId,
+    wipWarehouseId: null,
+    scrapWarehouseId: null,
+    createdById: adminId,
+    line: { productId: apronId, quantity: 5, consumed: 0, lossPercent: 0 },
+  }, added)
+  await ensureDemoCard(client, {
+    companyId,
+    orderId: held.id,
+    name: `JC-HOLD-${companyId}`,
+    workstationId: hem.id,
+    operationName: 'Hem',
+    status: 'paused',
+    plannedQty: 5,
+    completedQty: 4,
+    rejectedQty: 1,
+    logs: [{ operatorName: 'He Gong', minutes: 300, note: 'Paused for a needle change.', startedAt: new Date(Date.now() - 6 * 60 * 60 * 1000), endedAt: new Date(Date.now() - 60 * 60 * 1000) }],
+  }, added)
+
+  const finished = await ensureOrder(client, {
+    companyId,
+    name: `MO-FIN-${companyId}`,
+    state: 'stopped',
+    purpose: 'stock',
+    productId: apronId,
+    bomId: apronBomId,
+    quantity: 4,
+    quantityDone: 0,
+    transferred: false,
+    sourceWarehouseId: warehouseId,
+    destWarehouseId: warehouseId,
+    wipWarehouseId: null,
+    scrapWarehouseId: null,
+    createdById: adminId,
+    line: { productId: apronId, quantity: 4, consumed: 0, lossPercent: 0 },
+  }, added)
+  await ensureDemoCard(client, {
+    companyId,
+    orderId: finished.id,
+    name: `JC-FIN-${companyId}`,
+    workstationId: benchId,
+    operationName: 'Cut and hem',
+    status: 'done',
+    plannedQty: 4,
+    completedQty: 4,
+    rejectedQty: 0,
+    logs: [{ operatorName: 'August', minutes: 360, note: 'Four aprons off the bench.', startedAt: new Date(Date.now() - 8 * 60 * 60 * 1000), endedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) }],
+  }, added)
+}
+
+async function ensureDemoCard(
+  client: PrismaClient,
+  input: {
+    companyId: number
+    orderId: number
+    name: string
+    workstationId: number
+    operationName: string
+    status: string
+    plannedQty: number
+    completedQty: number
+    rejectedQty: number
+    logs?: Array<{ operatorName: string; minutes: number; note: string | null; startedAt?: Date; endedAt?: Date }>
+  },
+  added: string[],
+) {
+  const existing = await client.jobCard.findFirst({ where: { companyId: input.companyId, name: input.name } })
+  if (existing) return existing
+  added.push(input.name)
+  return client.jobCard.create({
+    data: {
+      companyId: input.companyId,
+      orderId: input.orderId,
+      name: input.name,
+      sequence: 1,
+      operationName: input.operationName,
+      workstationId: input.workstationId,
+      plannedQty: input.plannedQty,
+      completedQty: input.completedQty,
+      rejectedQty: input.rejectedQty,
+      status: input.status,
+      logs: {
+        create: (input.logs ?? []).map((log) => ({
+          operatorName: log.operatorName,
+          minutes: log.minutes,
+          note: log.note,
+          startedAt: log.startedAt,
+          endedAt: log.endedAt,
+        })),
+      },
     },
   })
 }

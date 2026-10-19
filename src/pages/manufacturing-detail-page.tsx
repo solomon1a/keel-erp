@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Chatter } from '../components/chatter.tsx'
 import { Field, Notice } from '../components/field.tsx'
+import { JobCardBoard } from '../components/job-card-panel.tsx'
 import { Badge } from '../components/ui/badge.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
@@ -206,12 +207,7 @@ export function ManufacturingDetailPage() {
         </ul>
       </section>
       {(row.jobCards ?? []).length > 0 ? (
-        <section className="grid gap-3">
-          <h2 className="font-serif text-2xl">{t('floor.jobCards')}</h2>
-          {(row.jobCards ?? []).map((card) => (
-            <JobCardPanel key={card.id} card={card} onDone={refresh} onError={setError} />
-          ))}
-        </section>
+        <JobCardBoard cards={row.jobCards ?? []} absorbed={row.operatingAbsorbed ?? 0} onDone={refresh} onError={setError} />
       ) : null}
       {row.state === 'progress' || row.state === 'stopped' ? (
         <section className="grid max-w-xl gap-3">
@@ -281,80 +277,3 @@ export function ManufacturingDetailPage() {
   )
 }
 
-function JobCardPanel({
-  card,
-  onDone,
-  onError,
-}: {
-  card: NonNullable<ManufacturingOrder['jobCards']>[number]
-  onDone: () => Promise<void>
-  onError: (message: string) => void
-}) {
-  const { t } = useI18n()
-  const [operator, setOperator] = useState('')
-  const [minutes, setMinutes] = useState('30')
-  const [note, setNote] = useState('')
-  const [completed, setCompleted] = useState(String(card.completedQty))
-  const log = useMutation({
-    mutationFn: () =>
-      api(`/api/job-cards/${card.id}/log`, {
-        method: 'POST',
-        body: JSON.stringify({ operatorName: operator, minutes: Number(minutes), note: note || undefined }),
-      }),
-    onSuccess: async () => {
-      setOperator('')
-      setNote('')
-      await onDone()
-    },
-    onError: (reason) => onError(reason instanceof ApiError ? reason.message : t('mo.stepFailed')),
-  })
-  const complete = useMutation({
-    mutationFn: () =>
-      api(`/api/job-cards/${card.id}/complete`, {
-        method: 'POST',
-        body: JSON.stringify({ completedQty: Number(completed), processLoss: card.processLoss }),
-      }),
-    onSuccess: () => onDone(),
-    onError: (reason) => onError(reason instanceof ApiError ? reason.message : t('mo.stepFailed')),
-  })
-  return (
-    <article className="grid gap-3 rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="font-semibold">{card.name} · {card.operationName}</p>
-          <p className="text-sm text-muted-foreground">
-            {card.workstation?.name ?? '—'} · {t('floor.rate')} {card.workstation?.hourRate ?? 0} · {card.completedQty} / {card.plannedQty}
-          </p>
-        </div>
-        <Badge tone={card.status}>{card.status}</Badge>
-      </div>
-      <ul className="grid gap-1 text-sm">
-        {card.logs.map((entry) => (
-          <li key={entry.id}>{entry.operatorName} · {entry.minutes} {t('floor.minutes')}{entry.note ? ` · ${entry.note}` : ''}</li>
-        ))}
-      </ul>
-      {card.status !== 'done' ? (
-        <div className="grid gap-2 sm:grid-cols-4">
-          <Input value={operator} placeholder={t('floor.operator')} aria-label={t('floor.operator')} onChange={(event) => setOperator(event.target.value)} />
-          <Input type="number" min="0" step="1" value={minutes} aria-label={t('floor.minutes')} onChange={(event) => setMinutes(event.target.value)} />
-          <Input value={note} placeholder={t('desk.note')} aria-label={t('desk.note')} onChange={(event) => setNote(event.target.value)} />
-          <Button
-            variant="outline"
-            disabled={log.isPending}
-            onClick={() => {
-              if (!operator.trim() || !(Number(minutes) > 0)) {
-                onError(t('mo.stepFailed'))
-                return
-              }
-              log.mutate()
-            }}
-          >
-            {t('floor.log')}
-          </Button>
-          <Input type="number" min="0" step="0.001" value={completed} aria-label={t('floor.complete')} onChange={(event) => setCompleted(event.target.value)} />
-          <Button variant="secondary" disabled={complete.isPending} onClick={() => complete.mutate()}>{t('floor.complete')}</Button>
-        </div>
-      ) : null}
-    </article>
-  )
-}

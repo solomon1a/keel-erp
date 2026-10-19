@@ -23,6 +23,9 @@ const tones: Record<string, string> = {
   refused: 'keel-badge-danger',
   posted: 'keel-badge-success',
   waiting: 'keel-badge-warning',
+  running: 'keel-badge-info',
+  paused: 'keel-badge-warning',
+  pending: '',
 }
 
 export function Badge({ tone = 'neutral', children }: { tone?: string; children: string }) {

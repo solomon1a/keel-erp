@@ -52,6 +52,11 @@ const liveTargets: Record<string, string> = {
   '/app/manufacturing/dashboard': '/manufacturing',
   '/app/manufacturing/work-orders': '/manufacturing',
   '/app/manufacturing/production-plan': '/manufacturing/plan',
+  '/app/manufacturing/work-centers': '/manufacturing/workstations',
+  '/app/manufacturing/workstation': '/manufacturing/workstations',
+  '/app/manufacturing/operation': '/manufacturing/routings',
+  '/app/manufacturing/routing': '/manufacturing/routings',
+  '/app/manufacturing/job-card': '/manufacturing/jobs',
 
   '/app/assets/dashboard': '/assets',
   '/app/assets/depreciation': '/assets',

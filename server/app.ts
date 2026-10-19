@@ -21,6 +21,8 @@ import {
   produceSchema,
   jobCompleteSchema,
   jobLogSchema,
+  jobStartSchema,
+  workstationInputSchema,
   subcontractReceiveSchema,
   wastageSchema,
   productInputSchema,
@@ -133,13 +135,20 @@ import {
 import {
   completeJobCard,
   createProductionPlan,
+  finishJobCard,
   getProductionPlan,
+  listJobCards,
   listProductionPlans,
+  listRoutings,
+  listWorkstations,
   logJobTime,
+  pauseJobCard,
   raiseProductionPlan,
   receiveSubcontract,
   recordWastage,
+  saveWorkstation,
   sendSubcontract,
+  startJobCard,
   wastageReport,
   workspacePulse,
 } from './services/floor.ts'
@@ -854,6 +863,33 @@ export function createApp() {
     return c.json(await wastageReport(user.companyId))
   })
 
+  app.get('/api/manufacturing/routings', async (c) => {
+    const user = c.get('user')
+    return c.json(await listRoutings(user.companyId))
+  })
+
+  app.get('/api/workstations', async (c) => {
+    const user = c.get('user')
+    return c.json(await listWorkstations(user.companyId))
+  })
+
+  app.post('/api/workstations', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(workstationInputSchema, await c.req.json())
+    return c.json(await saveWorkstation(user.companyId, input), 201)
+  })
+
+  app.put('/api/workstations/:id', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(workstationInputSchema, await c.req.json())
+    return c.json(await saveWorkstation(user.companyId, input, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/job-cards', async (c) => {
+    const user = c.get('user')
+    return c.json(await listJobCards(user.companyId))
+  })
+
   app.get('/api/workspaces/:moduleId', async (c) => {
     const user = c.get('user')
     const pulse = await workspacePulse(user.companyId, c.req.param('moduleId'))
@@ -947,6 +983,23 @@ export function createApp() {
     const user = c.get('user')
     const input = parseBody(jobCompleteSchema, await c.req.json())
     return c.json(await completeJobCard(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/job-cards/:id/start', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(jobStartSchema, await c.req.json())
+    return c.json(await startJobCard(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.post('/api/job-cards/:id/pause', async (c) => {
+    const user = c.get('user')
+    return c.json(await pauseJobCard(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/job-cards/:id/finish', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(jobCompleteSchema, await c.req.json())
+    return c.json(await finishJobCard(user.companyId, Number(c.req.param('id')), input))
   })
 
   app.get('/api/stock', async (c) => {

@@ -45,12 +45,19 @@ describe('workspaces', () => {
   it('follows the manufacturing reference', () => {
     const workspace = workspaceFor('manufacturing')
     expect(workspace?.groups.map((group) => title(group.title))).toEqual(['Production', 'Bill of Materials', 'Subcontracting', 'hub.settings'])
-    expect(workspace?.groups[0]?.links.map((link) => link.to)).toEqual(['/manufacturing', '/manufacturing/plan'])
-    expect(workspace?.groups[1]?.links.map((link) => link.to)).toEqual(['/products', '/boms'])
+    expect(workspace?.groups[0]?.links.map((link) => link.to)).toEqual(['/manufacturing', '/manufacturing/plan', '/manufacturing/jobs'])
+    expect(workspace?.groups[1]?.links.map((link) => link.to)).toEqual([
+      '/products',
+      '/boms',
+      '/manufacturing/workstations',
+      '/manufacturing/routings',
+      '/manufacturing/routings',
+    ])
     expect(workspace?.groups[2]?.links.map((link) => link.to)).toEqual(['/boms', '/subcontracting', '/subcontracting'])
     expect(workspace?.steps.map((step) => step.label.en)).toEqual([
       'Create Raw Material',
       'Create Finished Good',
+      'Create Operation',
       'Create Bill of Materials',
       'Create Work Order',
       'Review Manufacturing Settings',
@@ -60,7 +67,9 @@ describe('workspaces', () => {
       'ws.dashboard',
       'BOM',
       'Work Order',
+      'desk.s.manufacturing.job-card',
       'ws.planning',
+      'ws.setup',
       'hub.settings',
     ])
   })
