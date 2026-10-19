@@ -13,8 +13,14 @@ import {
   listCompanyTaxes,
   listFiles,
   listRecurring,
+  addPriceItem,
+  createPriceList,
+  listPriceLists,
   listTerms,
   previewImport,
+  removePriceItem,
+  savePaymentTerm,
+  updatePriceItem,
   previewTax,
   readFile,
   removeFile,
@@ -62,6 +68,42 @@ export function registerPhaseRoutes(app: Hono<AppEnv>) {
   })
 
   app.get('/api/payment-terms', async (c) => c.json(await listTerms(c.get('user').companyId)))
+
+  app.post('/api/payment-terms', async (c) => {
+    const body = await c.req.json() as { name?: unknown; lines?: unknown }
+    return c.json(await savePaymentTerm(c.get('user').companyId, body.name, body.lines), 201)
+  })
+
+  app.patch('/api/payment-terms/:id', async (c) => {
+    const body = await c.req.json() as { name?: unknown; lines?: unknown }
+    return c.json(await savePaymentTerm(c.get('user').companyId, body.name, body.lines, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/price-lists', async (c) => {
+    const side = c.req.query('side')
+    if (side && side !== 'sales' && side !== 'purchase') throw new AppError(400, 'Choose sales or purchase.')
+    return c.json(await listPriceLists(c.get('user').companyId, side || null))
+  })
+
+  app.post('/api/price-lists', async (c) => {
+    const body = await c.req.json() as { name?: unknown; side?: unknown }
+    return c.json(await createPriceList(c.get('user').companyId, body.name, body.side), 201)
+  })
+
+  app.post('/api/price-lists/:id/items', async (c) => {
+    const body = await c.req.json() as { productId?: unknown; minQty?: unknown; price?: unknown }
+    return c.json(await addPriceItem(c.get('user').companyId, Number(c.req.param('id')), body.productId, body.minQty, body.price), 201)
+  })
+
+  app.patch('/api/price-lists/:id/items/:itemId', async (c) => {
+    const body = await c.req.json() as { minQty?: unknown; price?: unknown }
+    return c.json(await updatePriceItem(c.get('user').companyId, Number(c.req.param('id')), Number(c.req.param('itemId')), body.minQty, body.price))
+  })
+
+  app.delete('/api/price-lists/:id/items/:itemId', async (c) => {
+    await removePriceItem(c.get('user').companyId, Number(c.req.param('id')), Number(c.req.param('itemId')))
+    return c.json({ ok: true })
+  })
 
   app.get('/api/invoices/:id/terms', async (c) => c.json(await invoiceTerms(c.get('user').companyId, Number(c.req.param('id')))))
 

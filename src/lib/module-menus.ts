@@ -168,6 +168,7 @@ export const moduleMenus: Record<string, MenuEntry[]> = {
   ],
   website: [
     { label: 'menu.websiteHome', to: '/website' },
+    { label: label('website', 'pages'), to: screen('website', 'pages') },
     { label: 'menu.products', to: '/products' },
     { label: 'menu.storefront', to: '/shop' },
     { label: label('website', 'coupons'), to: screen('website', 'coupons') },

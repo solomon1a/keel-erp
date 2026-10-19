@@ -684,4 +684,108 @@ async function assertList(companyId: number, id: number, side: string) {
   if (!list) throw new AppError(400, 'Choose a price list from this company.')
 }
 
+export async function listPriceLists(companyId: number, side: string | null) {
+  return prisma.priceList.findMany({
+    where: { companyId, ...(side ? { side } : {}) },
+    include: {
+      items: {
+        orderBy: [{ productId: 'asc' }, { minQty: 'asc' }],
+        include: { product: { select: { id: true, name: true, sku: true } } },
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
+}
+
+function priceSide(value: unknown) {
+  if (value === 'sales' || value === 'purchase') return value
+  throw new AppError(400, 'Choose sales or purchase.')
+}
+
+function priceNumbers(minQty: unknown, price: unknown) {
+  const qty = Number(minQty)
+  const amount = Number(price)
+  if (!Number.isFinite(qty) || qty < 0) throw new AppError(400, 'Minimum quantity cannot be negative.')
+  if (!Number.isFinite(amount) || amount < 0) throw new AppError(400, 'Price cannot be negative.')
+  return { minQty: qty, price: amount }
+}
+
+export async function createPriceList(companyId: number, name: unknown, side: unknown) {
+  const trimmed = String(name ?? '').trim()
+  if (!trimmed) throw new AppError(400, 'Name the price list.')
+  return prisma.priceList.create({ data: { companyId, name: trimmed, side: priceSide(side) } })
+}
+
+async function ownedList(companyId: number, listId: number) {
+  const list = await prisma.priceList.findFirst({ where: { id: listId, companyId } })
+  if (!list) throw new AppError(404, 'Price list not found.')
+  return list
+}
+
+export async function addPriceItem(companyId: number, listId: number, productId: unknown, minQty: unknown, price: unknown) {
+  const list = await ownedList(companyId, listId)
+  const id = Number(productId)
+  const product = await prisma.product.findFirst({ where: { id, companyId } })
+  if (!product) throw new AppError(400, 'Choose a product from this company.')
+  const numbers = priceNumbers(minQty, price)
+  return prisma.priceListItem.create({
+    data: { priceListId: list.id, productId: product.id, minQty: numbers.minQty, price: numbers.price },
+    include: { product: { select: { id: true, name: true, sku: true } } },
+  })
+}
+
+export async function updatePriceItem(companyId: number, listId: number, itemId: number, minQty: unknown, price: unknown) {
+  const item = await prisma.priceListItem.findFirst({ where: { id: itemId, priceList: { id: listId, companyId } } })
+  if (!item) throw new AppError(404, 'Price line not found.')
+  const numbers = priceNumbers(minQty, price)
+  return prisma.priceListItem.update({
+    where: { id: item.id },
+    data: numbers,
+    include: { product: { select: { id: true, name: true, sku: true } } },
+  })
+}
+
+export async function removePriceItem(companyId: number, listId: number, itemId: number) {
+  const item = await prisma.priceListItem.findFirst({ where: { id: itemId, priceList: { id: listId, companyId } } })
+  if (!item) throw new AppError(404, 'Price line not found.')
+  await prisma.priceListItem.delete({ where: { id: item.id } })
+}
+
+function termLines(lines: unknown) {
+  if (!Array.isArray(lines) || lines.length === 0) throw new AppError(400, 'Add at least one line.')
+  const cleaned = lines.map((line, index) => {
+    const row = line as { percent?: unknown; days?: unknown }
+    const percent = Math.round(Number(row.percent) * 100) / 100
+    const days = Number(row.days)
+    if (!Number.isFinite(percent) || percent <= 0 || percent > 100) throw new AppError(400, 'Each line is a percent from 1 to 100.')
+    if (!Number.isInteger(days) || days < 0) throw new AppError(400, 'Days cannot be negative.')
+    return { sequence: index + 1, percent, days }
+  })
+  const total = Math.round(cleaned.reduce((sum, line) => sum + line.percent, 0) * 100) / 100
+  if (total !== 100) throw new AppError(400, 'Payment term lines must add up to 100%.')
+  return cleaned
+}
+
+export async function savePaymentTerm(companyId: number, name: unknown, lines: unknown, termId?: number) {
+  const trimmed = String(name ?? '').trim()
+  if (!trimmed) throw new AppError(400, 'Name the payment term.')
+  const cleaned = termLines(lines)
+  if (termId) {
+    const existing = await prisma.paymentTerm.findFirst({ where: { id: termId, companyId } })
+    if (!existing) throw new AppError(404, 'Payment term not found.')
+    return prisma.$transaction(async (tx) => {
+      await tx.paymentTermLine.deleteMany({ where: { termId: existing.id } })
+      return tx.paymentTerm.update({
+        where: { id: existing.id },
+        data: { name: trimmed, lines: { create: cleaned } },
+        include: { lines: { orderBy: { sequence: 'asc' } } },
+      })
+    })
+  }
+  return prisma.paymentTerm.create({
+    data: { companyId, name: trimmed, lines: { create: cleaned } },
+    include: { lines: { orderBy: { sequence: 'asc' } } },
+  })
+}
+
 export { scheduleInstalments }
