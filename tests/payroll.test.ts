@@ -36,7 +36,7 @@ describe('payroll and expenses', () => {
     const again = await call('/api/payroll', maya, { method: 'POST', body: JSON.stringify({ period: '2026-04' }) })
     expect(again.status).toBe(409)
 
-    const created = await call('/api/payroll', maya, { method: 'POST', body: JSON.stringify({ period: '2026-05' }) })
+    const created = await call('/api/payroll', maya, { method: 'POST', body: JSON.stringify({ period: '2099-06' }) })
     expect(created.status).toBe(201)
     const draft = created.body as Run
     expect(draft.state).toBe('draft')

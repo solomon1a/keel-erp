@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { jiangbeiBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
+import { jiangbeiHelpdeskBoard } from '../prisma/volume-plan.ts'
 import { createApp } from '../server/app.ts'
 import { prisma } from '../server/db.ts'
 import { inboundKey, primeInboundLimit } from '../server/rate-limit.ts'
@@ -51,14 +52,14 @@ describe('helpdesk', () => {
     const board = await call('/api/helpdesk', maya)
     const data = board.body as unknown as Board
     expect(board.status).toBe(200)
-    expect(data.tickets).toHaveLength(12)
-    expect(data.tickets.map((ticket) => ticket.number).sort()).toEqual([
+    expect(data.tickets).toHaveLength(jiangbeiHelpdeskBoard.tickets)
+    expect(data.tickets.map((ticket) => ticket.number)).toEqual(expect.arrayContaining([
       'HD0001', 'HD0002', 'HD0003', 'HD0004', 'HD0005', 'HD0006',
       'HD0007', 'HD0008', 'HD0009', 'HD0010', 'HD0011', 'HD0012',
-    ])
-    expect(data.open).toBe(6)
-    expect(data.overdue).toBe(3)
-    expect(data.slaPercent).toBe(58)
+    ]))
+    expect(data.open).toBe(jiangbeiHelpdeskBoard.open)
+    expect(data.overdue).toBe(jiangbeiHelpdeskBoard.overdue)
+    expect(data.slaPercent).toBe(jiangbeiHelpdeskBoard.slaPercent)
     const left = (number: string) => {
       const row = data.tickets.find((ticket) => ticket.number === number)
       return new Date(row?.slaDeadline ?? 0).getTime() - Date.now()

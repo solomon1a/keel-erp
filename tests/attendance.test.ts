@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { jiangbeiBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
+import { volumeDesk } from '../prisma/volume-plan.ts'
 import { prisma } from '../server/db.ts'
 import { call, signIn } from './http.ts'
 import { resetAndSeed } from './reset-db.ts'
@@ -66,7 +67,7 @@ describe('attendance and leave', () => {
     expect(days.some((row) => row.employeeName === 'Zhou Ning')).toBe(false)
 
     const waiting = await call('/api/desk', maya)
-    expect(waiting.body).toMatchObject({ staff: 10, leaveWaiting: 1, profit: jiangbeiBooks.profit })
+    expect(waiting.body).toMatchObject({ staff: volumeDesk.staff, leaveWaiting: volumeDesk.leaveWaiting, profit: jiangbeiBooks.profit })
 
     const person = await prisma.employee.findFirstOrThrow({ where: { name: 'Yves Moreau', company: { users: { some: { email: 'maya@northline.example' } } } } })
     const checked = await call('/api/attendance/punch', maya, {
