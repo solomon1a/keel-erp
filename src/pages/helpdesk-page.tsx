@@ -562,6 +562,19 @@ export function SlaPage() {
     },
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('hd.failed')),
   })
+  const inbound = useQuery({
+    queryKey: ['helpdesk-inbound'],
+    queryFn: () => api<{ token: string }>('/api/helpdesk/inbound-token'),
+    retry: false,
+  })
+  const rotate = useMutation({
+    mutationFn: () => api<{ token: string }>('/api/helpdesk/inbound-token', { method: 'POST' }),
+    onSuccess: async () => {
+      setError('')
+      await queryClient.invalidateQueries({ queryKey: ['helpdesk-inbound'] })
+    },
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('hd.failed')),
+  })
   const addTeam = useMutation({
     mutationFn: () => api('/api/helpdesk/teams', { method: 'POST', body: JSON.stringify({ name: teamName }) }),
     onSuccess: async () => {
@@ -607,6 +620,23 @@ export function SlaPage() {
             <Button type="submit" disabled={save.isPending}>{save.isPending ? t('hd.saving') : t('hd.save')}</Button>
           </div>
         </form>
+      </Panel>
+      <Panel>
+        <h2 className="font-serif text-2xl">{t('hd.inbound')}</h2>
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t('hd.inboundLead')}</p>
+        {inbound.data ? (
+          <div className="mt-3 grid gap-2">
+            <p className="text-xs font-semibold">{t('hd.inboundSecret')}</p>
+            <p className="break-all font-mono text-sm">{inbound.data.token}</p>
+            <p className="text-xs text-muted-foreground">{t('hd.inboundHeader')}</p>
+            <p className="break-all font-mono text-xs">X-Keel-Inbound-Secret: {inbound.data.token}</p>
+            <p className="text-xs text-muted-foreground">{t('hd.inboundPath')}</p>
+            <p className="break-all font-mono text-xs">/api/helpdesk/inbound/{inbound.data.token}</p>
+            <div>
+              <Button type="button" variant="outline" disabled={rotate.isPending} onClick={() => rotate.mutate()}>{t('hd.inboundRotate')}</Button>
+            </div>
+          </div>
+        ) : inbound.isError ? <p className="mt-3 text-sm text-muted-foreground">{inbound.error.message}</p> : <p className="mt-3 text-sm text-muted-foreground">{t('hd.loading')}</p>}
       </Panel>
       <Panel>
         <h2 className="font-serif text-2xl">{t('hd.team')}</h2>

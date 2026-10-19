@@ -183,6 +183,7 @@ function isPublicApi(method: string, path: string) {
   if (method === 'POST' && /^\/api\/site\/[^/]+\/contact$/.test(path)) return true
   if (method === 'GET' && path === '/api/cron') return true
   if (method === 'POST' && path === '/api/helpdesk/inbound') return true
+  if (method === 'POST' && /^\/api\/helpdesk\/inbound\/[^/]+$/.test(path)) return true
   return path === '/api/shop' || path.startsWith('/api/shop/')
 }
 

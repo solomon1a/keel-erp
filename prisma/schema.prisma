@@ -114,6 +114,8 @@ model Company {
   workShifts       WorkShift[]
   leaveTypes       LeaveType[]
   leaveAllocations LeaveAllocation[]
+  /// Secret for POST /api/helpdesk/inbound. Mail for this company only.
+  inboundToken String? @unique
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])

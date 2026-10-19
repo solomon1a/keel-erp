@@ -26,3 +26,30 @@ export function primeSignupLimit(key: string, count: number, now = Date.now()) {
     Array.from({ length: count }, () => now),
   )
 }
+
+const inboundHits = new Map<string, number[]>()
+const inboundWindowMs = 60 * 1000
+const inboundMax = 30
+
+export function inboundKey(token: string) {
+  return `inbound:${token}`
+}
+
+export function inboundAllowed(key: string, now = Date.now()) {
+  const recent = (inboundHits.get(key) ?? []).filter((time) => now - time < inboundWindowMs)
+  if (recent.length >= inboundMax) {
+    inboundHits.set(key, recent)
+    return false
+  }
+  recent.push(now)
+  inboundHits.set(key, recent)
+  return true
+}
+
+/** Test helper: fill the inbound bucket so the next message for this key is refused. */
+export function primeInboundLimit(key: string, count = inboundMax, now = Date.now()) {
+  inboundHits.set(
+    key,
+    Array.from({ length: count }, () => now),
+  )
+}

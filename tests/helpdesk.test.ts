@@ -1,8 +1,10 @@
+import { createHmac } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { jiangbeiBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
 import { createApp } from '../server/app.ts'
 import { prisma } from '../server/db.ts'
+import { inboundKey, primeInboundLimit } from '../server/rate-limit.ts'
 import { call, signIn } from './http.ts'
 import { resetAndSeed } from './reset-db.ts'
 
@@ -12,6 +14,7 @@ let amira = ''
 type Ticket = {
   id: number
   number: string
+  subject: string
   stage: string
   priority: string
   breached: boolean
@@ -128,7 +131,24 @@ describe('helpdesk', () => {
     expect(moved.body).toMatchObject({ stage: 'solved' })
     expect((moved.body as unknown as Ticket).resolvedAt).toBeTruthy()
 
-    const inbound = await createApp().request('/api/helpdesk/inbound', {
+    const mayaSecret = await call('/api/helpdesk/inbound-token', maya)
+    const amiraSecret = await call('/api/helpdesk/inbound-token', amira)
+    expect(mayaSecret.status).toBe(200)
+    expect(amiraSecret.status).toBe(200)
+    const mayaToken = (mayaSecret.body as { token: string }).token
+    const amiraToken = (amiraSecret.body as { token: string }).token
+    expect(mayaToken).not.toBe(amiraToken)
+    const jonah = await signIn('jonah@northline.example', demoPasswords.jonah)
+    expect((await call('/api/helpdesk/inbound-token', jonah)).status).toBe(403)
+
+    const open = await createApp().request('/api/helpdesk/inbound', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ data: { from: 'Cedar & Co <hello@cedar.example>', subject: 'Where is the tote?', text: 'The tracking page stopped.' } }),
+    })
+    expect(open.status).toBe(401)
+
+    const inbound = await createApp().request(`/api/helpdesk/inbound/${mayaToken}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ data: { from: 'Cedar & Co <hello@cedar.example>', subject: 'Where is the tote?', text: 'The tracking page stopped.' } }),
@@ -141,17 +161,84 @@ describe('helpdesk', () => {
 
     const generic = await createApp().request('/api/helpdesk/inbound', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-keel-inbound-secret': mayaToken },
       body: JSON.stringify({ from: 'milo.park@example.com', subject: 'One more blanket', body: 'Add a charcoal one if you still have it.' }),
     })
     expect(generic.status).toBe(201)
+    expect((await generic.json() as Ticket).partner.name).toBe('Milo Park')
 
-    const unknown = await createApp().request('/api/helpdesk/inbound', {
+    const unknown = await createApp().request(`/api/helpdesk/inbound/${mayaToken}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ from: 'nobody@nope.example', subject: 'Hello', text: 'Is anyone there?' }),
+      body: JSON.stringify({ from: 'nobody@nope.example', subject: 'Hello from outside', text: 'Is anyone there?' }),
     })
-    expect(unknown.status).toBe(404)
+    expect(unknown.status).toBe(201)
+    const unknownBody = await unknown.json() as Ticket
+    expect(unknownBody.partner.name).toBe('Unknown sender')
+    expect(unknownBody.messages[0]?.body).toContain('nobody@nope.example')
+
+    const crossed = await createApp().request(`/api/helpdesk/inbound/${amiraToken}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from: 'hello@cedar.example', subject: 'Cross tenant dye', text: 'This must stay in Harbour.' }),
+    })
+    expect(crossed.status).toBe(201)
+    expect((await crossed.json() as Ticket).partner.name).toBe('Unknown sender')
+    const harbourBoard = (await call('/api/helpdesk', amira)).body as unknown as Board
+    expect(harbourBoard.tickets.some((ticket) => ticket.subject === 'Cross tenant dye' && ticket.partner.name === 'Unknown sender')).toBe(true)
+    const jiangbeiSubjects = ((await call('/api/helpdesk', maya)).body as unknown as Board).tickets.map((ticket) => ticket.subject)
+    expect(jiangbeiSubjects).not.toContain('Cross tenant dye')
+
+    const moss = await createApp().request('/api/helpdesk/inbound', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-keel-inbound-secret': mayaToken },
+      body: JSON.stringify({ from: 'hello@mossgrey.example', subject: 'Harbour customer wrote here', text: 'Wrong company.' }),
+    })
+    expect(moss.status).toBe(201)
+    expect((await moss.json() as Ticket).partner.name).toBe('Unknown sender')
+    const harbourSubjects = ((await call('/api/helpdesk', amira)).body as unknown as Board).tickets.map((ticket) => ticket.subject)
+    expect(harbourSubjects).not.toContain('Harbour customer wrote here')
+
+    const mismatched = await createApp().request(`/api/helpdesk/inbound/${mayaToken}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-keel-inbound-secret': amiraToken },
+      body: JSON.stringify({ from: 'hello@cedar.example', subject: 'Split secret', text: 'No.' }),
+    })
+    expect(mismatched.status).toBe(401)
+
+    const previous = process.env.RESEND_WEBHOOK_SECRET
+    const rawKey = Buffer.from('keel-test-secret')
+    process.env.RESEND_WEBHOOK_SECRET = `whsec_${rawKey.toString('base64')}`
+    const signedBody = JSON.stringify({ from: 'hello@cedar.example', subject: 'Signed tote', text: 'The webhook was signed.' })
+    const stamp = String(Math.floor(Date.now() / 1000))
+    const digest = createHmac('sha256', rawKey).update(`msg_1.${stamp}.${signedBody}`).digest('base64')
+    const unsigned = await createApp().request(`/api/helpdesk/inbound/${mayaToken}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: signedBody,
+    })
+    expect(unsigned.status).toBe(401)
+    const signed = await createApp().request(`/api/helpdesk/inbound/${mayaToken}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'svix-id': 'msg_1',
+        'svix-timestamp': stamp,
+        'svix-signature': `v1,${digest}`,
+      },
+      body: signedBody,
+    })
+    expect(signed.status).toBe(201)
+    if (previous === undefined) delete process.env.RESEND_WEBHOOK_SECRET
+    else process.env.RESEND_WEBHOOK_SECRET = previous
+
+    primeInboundLimit(inboundKey(mayaToken))
+    const flooded = await createApp().request(`/api/helpdesk/inbound/${mayaToken}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from: 'hello@cedar.example', subject: 'Too fast', text: 'Stop.' }),
+    })
+    expect(flooded.status).toBe(429)
 
     const locked = await createApp().request('/api/helpdesk', { method: 'GET' })
     expect(locked.status).toBe(401)
