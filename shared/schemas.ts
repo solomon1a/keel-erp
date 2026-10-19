@@ -221,6 +221,20 @@ export const jobCompleteSchema = z.object({
   rejectedQty: z.number().min(0).optional(),
 })
 
+export const jobStartSchema = z.object({
+  operatorName: z.string().trim().min(1, 'Name the operator').max(80),
+})
+
+export const workstationInputSchema = z.object({
+  name: z.string().trim().min(1, 'Name the work center').max(80),
+  hourRate: z.number().min(0, 'Cost per hour cannot be negative'),
+  capacityHours: z.number().positive('Capacity must be greater than zero').max(24),
+  startMinutes: z.number().int().min(0).max(24 * 60),
+  endMinutes: z.number().int().min(0).max(24 * 60),
+  workingDays: z.string().trim().regex(/^[1-7](,[1-7])*$/, 'Choose the working days'),
+  efficiency: z.number().min(1).max(200),
+})
+
 export const wastageSchema = z.object({
   productId: z.number().int().positive('Choose a product'),
   quantity: z.number().positive('Quantity must be greater than zero'),
@@ -330,6 +344,8 @@ export type ReceivePurchaseInput = z.infer<typeof receivePurchaseSchema>
 export type BomInput = z.infer<typeof bomInputSchema>
 export type JobLogInput = z.infer<typeof jobLogSchema>
 export type JobCompleteInput = z.infer<typeof jobCompleteSchema>
+export type JobStartInput = z.infer<typeof jobStartSchema>
+export type WorkstationInput = z.infer<typeof workstationInputSchema>
 export type WastageInput = z.infer<typeof wastageSchema>
 export type ManufacturingInput = z.infer<typeof manufacturingInputSchema>
 export type ProduceInput = z.infer<typeof produceSchema>

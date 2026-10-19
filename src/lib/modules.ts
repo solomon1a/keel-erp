@@ -288,6 +288,7 @@ export function linkActive(to: string, pathname: string, search: string) {
   if (path === '/orders') return pathname === '/orders' && !current.get('state')
   if (path === '/purchases') return pathname === '/purchases' && !current.get('state')
   if (path === '/hr') return pathname === '/hr' || /^\/hr\/\d+$/.test(pathname)
+  if (path === '/manufacturing') return pathname === '/manufacturing' || /^\/manufacturing\/\d+/.test(pathname)
   if (path === '/hr/attendance') return pathname === '/hr/attendance'
   if (path === '/hr/leave') return pathname === '/hr/leave' && !current.get('view') && !current.get('state')
   if (path === '/inventory') return pathname === '/inventory'

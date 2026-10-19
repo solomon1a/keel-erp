@@ -194,6 +194,7 @@ export type ManufacturingOrder = {
   purpose?: string
   transferred?: boolean
   quantityRejected?: number
+  operatingAbsorbed?: number
   subcontractState?: string | null
   salesOrder?: { id: number; name: string; state: string } | null
   materialRequest?: { id: number; name: string; state: string } | null
@@ -212,7 +213,7 @@ export type ManufacturingOrder = {
     processLoss: number
     rejectedQty: number
     workstation?: { id: number; name: string; hourRate: number } | null
-    logs: Array<{ id: number; operatorName: string; minutes: number; note: string | null }>
+    logs: Array<{ id: number; operatorName: string; minutes: number; note: string | null; startedAt?: string | null; endedAt?: string | null }>
   }>
   wastage?: Array<{ id: number; quantity: number; reason: string; kind: string; cost: number }>
 }

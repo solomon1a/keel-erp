@@ -48,10 +48,13 @@ import { TransfersPage } from './pages/transfers-page.tsx'
 import { WarehouseDetailPage } from './pages/warehouse-detail-page.tsx'
 import { WarehouseFormPage } from './pages/warehouse-form-page.tsx'
 import { WarehousesPage } from './pages/warehouses-page.tsx'
+import { JobCardsPage } from './pages/job-cards-page.tsx'
 import { ManufacturingDetailPage } from './pages/manufacturing-detail-page.tsx'
 import { ManufacturingFormPage } from './pages/manufacturing-form-page.tsx'
 import { ManufacturingPage } from './pages/manufacturing-page.tsx'
 import { ManufacturingPrintPage } from './pages/manufacturing-print-page.tsx'
+import { RoutingsPage } from './pages/routings-page.tsx'
+import { WorkstationsPage } from './pages/workstations-page.tsx'
 import { ProductionPlanPage } from './pages/production-plan-page.tsx'
 import { WastagePage } from './pages/wastage-page.tsx'
 import { OrderDetailPage } from './pages/order-detail-page.tsx'
@@ -172,6 +175,9 @@ export default function App() {
             <Route path="/manufacturing" element={<ManufacturingPage />} />
             <Route path="/manufacturing/plan" element={<ProductionPlanPage />} />
             <Route path="/manufacturing/wastage" element={<WastagePage />} />
+            <Route path="/manufacturing/workstations" element={<WorkstationsPage />} />
+            <Route path="/manufacturing/routings" element={<RoutingsPage />} />
+            <Route path="/manufacturing/jobs" element={<JobCardsPage />} />
             <Route path="/manufacturing/new" element={<ManufacturingFormPage />} />
             <Route path="/manufacturing/:id" element={<ManufacturingDetailPage />} />
             <Route path="/manufacturing/:id/edit" element={<ManufacturingFormPage />} />

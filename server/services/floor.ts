@@ -1,5 +1,5 @@
 import { roundMoney } from '../../src/domain/money.ts'
-import type { JobCompleteInput, JobLogInput, WastageInput } from '../../shared/schemas.ts'
+import type { JobCompleteInput, JobLogInput, JobStartInput, WastageInput, WorkstationInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { createManufacturing } from './manufacturing.ts'
@@ -25,6 +25,30 @@ async function requireOpenOrder(tx: Tx, companyId: number, orderId: number) {
   return order
 }
 
+const cardInclude = {
+  logs: { orderBy: { id: 'asc' as const } },
+  workstation: true,
+  order: { select: { id: true, name: true, state: true, product: { select: { name: true } } } },
+}
+
+function elapsedMinutes(startedAt: Date, now: Date) {
+  const raw = (now.getTime() - startedAt.getTime()) / 60000
+  if (!Number.isFinite(raw) || raw < 0) return 0
+  return Math.round(raw * 100) / 100
+}
+
+async function closeOpenLog(tx: Tx, jobCardId: number, now: Date) {
+  const open = await tx.jobTimeLog.findFirst({
+    where: { jobCardId, startedAt: { not: null }, endedAt: null },
+    orderBy: { id: 'desc' },
+  })
+  if (!open?.startedAt) return null
+  return tx.jobTimeLog.update({
+    where: { id: open.id },
+    data: { endedAt: now, minutes: elapsedMinutes(open.startedAt, now) },
+  })
+}
+
 export async function logJobTime(companyId: number, jobCardId: number, input: JobLogInput) {
   const card = await prisma.jobCard.findFirst({ where: { id: jobCardId, companyId } })
   if (!card) throw new AppError(404, 'Job card not found.')
@@ -32,26 +56,70 @@ export async function logJobTime(companyId: number, jobCardId: number, input: Jo
   await prisma.jobTimeLog.create({
     data: { jobCardId: card.id, operatorName: input.operatorName, minutes: input.minutes, note: input.note },
   })
+  const status = card.status === 'running' || card.status === 'paused' ? card.status : 'open'
   return prisma.jobCard.update({
     where: { id: card.id },
-    data: { status: 'open' },
-    include: { logs: true, workstation: true, order: { select: { id: true, name: true } } },
+    data: { status },
+    include: cardInclude,
   })
 }
 
 export async function completeJobCard(companyId: number, jobCardId: number, input: JobCompleteInput) {
-  const card = await prisma.jobCard.findFirst({ where: { id: jobCardId, companyId } })
-  if (!card) throw new AppError(404, 'Job card not found.')
-  return prisma.jobCard.update({
-    where: { id: card.id },
-    data: {
-      completedQty: roundQty(input.completedQty),
-      processLoss: roundQty(input.processLoss ?? card.processLoss),
-      rejectedQty: roundQty(input.rejectedQty ?? card.rejectedQty),
-      status: 'done',
-    },
-    include: { logs: true, workstation: true },
+  return prisma.$transaction(async (tx) => {
+    const card = await tx.jobCard.findFirst({ where: { id: jobCardId, companyId } })
+    if (!card) throw new AppError(404, 'Job card not found.')
+    if (card.status === 'done') throw new AppError(409, 'That job card is already complete.')
+    await closeOpenLog(tx, card.id, new Date())
+    return tx.jobCard.update({
+      where: { id: card.id },
+      data: {
+        completedQty: roundQty(input.completedQty),
+        processLoss: roundQty(input.processLoss ?? card.processLoss),
+        rejectedQty: roundQty(input.rejectedQty ?? card.rejectedQty),
+        status: 'done',
+      },
+      include: cardInclude,
+    })
   })
+}
+
+export async function startJobCard(companyId: number, jobCardId: number, input: JobStartInput) {
+  return prisma.$transaction(async (tx) => {
+    const card = await tx.jobCard.findFirst({ where: { id: jobCardId, companyId } })
+    if (!card) throw new AppError(404, 'Job card not found.')
+    if (card.status === 'done') throw new AppError(409, 'That job card is already complete.')
+    const open = await tx.jobTimeLog.findFirst({
+      where: { jobCardId: card.id, startedAt: { not: null }, endedAt: null },
+    })
+    if (open || card.status === 'running') throw new AppError(409, 'That job card is already running.')
+    await tx.jobTimeLog.create({
+      data: { jobCardId: card.id, operatorName: input.operatorName, minutes: 0, startedAt: new Date() },
+    })
+    return tx.jobCard.update({
+      where: { id: card.id },
+      data: { status: 'running' },
+      include: cardInclude,
+    })
+  })
+}
+
+export async function pauseJobCard(companyId: number, jobCardId: number) {
+  return prisma.$transaction(async (tx) => {
+    const card = await tx.jobCard.findFirst({ where: { id: jobCardId, companyId } })
+    if (!card) throw new AppError(404, 'Job card not found.')
+    if (card.status !== 'running') throw new AppError(409, 'Start the job card before pausing it.')
+    const closed = await closeOpenLog(tx, card.id, new Date())
+    if (!closed) throw new AppError(409, 'Start the job card before pausing it.')
+    return tx.jobCard.update({
+      where: { id: card.id },
+      data: { status: 'paused' },
+      include: cardInclude,
+    })
+  })
+}
+
+export async function finishJobCard(companyId: number, jobCardId: number, input: JobCompleteInput) {
+  return completeJobCard(companyId, jobCardId, input)
 }
 
 export async function recordWastage(companyId: number, orderId: number, input: WastageInput) {
@@ -449,4 +517,145 @@ export async function workspacePulse(companyId: number, moduleId: string) {
     return { kpis: [open, waiting, cost], chart }
   }
   return null
+}
+
+function asPercent(ratio: number | null) {
+  if (ratio == null || !Number.isFinite(ratio)) return null
+  return Math.round(Math.min(1, Math.max(0, ratio)) * 1000) / 10
+}
+
+/** OEE from stored cards. Availability is logged minutes against one scheduled day. Empty stations stay null. */
+export function measureOee(station: {
+  capacityHours: number
+  jobCards: Array<{ plannedQty: number; completedQty: number; rejectedQty: number; logs: Array<{ minutes: number }> }>
+}) {
+  let logged = 0
+  let planned = 0
+  let completed = 0
+  let rejected = 0
+  for (const card of station.jobCards) {
+    planned += card.plannedQty
+    completed += card.completedQty
+    rejected += card.rejectedQty
+    for (const log of card.logs) logged += log.minutes
+  }
+  logged = Math.round(logged * 100) / 100
+  if (logged === 0 && completed === 0 && rejected === 0) {
+    return { availability: null, performance: null, quality: null, oee: null, loggedMinutes: 0 }
+  }
+  const capacity = station.capacityHours * 60
+  const availability = capacity > 0 ? Math.min(1, logged / capacity) : null
+  const performance = planned > 0 ? Math.min(1, completed / planned) : null
+  const touched = completed + rejected
+  const quality = touched > 0 ? completed / touched : null
+  const oee = availability != null && performance != null && quality != null ? availability * performance * quality : null
+  return {
+    availability: asPercent(availability),
+    performance: asPercent(performance),
+    quality: asPercent(quality),
+    oee: asPercent(oee),
+    loggedMinutes: logged,
+  }
+}
+
+function normalizeDays(value: string) {
+  const days = [...new Set(value.split(',').map((part) => Number(part.trim())))]
+    .filter((day) => Number.isInteger(day) && day >= 1 && day <= 7)
+    .sort((a, b) => a - b)
+  return days.join(',')
+}
+
+function loggedCost(minutes: number, hourRate: number) {
+  return roundMoney((minutes / 60) * hourRate)
+}
+
+export async function listWorkstations(companyId: number) {
+  const stations = await prisma.workstation.findMany({
+    where: { companyId },
+    orderBy: { name: 'asc' },
+    include: {
+      jobCards: {
+        select: {
+          plannedQty: true,
+          completedQty: true,
+          rejectedQty: true,
+          logs: { select: { minutes: true } },
+        },
+      },
+    },
+  })
+  return stations.map((station) => {
+    const measured = measureOee(station)
+    return {
+      id: station.id,
+      name: station.name,
+      hourRate: station.hourRate,
+      capacityHours: station.capacityHours,
+      startMinutes: station.startMinutes,
+      endMinutes: station.endMinutes,
+      workingDays: station.workingDays,
+      efficiency: station.efficiency,
+      jobCardCount: station.jobCards.length,
+      ...measured,
+    }
+  })
+}
+
+export async function saveWorkstation(companyId: number, input: WorkstationInput, id?: number) {
+  if (input.endMinutes <= input.startMinutes) throw new AppError(400, 'The shift must end after it starts.')
+  const workingDays = normalizeDays(input.workingDays)
+  if (!workingDays) throw new AppError(400, 'Choose at least one working day.')
+  const data = {
+    name: input.name,
+    hourRate: input.hourRate,
+    capacityHours: input.capacityHours,
+    startMinutes: input.startMinutes,
+    endMinutes: input.endMinutes,
+    workingDays,
+    efficiency: input.efficiency,
+  }
+  if (!id) return prisma.workstation.create({ data: { companyId, ...data } })
+  const existing = await prisma.workstation.findFirst({ where: { id, companyId } })
+  if (!existing) throw new AppError(404, 'Workstation not found.')
+  return prisma.workstation.update({ where: { id }, data })
+}
+
+export async function listRoutings(companyId: number) {
+  const rows = await prisma.bomOperation.findMany({
+    where: { bom: { companyId, active: true } },
+    include: {
+      workstation: { select: { id: true, name: true, hourRate: true, efficiency: true } },
+      bom: { select: { id: true, version: true, product: { select: { id: true, name: true, sku: true } } } },
+    },
+    orderBy: [{ bomId: 'asc' }, { sequence: 'asc' }],
+  })
+  return rows.map((row) => ({
+    id: row.id,
+    sequence: row.sequence,
+    name: row.name,
+    hours: row.hours,
+    lossPercent: row.lossPercent,
+    cost: roundMoney(row.hours * row.workstation.hourRate * (1 + row.lossPercent / 100)),
+    workstation: row.workstation,
+    bom: row.bom,
+  }))
+}
+
+export async function listJobCards(companyId: number) {
+  const cards = await prisma.jobCard.findMany({
+    where: { companyId },
+    include: cardInclude,
+    orderBy: { id: 'desc' },
+    take: 200,
+  })
+  return cards.map((card) => {
+    const minutes = Math.round(card.logs.reduce((sum, log) => sum + log.minutes, 0) * 100) / 100
+    const open = card.logs.find((log) => log.startedAt && !log.endedAt) ?? null
+    return {
+      ...card,
+      loggedMinutes: minutes,
+      loggedCost: loggedCost(minutes, card.workstation?.hourRate ?? 0),
+      runningSince: open?.startedAt ?? null,
+    }
+  })
 }
