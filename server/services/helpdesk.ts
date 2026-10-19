@@ -1,6 +1,7 @@
 import { nextName } from './accounting.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { demoClockStale, demoOpenClocks, demoTicketTimes } from './demo-sla.ts'
 import { sendMail } from './mailer.ts'
 
 const stages = ['new', 'progress', 'waiting', 'solved', 'closed'] as const
@@ -112,7 +113,28 @@ async function replaceTags(tx: Tx, companyId: number, ticketId: number, names: s
   }
 }
 
+async function healDemoClocks(companyId: number) {
+  const company = await prisma.company.findFirst({
+    where: { id: companyId, users: { some: { email: 'maya@northline.example' } } },
+    select: { id: true },
+  })
+  if (!company) return
+  const numbers = Object.keys(demoOpenClocks)
+  const open = await prisma.ticket.findMany({
+    where: { companyId, resolvedAt: null, number: { in: numbers } },
+    select: { id: true, number: true, createdAt: true, slaDeadline: true },
+  })
+  const now = new Date()
+  for (const ticket of open) {
+    if (!demoClockStale(ticket.createdAt, ticket.slaDeadline, now)) continue
+    const times = demoTicketTimes(ticket.number, now)
+    if (!times) continue
+    await prisma.ticket.update({ where: { id: ticket.id }, data: times })
+  }
+}
+
 export async function helpdeskBoard(companyId: number) {
+  await healDemoClocks(companyId)
   const [rows, teams, tags, policies, users, customers] = await Promise.all([
     prisma.ticket.findMany({ where: { companyId }, include: ticketInclude, orderBy: { createdAt: 'desc' } }),
     prisma.helpdeskTeam.findMany({ where: { companyId }, orderBy: { name: 'asc' } }),
@@ -135,6 +157,7 @@ export async function helpdeskBoard(companyId: number) {
 }
 
 export async function getTicket(companyId: number, id: number) {
+  await healDemoClocks(companyId)
   return present(await owned(companyId, id))
 }
 

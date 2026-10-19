@@ -10,6 +10,7 @@ import { Textarea } from '../components/ui/textarea.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
 import { useShortDate } from '../lib/format.ts'
+import { slaClockParts } from '../lib/sla-clock.ts'
 
 const stages = ['new', 'progress', 'waiting', 'solved', 'closed'] as const
 const priorities = ['low', 'normal', 'high', 'urgent'] as const
@@ -125,14 +126,27 @@ function useClock() {
   return now
 }
 
-function clock(ms: number) {
-  const late = ms < 0
-  const total = Math.floor(Math.abs(ms) / 1000)
-  const hours = Math.floor(total / 3600)
-  const minutes = Math.floor((total % 3600) / 60)
-  const seconds = total % 60
-  const text = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-  return late ? `-${text}` : text
+function clockText(ms: number, t: Translate) {
+  const parts = slaClockParts(ms)
+  switch (parts.tone) {
+    case 'overdue':
+      return t('hd.overdueClock', { hours: parts.hours, minutes: parts.minutes })
+    case 'left':
+      switch (parts.style) {
+        case 'days':
+          return t('hd.leftDays', { days: parts.days, hours: parts.hours })
+        case 'hours':
+          return t('hd.leftHours', { hours: parts.hours, minutes: parts.minutes })
+        default: {
+          const unexpected: never = parts
+          return unexpected
+        }
+      }
+    default: {
+      const unexpected: never = parts
+      return unexpected
+    }
+  }
 }
 
 function Countdown({ deadline, resolved, breached, t }: { deadline: string | null; resolved: boolean; breached: boolean; t: Translate }) {
@@ -144,8 +158,7 @@ function Countdown({ deadline, resolved, breached, t }: { deadline: string | nul
   const ms = new Date(deadline).getTime() - now
   return (
     <span className={ms < 0 ? 'font-semibold text-[#B42323]' : 'font-semibold tabular-nums'}>
-      {clock(ms)}
-      {ms < 0 ? ` · ${t('hd.breached')}` : ''}
+      {clockText(ms, t)}
     </span>
   )
 }

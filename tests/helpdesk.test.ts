@@ -17,6 +17,7 @@ type Ticket = {
   breached: boolean
   resolvedAt: string | null
   slaDeadline: string | null
+  createdAt: string
   partner: { name: string; email: string | null }
   messages: Array<{ internal: boolean; body: string }>
   tags: Array<{ name: string }>
@@ -53,8 +54,24 @@ describe('helpdesk', () => {
       'HD0007', 'HD0008', 'HD0009', 'HD0010', 'HD0011', 'HD0012',
     ])
     expect(data.open).toBe(6)
-    expect(data.overdue).toBe(4)
-    expect(data.slaPercent).toBe(50)
+    expect(data.overdue).toBe(3)
+    expect(data.slaPercent).toBe(58)
+    const left = (number: string) => {
+      const row = data.tickets.find((ticket) => ticket.number === number)
+      return new Date(row?.slaDeadline ?? 0).getTime() - Date.now()
+    }
+    expect(left('HD0002')).toBeGreaterThan(5 * 3_600_000)
+    expect(left('HD0002')).toBeLessThan(7 * 3_600_000)
+    expect(left('HD0003')).toBeGreaterThan(20 * 60_000)
+    expect(left('HD0003')).toBeLessThan(50 * 60_000)
+    expect(left('HD0001')).toBeLessThan(-2 * 3_600_000)
+    expect(left('HD0001')).toBeGreaterThan(-4 * 3_600_000)
+    const met = data.tickets.find((ticket) => ticket.number === 'HD0004')
+    const missed = data.tickets.find((ticket) => ticket.number === 'HD0005')
+    expect(met?.resolvedAt).toBeTruthy()
+    expect(met?.breached).toBe(false)
+    expect(missed?.resolvedAt).toBeTruthy()
+    expect(missed?.breached).toBe(true)
     expect(data.teams.map((team) => team.name).sort()).toEqual(['Front desk', 'Workshop'])
     expect(data.policies.find((policy) => policy.priority === 'urgent')?.hours).toBe(4)
 
@@ -139,14 +156,25 @@ describe('helpdesk', () => {
     const locked = await createApp().request('/api/helpdesk', { method: 'GET' })
     expect(locked.status).toBe(401)
 
-    const low = data.tickets.find((ticket) => ticket.number === 'HD0008')
+    const company = await prisma.user.findUniqueOrThrow({ where: { email: 'maya@northline.example' }, select: { companyId: true } })
+    await prisma.ticket.update({
+      where: { companyId_number: { companyId: company.companyId, number: 'HD0002' } },
+      data: { slaDeadline: new Date('2099-01-01T00:00:00.000Z'), createdAt: new Date('2020-01-01T00:00:00.000Z') },
+    })
+    const healed = (await call('/api/helpdesk', maya)).body as unknown as Board
+    const restored = healed.tickets.find((ticket) => ticket.number === 'HD0002')
+    const restoredLeft = new Date(restored?.slaDeadline ?? 0).getTime() - Date.now()
+    expect(restoredLeft).toBeGreaterThan(5 * 3_600_000)
+    expect(restoredLeft).toBeLessThan(7 * 3_600_000)
+
+    const low = healed.tickets.find((ticket) => ticket.number === 'HD0008')
     const policy = await call('/api/helpdesk/sla', maya, {
       method: 'POST',
       body: JSON.stringify({ priority: 'low', hours: 48 }),
     })
     expect(policy.status).toBe(200)
     const refreshed = await call(`/api/helpdesk/${low?.id}`, maya)
-    const nextDeadline = new Date('2026-10-01T08:00:00.000Z').getTime() + 48 * 3_600_000
+    const nextDeadline = new Date(low?.createdAt ?? 0).getTime() + 48 * 3_600_000
     expect(new Date((refreshed.body as unknown as Ticket).slaDeadline ?? '').getTime()).toBe(nextDeadline)
 
     const after = await call('/api/reports/pnl', maya)
