@@ -135,7 +135,7 @@ export const appModules: AppModule[] = [
     description: 'mod.attendance.desc',
     home: '/app/attendance/check-in',
     group: 'people',
-    match: ['/app/attendance'],
+    match: ['/app/attendance', '/hr/attendance'],
     menu: moduleMenus.attendance ?? [],
   },
   {
@@ -287,7 +287,9 @@ export function linkActive(to: string, pathname: string, search: string) {
   }
   if (path === '/orders') return pathname === '/orders' && !current.get('state')
   if (path === '/purchases') return pathname === '/purchases' && !current.get('state')
-  if (path === '/hr') return pathname === '/hr' || /^\/hr\/\d+/.test(pathname)
+  if (path === '/hr') return pathname === '/hr' || /^\/hr\/\d+$/.test(pathname)
+  if (path === '/hr/attendance') return pathname === '/hr/attendance'
+  if (path === '/hr/leave') return pathname === '/hr/leave' && !current.get('view') && !current.get('state')
   if (path === '/inventory') return pathname === '/inventory'
   if (path === '/pos') return pathname === '/pos' || pathname.startsWith('/pos/sessions')
   if (path === '/accounting') return (pathname === '/accounting' && !current.get('moveType')) || /^\/accounting\/\d+/.test(pathname)

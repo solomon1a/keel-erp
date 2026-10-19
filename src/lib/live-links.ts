@@ -64,11 +64,17 @@ const liveTargets: Record<string, string> = {
 
   '/app/hr/dashboard': '/hr',
   '/app/hr/departments': '/hr',
-  '/app/hr/leave': '/hr',
-  '/app/hr/approvals': '/hr',
+  '/app/hr/leave': '/hr/leave',
+  '/app/hr/leave-types': '/hr/leave?view=types',
+  '/app/hr/approvals': '/hr/leave?state=draft',
 
-  '/app/attendance/dashboard': '/hr',
-  '/app/attendance/check-in': '/hr',
+  '/app/attendance/dashboard': '/hr/attendance',
+  '/app/attendance/check-in': '/hr/attendance',
+  '/app/attendance/shifts': '/hr/attendance',
+  '/app/attendance/sheet': '/hr/attendance',
+  '/app/attendance/late': '/hr/attendance?late=1',
+  '/app/attendance/absent': '/hr/attendance?status=absent',
+  '/app/attendance/calendar': '/hr/leave?view=calendar',
 
   '/app/payroll/batches': '/hr/payroll',
   '/app/payroll/payslips': '/hr/payroll',

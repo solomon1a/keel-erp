@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { PunchBar } from './attendance-page.tsx'
 import { ExportButton } from '../components/export-button.tsx'
 import { EmptyState, Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
@@ -11,7 +12,7 @@ import { useShortDate } from '../lib/format.ts'
 
 type Department = { id: number; name: string; _count: { employees: number } }
 
-type Attendance = { id: number; workDate: string; status: string; note: string | null }
+type Attendance = { id: number; workDate: string; status: string; note: string | null; checkIn: string | null; checkOut: string | null }
 
 type Leave = {
   id: number
@@ -140,8 +141,11 @@ export function HrPage() {
         <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold">
           <Link className="text-primary hover:underline" to="/hr/payroll">{t('pay.openPayroll')}</Link>
           <Link className="text-primary hover:underline" to="/hr/expenses">{t('pay.openExpenses')}</Link>
+          <Link className="text-primary hover:underline" to="/hr/attendance">{t('att.openSheet')}</Link>
+          <Link className="text-primary hover:underline" to="/hr/leave">{t('att.openLeave')}</Link>
         </div>
       </div>
+      {employees.data ? <PunchBar employees={employees.data.map((person) => ({ id: person.id, name: person.name }))} /> : null}
       {error ? <Notice message={error} /> : null}
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="font-serif text-2xl">{t('hr.departments')}</h2>
@@ -336,6 +340,7 @@ export function EmployeePage() {
             <li key={row.id} className="rounded-md border border-border bg-card px-4 py-3 text-sm">
               <span className="font-semibold">{shortDate(row.workDate)}</span>
               <span className="text-muted-foreground"> · {attendanceLabel(row.status, t)}</span>
+              {row.checkIn ? <span className="text-muted-foreground"> · {row.checkIn.slice(11, 16)}{row.checkOut ? `–${row.checkOut.slice(11, 16)}` : ''}</span> : null}
               {row.note ? <span className="text-muted-foreground"> · {row.note}</span> : null}
             </li>
           ))}

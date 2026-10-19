@@ -64,6 +64,7 @@ import { registerQualityRoutes } from './quality-routes.ts'
 import { registerReachRoutes } from './reach-routes.ts'
 import { registerHomeRoutes } from './home-routes.ts'
 import { registerInviteRoutes } from './invite-routes.ts'
+import { registerAttendanceRoutes } from './attendance-routes.ts'
 import { registerHelpdeskRoutes } from './helpdesk-routes.ts'
 import { registerPhaseRoutes } from './phase-routes.ts'
 import { registerSubcontractRoutes } from './subcontract-routes.ts'
@@ -1167,6 +1168,7 @@ export function createApp() {
   registerInviteRoutes(app)
   registerPhaseRoutes(app)
   registerHelpdeskRoutes(app)
+  registerAttendanceRoutes(app)
 
   return app
 }
