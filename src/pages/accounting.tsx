@@ -172,7 +172,7 @@ export function InvoicePage() {
   const [error, setError] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [payRate, setPayRate] = useState('')
-  const [docCurrency, setDocCurrency] = useState('')
+  const [docCurrency, setDocCurrency] = useState<string | null>(null)
   const [docRate, setDocRate] = useState('')
   const [method, setMethod] = useState('bank')
   const rates = useQuery({
@@ -223,8 +223,8 @@ export function InvoicePage() {
       api(`/api/invoices/${id}/currency`, {
         method: 'PATCH',
         body: JSON.stringify({
-          currency: docCurrency || invoice.data?.currency || rates.data?.base || 'CNY',
-          rate: Number(docRate || invoice.data?.rate || 1),
+          currency: (docCurrency ?? invoice.data?.currency) || rates.data?.base || 'CNY',
+          rate: (docCurrency ?? invoice.data?.currency) ? Number(docRate || invoice.data?.rate || 1) : 1,
         }),
       }),
     onSuccess: () => void refresh(),
@@ -317,12 +317,13 @@ export function InvoicePage() {
           <Field label={t('acct.currency')}>
             <select
               className="h-10 rounded-md border border-border bg-card px-3"
-              value={docCurrency || row.currency}
+              value={docCurrency ?? row.currency}
               onChange={(event) => {
                 const next = event.target.value
                 setDocCurrency(next)
                 const known = rates.data?.rates.find((item) => item.currency === next)
                 if (known) setDocRate(String(known.rate))
+                if (!next) setDocRate('1')
               }}
             >
               <option value="">{rates.data?.base ?? t('acct.currency')}</option>
@@ -331,7 +332,7 @@ export function InvoicePage() {
               ))}
             </select>
           </Field>
-          {docCurrency || row.currency ? (
+          {(docCurrency ?? row.currency) ? (
             <Field label={t('acct.rate')}>
               <Input type="number" min="0" step="0.0001" value={docRate || String(row.rate || '')} onChange={(event) => setDocRate(event.target.value)} required />
             </Field>
