@@ -140,6 +140,7 @@ export function OrderDetailPage() {
             {row.validityDate ? <span className="text-muted-foreground"> · {t('order.validUntil', { date: shortDate(row.validityDate) })}</span> : null}
           </p>
           {row.warehouse ? <p className="text-sm text-muted-foreground">{t('quote.warehouse')} · {row.warehouse.name}</p> : null}
+          {row.onlinePay ? <p className="text-sm text-muted-foreground">{t('acct.onlinePay')}</p> : null}
           {row.origin === 'shop' ? (
             <p className="text-sm text-muted-foreground">
               {t('order.shopOrigin')} · {t('order.shopPayment')} · {row.paymentMethod ?? ''}

@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client'
 import { asSiteBlocks, slugify, type SiteBlock } from '../../shared/content-blocks.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { readSetting } from './company-settings.ts'
 import { createLead } from './crm.ts'
 
 function blocksOf(value: unknown) {
@@ -159,6 +160,8 @@ async function publicCompany(slug: string) {
 
 export async function publicSite(slug: string, preview: boolean) {
   const company = await publicCompany(slug)
+  const alias = await readSetting(prisma, company.id, 'crm', 'alias', 'leads@northline.example')
+  const publishedSetting = await readSetting(prisma, company.id, 'website', 'published', 'yes')
   const [theme, menu, pages, posts, products] = await Promise.all([
     prisma.siteTheme.findUnique({ where: { companyId: company.id } }),
     prisma.siteMenuItem.findMany({ where: { companyId: company.id }, orderBy: { sequence: 'asc' } }),
@@ -177,12 +180,12 @@ export async function publicSite(slug: string, preview: boolean) {
     }),
   ])
   return {
-    company: { name: company.name, city: company.city, currency: company.currency, slug: company.slug },
+    company: { name: company.name, city: company.city, currency: company.currency, slug: company.slug, leadAlias: alias },
+    products: publishedSetting === 'no' ? [] : products,
     theme: theme ?? { siteName: company.name, primary: '#0E6B5C', ink: '#1C2B2A', paper: '#F3F6F4', font: 'serif', logoUrl: '' },
     menu,
     pages: pages.map((page) => ({ ...page, blocks: asSiteBlocks(page.blocks) })),
     posts,
-    products,
   }
 }
 

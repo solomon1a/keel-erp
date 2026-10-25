@@ -6,7 +6,8 @@ import { defaultWarehouseId, WarehouseField } from '../components/warehouse-fiel
 import { FapiaoNote, MoneyTotals } from '../components/money-totals.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
-import { lineAmounts, sumLines } from '../domain/money.ts'
+import { lineAmounts, roundMoney, sumLines } from '../domain/money.ts'
+import { computeTaxes } from '../../shared/tax-engine.ts'
 import { singleTaxRate } from '../i18n/labels.ts'
 import { BaseCurrencyNote, BaseMoneyLabel } from '../components/base-currency.tsx'
 import { useI18n } from '../i18n/locale.tsx'
@@ -21,9 +22,24 @@ type DraftLine = {
   unitPrice: string
   discount: string
   taxId: string
+  taxGroupId: string
 }
 
-const blankLine = (taxId = ''): DraftLine => ({ productId: '', quantity: '1', unitPrice: '0', discount: '0', taxId })
+type CompanyTaxRow = {
+  id: number
+  name: string
+  kind: string
+  amount: number
+  priceInclude: boolean
+  compound: boolean
+  withholding: boolean
+  sequence: number
+  active: boolean
+}
+
+type TaxGroupRow = { id: number; name: string; lines: Array<{ tax: CompanyTaxRow }> }
+
+const blankLine = (taxId = ''): DraftLine => ({ productId: '', quantity: '1', unitPrice: '0', discount: '0', taxId, taxGroupId: '' })
 
 export function OrderFormPage() {
   const { id } = useParams()
@@ -44,6 +60,7 @@ export function OrderFormPage() {
   const products = useQuery({ queryKey: ['products'], queryFn: () => api<Product[]>('/api/products') })
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me'), retry: false })
   const taxes = useQuery({ queryKey: ['taxes'], queryFn: () => api<Tax[]>('/api/taxes') })
+  const groups = useQuery({ queryKey: ['tax-groups'], queryFn: () => api<{ groups: TaxGroupRow[] }>('/api/taxes/company') })
   const warehouses = useQuery({ queryKey: ['warehouses'], queryFn: () => api<Warehouse[]>('/api/warehouses') })
   const order = useQuery({
     queryKey: ['order', id],
@@ -65,6 +82,7 @@ export function OrderFormPage() {
         unitPrice: String(line.unitPrice),
         discount: String(line.discount),
         taxId: line.taxId ? String(line.taxId) : '',
+        taxGroupId: line.taxGroupId ? String(line.taxGroupId) : '',
       })),
     )
   }, [order.data])
@@ -84,6 +102,21 @@ export function OrderFormPage() {
 
   const preview = useMemo(() => {
     const priced = lines.map((line) => {
+      const group = groups.data?.groups.find((item) => item.id === Number(line.taxGroupId))
+      const base = roundMoney((Number(line.quantity) || 0) * (Number(line.unitPrice) || 0) * (1 - (Number(line.discount) || 0) / 100))
+      if (group) {
+        const result = computeTaxes(base, Number(line.quantity) || 0, group.lines.filter((item) => item.tax.active).map((item) => ({
+          id: item.tax.id,
+          name: item.tax.name,
+          kind: item.tax.kind === 'fixed' ? 'fixed' as const : 'percent' as const,
+          amount: item.tax.amount,
+          priceInclude: item.tax.priceInclude,
+          compound: item.tax.compound,
+          withholding: item.tax.withholding,
+          sequence: item.tax.sequence,
+        })))
+        return { subtotal: result.net, taxAmount: result.added, total: result.total }
+      }
       const tax = taxes.data?.find((item) => item.id === Number(line.taxId))
       return lineAmounts({
         quantity: Number(line.quantity) || 0,
@@ -92,8 +125,10 @@ export function OrderFormPage() {
         taxRate: tax?.rate ?? 0,
       })
     })
-    return sumLines(priced)
-  }, [lines, taxes.data])
+    const totals = sumLines(priced.map((line) => ({ subtotal: line.subtotal, taxAmount: line.taxAmount })))
+    const due = roundMoney(priced.reduce((sum, line) => sum + line.total, 0))
+    return { ...totals, amountTotal: lines.some((line) => line.taxGroupId) ? due : totals.amountTotal }
+  }, [lines, taxes.data, groups.data])
 
   const previewRate = singleTaxRate(
     lines.map((line) => taxes.data?.find((item) => item.id === Number(line.taxId))?.rate ?? null),
@@ -112,7 +147,8 @@ export function OrderFormPage() {
             quantity: Number(line.quantity),
             unitPrice: Number(line.unitPrice),
             discount: Number(line.discount),
-            taxId: line.taxId ? Number(line.taxId) : null,
+            taxId: line.taxGroupId ? null : line.taxId ? Number(line.taxId) : null,
+            taxGroupId: line.taxGroupId ? Number(line.taxGroupId) : null,
           })),
         }),
       }),
@@ -216,12 +252,20 @@ export function OrderFormPage() {
                 <td className="px-3 py-2"><Input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(event) => updateLine(index, { unitPrice: event.target.value })} /></td>
                 <td className="px-3 py-2"><Input type="number" min="0" max="100" step="0.01" value={line.discount} onChange={(event) => updateLine(index, { discount: event.target.value })} /></td>
                 <td className="px-3 py-2">
-                  <select className="h-10 w-full rounded-md border border-border bg-background px-2" value={line.taxId} onChange={(event) => updateLine(index, { taxId: event.target.value })}>
-                    <option value="">{t('order.noTax')}</option>
-                    {taxes.data?.map((tax) => (
-                      <option key={tax.id} value={tax.id}>{tax.name} ({tax.rate}%)</option>
-                    ))}
-                  </select>
+                  <div className="grid gap-1">
+                    <select className="h-10 w-full rounded-md border border-border bg-background px-2" value={line.taxId} onChange={(event) => updateLine(index, { taxId: event.target.value, taxGroupId: '' })}>
+                      <option value="">{t('order.noTax')}</option>
+                      {taxes.data?.map((tax) => (
+                        <option key={tax.id} value={tax.id}>{tax.name} ({tax.rate}%)</option>
+                      ))}
+                    </select>
+                    <select className="h-10 w-full rounded-md border border-border bg-background px-2" aria-label={t('acct.taxTemplate')} value={line.taxGroupId} onChange={(event) => updateLine(index, { taxGroupId: event.target.value, taxId: event.target.value ? '' : line.taxId })}>
+                      <option value="">{t('acct.taxTemplate')}</option>
+                      {groups.data?.groups.map((group) => (
+                        <option key={group.id} value={group.id}>{group.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </td>
                 <td className="px-3 py-2">
                   <Button variant="ghost" size="sm" onClick={() => setLines(lines.filter((_, lineIndex) => lineIndex !== index))}>{t('common.remove')}</Button>

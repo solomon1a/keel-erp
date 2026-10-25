@@ -2,6 +2,8 @@ import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { ensureBooks, postInvoiceTx } from './accounting.ts'
+import { readSetting } from './company-settings.ts'
+import { allocateKnown } from './number-series.ts'
 
 type Billing = 'fixed' | 'time'
 
@@ -46,10 +48,7 @@ function parseDay(value: string | null | undefined, label: string) {
 }
 
 async function nextInvoiceName(tx: Tx, companyId: number) {
-  const sequenceName = `account.out.${companyId}`
-  await tx.sequence.upsert({ where: { name: sequenceName }, update: {}, create: { name: sequenceName, next: 0 } })
-  const sequence = await tx.sequence.update({ where: { name: sequenceName }, data: { next: { increment: 1 } } })
-  return `INV${String(sequence.next).padStart(4, '0')}`
+  return allocateKnown(tx, companyId, 'account.out')
 }
 
 export async function listProjects(companyId: number) {
@@ -185,6 +184,8 @@ export async function addTimesheet(
   const employee = await prisma.employee.findFirst({ where: { id: input.employeeId, companyId } })
   if (!employee) throw new AppError(404, 'Employee not found.')
   if (input.hours <= 0) throw new AppError(400, 'Hours must be greater than zero.')
+  const unit = await readSetting(prisma, companyId, 'projects', 'hours', 'Hours')
+  const hours = unit === 'Days' ? input.hours * 8 : input.hours
   await prisma.timesheet.create({
     data: {
       companyId,
@@ -192,7 +193,7 @@ export async function addTimesheet(
       taskId: task.id,
       employeeId: employee.id,
       workDate: parseDay(input.workDate, 'Date') ?? new Date(),
-      hours: input.hours,
+      hours,
       description: input.description?.trim() ?? '',
     },
   })
@@ -247,6 +248,10 @@ export async function invoiceProject(companyId: number, projectId: number) {
     const company = await tx.company.findUniqueOrThrow({ where: { id: companyId } })
     const taxRate = company.defaultTaxRate
     const billing = asBilling(project.billingType)
+    const billingSetting = await readSetting(tx, companyId, 'projects', 'billing', 'Milestones')
+    if ((billingSetting === 'Timesheets' || billingSetting === 'Hours') && billing === 'fixed') {
+      throw new AppError(409, 'This company bills projects from timesheets.')
+    }
     const draft: Array<{ description: string; quantity: number; unitPrice: number; taxRate: number; subtotal: number; taxAmount: number }> = []
     switch (billing) {
       case 'time':

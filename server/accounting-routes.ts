@@ -1,5 +1,5 @@
 import type { Hono } from 'hono'
-import { fapiaoSchema, invoicePaySchema } from '../shared/schemas.ts'
+import { fapiaoSchema, invoicePaySchema, manualJournalSchema, numberSeriesSchema, paymentAllocateSchema, paymentDraftSchema } from '../shared/schemas.ts'
 import type { AppEnv } from './auth.ts'
 import { cached } from './cache.ts'
 import { AppError } from './errors.ts'
@@ -21,6 +21,8 @@ import {
 } from './services/accounting.ts'
 import { agingReport, applyChargeTemplate, assignCostCentre, centreReport, closeFiscalYear, listFiscalYears, openFiscalYear } from './services/books.ts'
 import { agedCsv, agedStatement, cashFlow, type AgedSide } from './services/cash-reports.ts'
+import { listNumberSeries, saveNumberSeries } from './services/number-series.ts'
+import { allocatePayment, createPayment, listPayments, postManualJournal, postPayment, trialBalance } from './services/payments.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -134,5 +136,36 @@ export function registerAccountingRoutes(app: Hono<AppEnv>) {
     const body = await c.req.json() as { code?: string }
     if (!body.code) throw new AppError(400, 'Choose a cost centre.')
     return c.json(await assignCostCentre(c.get('user').companyId, Number(c.req.param('id')), body.code))
+  })
+
+  app.get('/api/number-series', async (c) => c.json(await listNumberSeries(c.get('user').companyId)))
+
+  app.put('/api/number-series', async (c) => {
+    const input = parseBody(numberSeriesSchema, await c.req.json())
+    return c.json(await saveNumberSeries(c.get('user').companyId, input))
+  })
+
+  app.get('/api/payments', async (c) => c.json(await listPayments(c.get('user').companyId)))
+
+  app.post('/api/payments', async (c) => {
+    const input = parseBody(paymentDraftSchema, await c.req.json())
+    return c.json(await createPayment(c.get('user').companyId, input), 201)
+  })
+
+  app.post('/api/payments/:id/post', async (c) => c.json(await postPayment(c.get('user').companyId, Number(c.req.param('id')))))
+
+  app.post('/api/payments/:id/allocate', async (c) => {
+    const input = parseBody(paymentAllocateSchema, await c.req.json())
+    return c.json(await allocatePayment(c.get('user').companyId, Number(c.req.param('id')), input.invoiceId, input.amount))
+  })
+
+  app.post('/api/journal-entries', async (c) => {
+    const input = parseBody(manualJournalSchema, await c.req.json())
+    return c.json(await postManualJournal(c.get('user').companyId, input), 201)
+  })
+
+  app.get('/api/reports/trial-balance', async (c) => {
+    const on = c.req.query('on') || new Date().toISOString().slice(0, 10)
+    return c.json(await trialBalance(c.get('user').companyId, on))
   })
 }

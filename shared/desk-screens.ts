@@ -423,7 +423,7 @@ export const deskScreens: DeskScreen[] = [
   ]),
   settings('expenses', 'Expense settings', '费用设置', 'Who can approve a claim.', '谁可以审批报销。', [
     { key: 'approver', labelEn: 'Approver', labelZh: '审批人', value: 'Admin' },
-    { key: 'journal', labelEn: 'Expense journal', labelZh: '费用日记账', value: 'GEN' },
+    { key: 'journal', labelEn: 'Expense journal', labelZh: '费用日记账', value: 'BNK' },
   ]),
   list('expenses', 'categories', 'Expense categories', '费用类别', 'What a claim is for.', '报销的用途。', ['active'], [
     { name: 'Travel', state: 'active', recordDate: day('2026-01-01') },

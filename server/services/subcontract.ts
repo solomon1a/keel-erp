@@ -2,7 +2,9 @@ import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { assertYearOpen } from './books.ts'
+import { readSetting } from './company-settings.ts'
 import { accountId, ensureAccounts, postEntry } from './journals.ts'
+import { allocateKnown } from './number-series.ts'
 import { assertBooksOpen } from './locks.ts'
 import { applyQuant, companyLocations, onHand, roundQty } from './stock.ts'
 import { valueDoneMove } from './valuation.ts'
@@ -98,10 +100,7 @@ async function present(tx: Store, order: OrderRow) {
 }
 
 async function nextOrderName(tx: Tx, companyId: number) {
-  const name = `subcontract.order.${companyId}`
-  await tx.sequence.upsert({ where: { name }, update: {}, create: { name, next: 0 } })
-  const sequence = await tx.sequence.update({ where: { name }, data: { next: { increment: 1 } } })
-  return `SC${String(sequence.next).padStart(4, '0')}`
+  return allocateKnown(tx, companyId, 'subcontract.order')
 }
 
 export type SubcontractDraft = {
@@ -163,6 +162,8 @@ export async function sendComponents(companyId: number, orderId: number, lines: 
 }
 
 export async function sendComponentsTx(tx: Tx, companyId: number, orderId: number, lines: SendLine[], when: Date) {
+  const resupply = await readSetting(tx, companyId, 'subcontracting', 'resupply', 'yes')
+  if (resupply === 'no') throw new AppError(409, 'Component resupply is turned off.')
   const order = await loadOrder(tx, companyId, orderId)
   if (order.state !== 'confirmed' && order.state !== 'progress') {
     throw new AppError(409, 'Components can be sent while the order is open.')
@@ -234,6 +235,13 @@ export async function receiveFinishedTx(tx: Tx, companyId: number, orderId: numb
     throw new AppError(409, 'The subcontractor is short of components.', { shortages })
   }
   const places = await companyLocations(tx, companyId)
+  const placeName = await readSetting(tx, companyId, 'subcontracting', 'location', 'Stock')
+  let shelf = places.internal
+  if (placeName !== 'Stock') {
+    const found = await tx.stockLocation.findFirst({ where: { companyId, type: 'internal', name: placeName } })
+    if (!found) throw new AppError(400, `Location ${placeName} is not an internal location.`)
+    shelf = found
+  }
   let componentCost = 0
   for (const row of needs) {
     const available = roundQty(row.line.sent - row.line.consumed)
@@ -271,12 +279,9 @@ export async function receiveFinishedTx(tx: Tx, companyId: number, orderId: numb
   if (fee > 0.001 || tax > 0.001) {
     await ensureAccounts(tx, companyId, feeAccounts)
     const map = new Map((await tx.account.findMany({ where: { companyId, code: { in: feeAccounts.map((row) => row[0]) } } })).map((row) => [row.code, row.id]))
-    const sequenceName = `account.in.${companyId}`
-    await tx.sequence.upsert({ where: { name: sequenceName }, update: {}, create: { name: sequenceName, next: 0 } })
-    const sequence = await tx.sequence.update({ where: { name: sequenceName }, data: { next: { increment: 1 } } })
     const invoice = await tx.invoice.create({
       data: {
-        name: `BILL${String(sequence.next).padStart(4, '0')}`,
+        name: await allocateKnown(tx, companyId, 'account.in'),
         moveType: 'in_invoice',
         state: 'posted',
         partnerId: order.vendorId,
@@ -313,7 +318,7 @@ export async function receiveFinishedTx(tx: Tx, companyId: number, orderId: numb
     data: {
       productId: order.productId,
       locationFromId: order.locationId,
-      locationToId: places.internal.id,
+      locationToId: shelf.id,
       quantity,
       state: 'done',
       reference: `${order.name} receive`,
@@ -322,7 +327,7 @@ export async function receiveFinishedTx(tx: Tx, companyId: number, orderId: numb
       date: when,
     },
   })
-  await applyQuant(tx, order.productId, places.internal.id, quantity)
+  await applyQuant(tx, order.productId, shelf.id, quantity)
   await valueDoneMove(tx, companyId, finished.id)
   const received = roundQty(order.received + quantity)
   await tx.subcontractReceipt.create({

@@ -3,6 +3,8 @@ import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { ShopCheckoutInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { readSetting } from './company-settings.ts'
+import { allocateKnown } from './number-series.ts'
 import { applyQuant, companyLocations, onHand, roundQty, warehouseStockLocation } from './stock.ts'
 import { resolvePrice } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
@@ -18,20 +20,27 @@ const orderInclude = {
   },
 } as const
 
-async function nextOrderName(tx: Tx) {
-  const sequence = await tx.sequence.update({
-    where: { name: 'sales.order' },
-    data: { next: { increment: 1 } },
-  })
-  return `SO${String(sequence.next).padStart(4, '0')}`
+async function nextOrderName(tx: Tx, companyId: number) {
+  return allocateKnown(tx, companyId, 'sales.order')
 }
 
 export async function shopCatalog() {
   return prisma.$transaction(async (tx) => {
     const company = await tx.company.findFirst({ orderBy: { id: 'asc' } })
     if (!company) throw new AppError(500, 'The shop is not set up yet.')
-    const source = await warehouseStockLocation(tx, company.id, company.onlineWarehouseId)
-    const products = await tx.product.findMany({
+    const published = await readSetting(tx, company.id, 'website', 'published', 'yes')
+    const online = await readSetting(tx, company.id, 'inventory', 'online', 'Online')
+    const shipFrom = await readSetting(tx, company.id, 'website', 'warehouse', 'Online')
+    let warehouseId = company.onlineWarehouseId
+    if (online !== 'Online' || shipFrom !== 'Online') {
+      const name = online !== 'Online' ? online : shipFrom
+      const warehouse = await tx.warehouse.findFirst({ where: { companyId: company.id, OR: [{ name }, { code: name }] } })
+      if (warehouse) warehouseId = warehouse.id
+    }
+    const source = await warehouseStockLocation(tx, company.id, warehouseId)
+    const products = published === 'no'
+      ? []
+      : await tx.product.findMany({
       where: { companyId: company.id, active: true, websitePublished: true },
       include: { category: { select: { id: true, name: true } } },
       orderBy: { name: 'asc' },
@@ -199,7 +208,7 @@ export async function checkoutShop(input: ShopCheckoutInput, shopCustomerId: num
     const totals = sumLines(lines)
     const order = await tx.salesOrder.create({
       data: {
-        name: await nextOrderName(tx),
+        name: await nextOrderName(tx, company.id),
         state: 'done',
         origin: 'shop',
         paymentMethod: input.paymentMethod,

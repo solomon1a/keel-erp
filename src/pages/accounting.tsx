@@ -119,6 +119,10 @@ export function AccountingPage() {
           <Link to="/accounting/taxes"><Button variant="outline">{t('phase.taxes')}</Button></Link>
           <Link to="/accounting/ledger"><Button variant="outline">{t('acct.ledger')}</Button></Link>
           <Link to="/accounting/reports"><Button variant="outline">{t('acct.reports')}</Button></Link>
+          <Link to="/accounting/numbers"><Button variant="outline">{t('acct.numbers')}</Button></Link>
+          <Link to="/accounting/payments"><Button variant="outline">{t('acct.payments')}</Button></Link>
+          <Link to="/accounting/journal"><Button variant="outline">{t('acct.journal')}</Button></Link>
+          <Link to="/accounting/trial-balance"><Button variant="outline">{t('acct.trial')}</Button></Link>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

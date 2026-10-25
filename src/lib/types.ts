@@ -93,6 +93,7 @@ export type OrderLine = {
   unitPrice: number
   discount: number
   taxId: number | null
+  taxGroupId?: number | null
   subtotal: number
   taxAmount: number
   qtyDelivered?: number
@@ -120,6 +121,7 @@ export type PurchaseLine = {
   quantity: number
   unitCost: number
   taxId: number | null
+  taxGroupId?: number | null
   subtotal: number
   taxAmount: number
   product?: { id: number; name: string; sku: string; type: string; kind?: string }
@@ -319,6 +321,7 @@ export type SalesOrder = {
   origin?: string
   paymentMethod?: string | null
   paymentState?: string | null
+  onlinePay?: boolean
   customer: { id: number; name: string; email?: string | null; city?: string | null }
   lines?: OrderLine[]
   moves?: StockMove[]

@@ -1,5 +1,6 @@
 import { prisma } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { readSetting } from './company-settings.ts'
 
 const defaultStart = 9 * 60
 
@@ -126,7 +127,9 @@ export async function punch(companyId: number, employeeId: number, action: 'in' 
   switch (action) {
     case 'in': {
       if (existing?.checkIn) throw new AppError(409, 'Already checked in.')
-      const late = minutesOf(now) > startMinutes
+      const grace = Number(await readSetting(prisma, companyId, 'attendance', 'grace', '10'))
+      const allowance = Number.isFinite(grace) ? grace : 10
+      const late = minutesOf(now) > startMinutes + allowance
       const row = await prisma.attendance.upsert({
         where: { employeeId_workDate: { employeeId, workDate } },
         create: { employeeId, workDate, status: late ? 'late' : 'present', checkIn: now },
@@ -144,14 +147,25 @@ export async function punch(companyId: number, employeeId: number, action: 'in' 
     case 'out': {
       if (!existing?.checkIn) throw new AppError(400, 'Check in first.')
       if (existing.checkOut) throw new AppError(409, 'Already checked out.')
-      const row = await prisma.attendance.update({ where: { id: existing.id }, data: { checkOut: now } })
+      const grace = Number(await readSetting(prisma, companyId, 'attendance', 'grace', '10'))
+      const allowance = Number.isFinite(grace) ? grace : 10
+      const end = shift?.endMinutes ?? 17 * 60 + 30
+      const overtimeMinutes = Math.max(0, minutesOf(now) - end)
+      const policy = await readSetting(prisma, companyId, 'attendance', 'overtime', 'Yes')
+      const overtimeState = overtimeMinutes > 0 ? (policy === 'No' ? 'approved' : 'waiting') : ''
+      const row = await prisma.attendance.update({
+        where: { id: existing.id },
+        data: { checkOut: now, overtimeMinutes, overtimeState },
+      })
       return {
         id: row.id,
         status: row.status,
         checkIn: row.checkIn,
         checkOut: row.checkOut,
         workedHours: workedHours(row.checkIn, row.checkOut),
-        late: minutesOf(existing.checkIn) > startMinutes,
+        late: existing.checkIn ? minutesOf(existing.checkIn) > startMinutes + allowance : false,
+        overtimeMinutes,
+        overtimeState,
       }
     }
     default: {
@@ -231,14 +245,25 @@ export async function askLeave(companyId: number, input: { employeeId: number; c
   const dateFrom = dayStamp(input.dateFrom)
   const dateTo = dayStamp(input.dateTo)
   if (dateTo < dateFrom) throw new AppError(400, 'The end date is before the start date.')
+  const week = await readSetting(prisma, companyId, 'hr', 'week', 'Mon–Fri')
+  if (week === 'Mon–Fri' || week === 'Mon-Fri') {
+    const cursor = new Date(dateFrom.getTime())
+    while (cursor <= dateTo) {
+      const day = cursor.getUTCDay()
+      if (day === 0 || day === 6) throw new AppError(400, 'That leave includes a weekend.')
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+    }
+  }
+  const leaveStart = await readSetting(prisma, companyId, 'hr', 'leave', 'waiting')
+  const state = leaveStart === 'approved' || leaveStart === 'refused' ? leaveStart : 'draft'
   await prisma.leaveRequest.create({
     data: {
       employeeId: employee.id,
       kind: type.code,
       dateFrom,
       dateTo,
+      state,
       reason: input.reason?.trim() || null,
-      state: 'draft',
     },
   })
   return leaveBoard(companyId, dateFrom.getUTCFullYear())

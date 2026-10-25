@@ -5,6 +5,7 @@ import { Field, Notice } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { Input } from '../components/ui/input.tsx'
 import { lineAmounts, roundMoney, sumLines } from '../domain/money.ts'
+import { computeTaxes } from '../../shared/tax-engine.ts'
 import { payMethodLabel, posSessionLabel } from '../i18n/labels.ts'
 import { useI18n } from '../i18n/locale.tsx'
 import { api, ApiError } from '../lib/api.ts'
@@ -14,6 +15,18 @@ import { useBaseCurrency, useMoney } from '../lib/format.ts'
 import type { Contact, PosCatalog, PosOrder, PosSession, User } from '../lib/types.ts'
 
 type CartLine = { productId: number; name: string; unitPrice: number; quantity: number; discount: number; onHand: number }
+type CompanyTaxRow = {
+  id: number
+  name: string
+  kind: string
+  amount: number
+  priceInclude: boolean
+  compound: boolean
+  withholding: boolean
+  sequence: number
+  active: boolean
+}
+type TaxGroupRow = { id: number; name: string; lines: Array<{ tax: CompanyTaxRow }> }
 type PayRow = { method: 'cash' | 'card' | 'wechat' | 'alipay'; amount: string; tendered: string }
 
 const methods = ['cash', 'card', 'wechat', 'alipay'] as const
@@ -50,6 +63,7 @@ export function PosScreenPage() {
     enabled: Boolean(session.data),
   })
   const customers = useQuery({ queryKey: ['contacts', 'customers'], queryFn: () => api<Contact[]>('/api/contacts?role=customer') })
+  const groups = useQuery({ queryKey: ['tax-groups'], queryFn: () => api<{ groups: TaxGroupRow[] }>('/api/taxes/company') })
   const [query, setQuery] = useState('')
   const [barcode, setBarcode] = useState('')
   const [categoryId, setCategoryId] = useState('all')
@@ -59,9 +73,29 @@ export function PosScreenPage() {
   const [counted, setCounted] = useState('')
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
+  const [taxGroupId, setTaxGroupId] = useState('')
 
   const taxRate = me.data?.company.defaultTaxRate ?? 13
   const totals = useMemo(() => {
+    const group = groups.data?.groups.find((item) => item.id === Number(taxGroupId))
+    if (group) {
+      const priced = cart.map((line) => {
+        const base = roundMoney(line.quantity * line.unitPrice * (1 - (line.discount || 0) / 100))
+        const result = computeTaxes(base, line.quantity, group.lines.filter((item) => item.tax.active).map((item) => ({
+          id: item.tax.id,
+          name: item.tax.name,
+          kind: item.tax.kind === 'fixed' ? 'fixed' as const : 'percent' as const,
+          amount: item.tax.amount,
+          priceInclude: item.tax.priceInclude,
+          compound: item.tax.compound,
+          withholding: item.tax.withholding,
+          sequence: item.tax.sequence,
+        })))
+        return { subtotal: result.net, taxAmount: result.added, total: result.total }
+      })
+      const summed = sumLines(priced.map((line) => ({ subtotal: line.subtotal, taxAmount: line.taxAmount })))
+      return { ...summed, amountTotal: roundMoney(priced.reduce((sum, line) => sum + line.total, 0)) }
+    }
     const priced = cart.map((line) => lineAmounts({
       quantity: line.quantity,
       unitPrice: line.unitPrice,
@@ -69,7 +103,7 @@ export function PosScreenPage() {
       taxRate,
     }))
     return sumLines(priced)
-  }, [cart, taxRate])
+  }, [cart, taxRate, taxGroupId, groups.data])
   const paid = roundMoney(payments.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))
   const remaining = roundMoney(totals.amountTotal - paid)
 
@@ -102,7 +136,12 @@ export function PosScreenPage() {
         body: JSON.stringify({
           sessionId: Number(id),
           customerId: customerId ? Number(customerId) : null,
-          lines: cart.map((line) => ({ productId: line.productId, quantity: line.quantity, discount: line.discount })),
+          lines: cart.map((line) => ({
+            productId: line.productId,
+            quantity: line.quantity,
+            discount: line.discount,
+            ...(taxGroupId ? { taxGroupId: Number(taxGroupId) } : {}),
+          })),
           payments: payments.map((row) => ({
             method: row.method,
             amount: Number(row.amount),
@@ -279,6 +318,14 @@ export function PosScreenPage() {
             </select>
           </Field>
           <p className="text-sm text-muted-foreground">{t('totals.untaxed')} {money(totals.amountUntaxed)}</p>
+          <Field label={t('acct.taxTemplate')}>
+            <select className="h-12 rounded-md border border-border bg-background px-3 text-base" aria-label={t('acct.taxTemplate')} value={taxGroupId} onChange={(event) => setTaxGroupId(event.target.value)}>
+              <option value="">{t('pos.vat', { rate: taxRate })}</option>
+              {groups.data?.groups.map((group) => (
+                <option key={group.id} value={group.id}>{group.name}</option>
+              ))}
+            </select>
+          </Field>
           <p className="text-sm text-muted-foreground">{t('pos.vat', { rate: taxRate })} {money(totals.amountTax)}</p>
           <p className="text-xl font-semibold">{t('pos.total')} {money(totals.amountTotal)}</p>
           <BaseCurrencyNote />

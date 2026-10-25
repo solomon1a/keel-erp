@@ -1,7 +1,9 @@
 import type { Hono } from 'hono'
 import { expenseSchema, payrollRunSchema, salarySchema } from '../shared/schemas.ts'
 import type { AppEnv } from './auth.ts'
-import { requireAdmin } from './auth.ts'
+import { requireAdmin, type SessionUser } from './auth.ts'
+import { prisma } from './db.ts'
+import { readSetting } from './services/company-settings.ts'
 import { AppError } from './errors.ts'
 import {
   createExpense,
@@ -16,6 +18,13 @@ import {
   reimburseExpense,
   setSalary,
 } from './services/payroll.ts'
+
+async function allowExpenseDecision(user: SessionUser) {
+  const approver = await readSetting(prisma, user.companyId, 'expenses', 'approver', 'Admin')
+  if (approver === 'Any') return
+  if (user.role === 'admin' || user.name === approver) return
+  requireAdmin(user)
+}
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -50,11 +59,11 @@ export function registerPayrollRoutes(app: Hono<AppEnv>) {
     return c.json(await createExpense(c.get('user').companyId, input), 201)
   })
   app.post('/api/expenses/:id/approve', async (c) => {
-    requireAdmin(c.get('user'))
+    await allowExpenseDecision(c.get('user'))
     return c.json(await decideExpense(c.get('user').companyId, Number(c.req.param('id')), 'approved'))
   })
   app.post('/api/expenses/:id/refuse', async (c) => {
-    requireAdmin(c.get('user'))
+    await allowExpenseDecision(c.get('user'))
     return c.json(await decideExpense(c.get('user').companyId, Number(c.req.param('id')), 'refused'))
   })
   app.post('/api/expenses/:id/reimburse', async (c) => {

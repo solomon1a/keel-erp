@@ -1,7 +1,9 @@
-import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { OrderInput } from '../../shared/schemas.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { namedUserId, readSetting } from './company-settings.ts'
+import { clearTaxes, heldTotal, priceCommercial, rememberTaxes } from './document-tax.ts'
+import { allocateKnown } from './number-series.ts'
 import { assertQualityClear, ensureQualityChecks, prepareQualityChecks } from './quality.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty } from './stock.ts'
 import { assertCreditLimit, recordDelivery } from './trade.ts'
@@ -29,48 +31,71 @@ const orderInclude = {
   },
 }
 
-async function nextOrderName(tx: Tx): Promise<string> {
-  const sequence = await tx.sequence.update({
-    where: { name: 'sales.order' },
-    data: { next: { increment: 1 } },
-  })
-  return `SO${String(sequence.next).padStart(4, '0')}`
-}
-
-async function buildLines(tx: Tx, companyId: number, lines: OrderInput['lines']) {
+async function buildLines(tx: Tx, companyId: number, partnerId: number, lines: OrderInput['lines']) {
   const products = await tx.product.findMany({
     where: { companyId, id: { in: lines.map((line) => line.productId) } },
   })
   const taxes = await tx.tax.findMany()
   const productById = new Map(products.map((product) => [product.id, product]))
   const taxById = new Map(taxes.map((tax) => [tax.id, tax]))
-
-  return lines.map((line, index) => {
+  const built = []
+  for (const [index, line] of lines.entries()) {
     const product = productById.get(line.productId)
     if (!product) {
       throw new AppError(400, `Line ${index + 1} uses a product that is not in this company.`)
     }
     const tax = line.taxId ? taxById.get(line.taxId) : undefined
-    if (line.taxId && !tax) {
+    if (line.taxId && !tax && !line.taxGroupId) {
       throw new AppError(400, `Line ${index + 1} uses an unknown tax.`)
     }
-    const amounts = lineAmounts({
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-      discount: line.discount,
-      taxRate: tax?.rate ?? 0,
-    })
-    return {
+    const priced = await priceCommercial(
+      tx,
+      companyId,
+      partnerId,
+      line.quantity,
+      line.unitPrice,
+      line.discount,
+      line.taxGroupId,
+      line.taxGroupId ? 0 : tax?.rate ?? 0,
+    )
+    built.push({
       productId: product.id,
       description: product.name,
       quantity: roundQty(line.quantity),
       unitPrice: line.unitPrice,
       discount: line.discount,
-      taxId: tax?.id ?? null,
-      subtotal: amounts.subtotal,
-      taxAmount: amounts.taxAmount,
-    }
-  })
+      taxId: line.taxGroupId ? null : tax?.id ?? null,
+      taxGroupId: line.taxGroupId ?? null,
+      subtotal: priced.subtotal,
+      taxAmount: priced.taxAmount,
+      withheld: priced.withheld,
+      slices: priced.slices,
+    })
+  }
+  return built
+}
+
+function storedOrderLine(line: Awaited<ReturnType<typeof buildLines>>[number]) {
+  return {
+    productId: line.productId,
+    description: line.description,
+    quantity: line.quantity,
+    unitPrice: line.unitPrice,
+    discount: line.discount,
+    taxId: line.taxId,
+    taxGroupId: line.taxGroupId,
+    subtotal: line.subtotal,
+    taxAmount: line.taxAmount,
+  }
+}
+
+async function stampOrderTaxes(tx: Tx, companyId: number, lines: Awaited<ReturnType<typeof buildLines>>, saved: Array<{ id: number }>) {
+  const ordered = [...saved].sort((left, right) => left.id - right.id)
+  for (let index = 0; index < lines.length; index += 1) {
+    const source = lines[index]
+    const row = ordered[index]
+    if (source && row && source.slices.length > 0) await rememberTaxes(tx, companyId, 'sale.order.line', row.id, source.slices)
+  }
 }
 
 async function requireCustomer(tx: Tx, companyId: number, customerId: number) {
@@ -93,27 +118,42 @@ function parseValidity(value: string | null): Date | null {
   return date
 }
 
+async function resolveValidity(tx: Tx, companyId: number, value: string | null) {
+  const explicit = parseValidity(value)
+  if (explicit) return explicit
+  const raw = Number(await readSetting(tx, companyId, 'sales', 'validity', '30'))
+  const days = Number.isFinite(raw) ? Math.max(0, Math.round(raw)) : 30
+  const today = new Date()
+  return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + days))
+}
+
 export async function createOrder(companyId: number, userId: number, input: OrderInput) {
   return prisma.$transaction(async (tx) => {
     await requireCustomer(tx, companyId, input.customerId)
-    const lines = await buildLines(tx, companyId, input.lines)
-    const totals = sumLines(lines)
+    const lines = await buildLines(tx, companyId, input.customerId, input.lines)
+    const totals = heldTotal(lines)
     const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
-    return tx.salesOrder.create({
+    const team = await readSetting(tx, companyId, 'sales', 'team', 'Direct')
+    const owner = await namedUserId(tx, companyId, team)
+    const online = await readSetting(tx, companyId, 'sales', 'online', 'off')
+    const order = await tx.salesOrder.create({
       data: {
-        name: await nextOrderName(tx),
+        name: await allocateKnown(tx, companyId, 'sales.order'),
         state: 'draft',
         customerId: input.customerId,
         warehouseId,
         companyId,
         dateOrder: new Date(),
-        validityDate: parseValidity(input.validityDate),
+        validityDate: await resolveValidity(tx, companyId, input.validityDate),
+        onlinePay: online === 'on',
         ...totals,
-        createdById: userId,
-        lines: { create: lines },
+        createdById: owner ?? userId,
+        lines: { create: lines.map(storedOrderLine) },
       },
       include: orderInclude,
     })
+    await stampOrderTaxes(tx, companyId, lines, order.lines)
+    return order
   })
 }
 
@@ -125,21 +165,27 @@ export async function updateOrder(companyId: number, orderId: number, input: Ord
       throw new AppError(409, 'Only a draft or sent quotation can be edited.')
     }
     await requireCustomer(tx, companyId, input.customerId)
-    const lines = await buildLines(tx, companyId, input.lines)
-    const totals = sumLines(lines)
+    const lines = await buildLines(tx, companyId, input.customerId, input.lines)
+    const totals = heldTotal(lines)
     const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
+    const online = await readSetting(tx, companyId, 'sales', 'online', 'off')
+    const previous = await tx.salesOrderLine.findMany({ where: { orderId }, select: { id: true } })
+    await clearTaxes(tx, companyId, 'sale.order.line', previous.map((row) => row.id))
     await tx.salesOrderLine.deleteMany({ where: { orderId } })
-    return tx.salesOrder.update({
+    const updated = await tx.salesOrder.update({
       where: { id: orderId },
       data: {
         customerId: input.customerId,
         warehouseId,
-        validityDate: parseValidity(input.validityDate),
+        validityDate: await resolveValidity(tx, companyId, input.validityDate),
+        onlinePay: online === 'on',
         ...totals,
-        lines: { create: lines },
+        lines: { create: lines.map(storedOrderLine) },
       },
       include: orderInclude,
     })
+    await stampOrderTaxes(tx, companyId, lines, updated.lines)
+    return updated
   })
 }
 

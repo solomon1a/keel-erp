@@ -1,7 +1,8 @@
-import { lineAmounts, sumLines } from '../../src/domain/money.ts'
 import type { PurchaseInput, ReceivePurchaseInput } from '../../shared/schemas.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { clearTaxes, heldTotal, priceCommercial, rememberTaxes } from './document-tax.ts'
+import { allocateKnown } from './number-series.ts'
 import { assertQualityClear, ensureQualityChecks, prepareQualityChecks } from './quality.ts'
 import { applyQuant, resolveWarehouseId, roundQty } from './stock.ts'
 import { noteChatter, recordReceipt } from './trade.ts'
@@ -29,14 +30,6 @@ const purchaseInclude = {
   },
 }
 
-async function nextPurchaseName(tx: Tx): Promise<string> {
-  const sequence = await tx.sequence.update({
-    where: { name: 'purchase.order' },
-    data: { next: { increment: 1 } },
-  })
-  return `PO${String(sequence.next).padStart(4, '0')}`
-}
-
 async function requireVendor(tx: Tx, companyId: number, vendorId: number) {
   const vendor = await tx.contact.findFirst({ where: { id: vendorId, companyId } })
   if (!vendor) throw new AppError(400, 'Choose a vendor from your contacts.')
@@ -44,15 +37,15 @@ async function requireVendor(tx: Tx, companyId: number, vendorId: number) {
   return vendor
 }
 
-async function buildLines(tx: Tx, companyId: number, lines: PurchaseInput['lines']) {
+async function buildLines(tx: Tx, companyId: number, partnerId: number, lines: PurchaseInput['lines']) {
   const products = await tx.product.findMany({
     where: { companyId, id: { in: lines.map((line) => line.productId) } },
   })
   const taxes = await tx.tax.findMany()
   const productById = new Map(products.map((product) => [product.id, product]))
   const taxById = new Map(taxes.map((tax) => [tax.id, tax]))
-
-  return lines.map((line, index) => {
+  const built = []
+  for (const [index, line] of lines.entries()) {
     const product = productById.get(line.productId)
     if (!product) {
       throw new AppError(400, `Line ${index + 1} uses a product that is not in this company.`)
@@ -64,36 +57,66 @@ async function buildLines(tx: Tx, companyId: number, lines: PurchaseInput['lines
       throw new AppError(400, `${product.name} is not marked purchasable.`)
     }
     const tax = line.taxId ? taxById.get(line.taxId) : undefined
-    if (line.taxId && !tax) {
+    if (line.taxId && !tax && !line.taxGroupId) {
       throw new AppError(400, `Line ${index + 1} uses an unknown tax.`)
     }
-    const amounts = lineAmounts({
-      quantity: line.quantity,
-      unitPrice: line.unitCost,
-      discount: 0,
-      taxRate: tax?.rate ?? 0,
-    })
-    return {
+    const priced = await priceCommercial(
+      tx,
+      companyId,
+      partnerId,
+      line.quantity,
+      line.unitCost,
+      0,
+      line.taxGroupId,
+      line.taxGroupId ? 0 : tax?.rate ?? 0,
+    )
+    built.push({
       productId: product.id,
       description: product.name,
       quantity: roundQty(line.quantity),
       unitCost: line.unitCost,
-      taxId: tax?.id ?? null,
-      subtotal: amounts.subtotal,
-      taxAmount: amounts.taxAmount,
-    }
-  })
+      taxId: line.taxGroupId ? null : tax?.id ?? null,
+      taxGroupId: line.taxGroupId ?? null,
+      subtotal: priced.subtotal,
+      taxAmount: priced.taxAmount,
+      withheld: priced.withheld,
+      slices: priced.slices,
+    })
+  }
+  return built
+}
+
+function storedPurchaseLine(line: Awaited<ReturnType<typeof buildLines>>[number]) {
+  return {
+    productId: line.productId,
+    description: line.description,
+    quantity: line.quantity,
+    unitCost: line.unitCost,
+    taxId: line.taxId,
+    taxGroupId: line.taxGroupId,
+    subtotal: line.subtotal,
+    taxAmount: line.taxAmount,
+  }
+}
+
+async function stampPurchaseTaxes(tx: Tx, companyId: number, lines: Awaited<ReturnType<typeof buildLines>>, saved: Array<{ id: number }>) {
+  const ordered = [...saved].sort((left, right) => left.id - right.id)
+  for (let index = 0; index < lines.length; index += 1) {
+    const source = lines[index]
+    const row = ordered[index]
+    if (source && row && source.slices.length > 0) await rememberTaxes(tx, companyId, 'purchase.order.line', row.id, source.slices)
+  }
 }
 
 export async function createPurchase(companyId: number, userId: number, input: PurchaseInput) {
   return prisma.$transaction(async (tx) => {
     await requireVendor(tx, companyId, input.vendorId)
-    const lines = await buildLines(tx, companyId, input.lines)
-    const totals = sumLines(lines)
+    const lines = await buildLines(tx, companyId, input.vendorId, input.lines)
+    const totals = heldTotal(lines)
     const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
-    return tx.purchaseOrder.create({
+    const order = await tx.purchaseOrder.create({
       data: {
-        name: await nextPurchaseName(tx),
+        name: await allocateKnown(tx, companyId, 'purchase.order'),
         state: 'draft',
         vendorId: input.vendorId,
         warehouseId,
@@ -101,10 +124,12 @@ export async function createPurchase(companyId: number, userId: number, input: P
         dateOrder: new Date(),
         ...totals,
         createdById: userId,
-        lines: { create: lines },
+        lines: { create: lines.map(storedPurchaseLine) },
       },
       include: purchaseInclude,
     })
+    await stampPurchaseTaxes(tx, companyId, lines, order.lines)
+    return order
   })
 }
 
@@ -116,20 +141,24 @@ export async function updatePurchase(companyId: number, orderId: number, input: 
       throw new AppError(409, 'Only a draft or sent RFQ can be edited.')
     }
     await requireVendor(tx, companyId, input.vendorId)
-    const lines = await buildLines(tx, companyId, input.lines)
-    const totals = sumLines(lines)
+    const lines = await buildLines(tx, companyId, input.vendorId, input.lines)
+    const totals = heldTotal(lines)
     const warehouseId = await resolveWarehouseId(tx, companyId, input.warehouseId)
+    const previous = await tx.purchaseOrderLine.findMany({ where: { orderId }, select: { id: true } })
+    await clearTaxes(tx, companyId, 'purchase.order.line', previous.map((row) => row.id))
     await tx.purchaseOrderLine.deleteMany({ where: { orderId } })
-    return tx.purchaseOrder.update({
+    const updated = await tx.purchaseOrder.update({
       where: { id: orderId },
       data: {
         vendorId: input.vendorId,
         warehouseId,
         ...totals,
-        lines: { create: lines },
+        lines: { create: lines.map(storedPurchaseLine) },
       },
       include: purchaseInclude,
     })
+    await stampPurchaseTaxes(tx, companyId, lines, updated.lines)
+    return updated
   })
 }
 

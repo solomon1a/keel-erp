@@ -2,6 +2,7 @@ import { roundMoney } from '../../src/domain/money.ts'
 import type { Tx } from '../db.ts'
 import { prisma } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { readSetting } from './company-settings.ts'
 import { applyQuant, companyLocations, onHand, roundQty } from './stock.ts'
 import { postValuationJournal, valueDoneMove } from './valuation.ts'
 
@@ -169,6 +170,7 @@ export async function qualityDashboard(companyId: number) {
     openAlerts: alerts,
     byProduct: [...byProduct.values()],
     byVendor: [...byVendor.values()],
+    team: await readSetting(prisma, companyId, 'quality', 'team', 'Shop floor'),
   }
 }
 
@@ -286,6 +288,8 @@ export async function ensureQualityChecks(tx: Tx, companyId: number, spec: Check
 }
 
 export async function assertQualityClear(tx: Tx, companyId: number, spec: CheckSpec) {
+  const block = await readSetting(tx, companyId, 'quality', 'block', 'yes')
+  if (block === 'no') return
   const document = spec.purchaseOrderId
     ? { purchaseOrderId: spec.purchaseOrderId }
     : spec.salesOrderId

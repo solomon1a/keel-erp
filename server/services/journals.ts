@@ -1,6 +1,7 @@
 import { roundMoney } from '../../src/domain/money.ts'
 import type { Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { allocateKnown } from './number-series.ts'
 
 export async function ensureAccounts(tx: Tx, companyId: number, rows: ReadonlyArray<readonly [string, string, string]>) {
   for (const [code, name, type] of rows) {
@@ -10,10 +11,7 @@ export async function ensureAccounts(tx: Tx, companyId: number, rows: ReadonlyAr
 }
 
 export async function nextJournalName(tx: Tx, companyId: number) {
-  const name = `account.entry.${companyId}`
-  await tx.sequence.upsert({ where: { name }, update: {}, create: { name, next: 0 } })
-  const sequence = await tx.sequence.update({ where: { name }, data: { next: { increment: 1 } } })
-  return `JE${String(sequence.next).padStart(4, '0')}`
+  return allocateKnown(tx, companyId, 'account.entry')
 }
 
 type Posting = { accountId: number; debit: number; credit: number; label: string; partnerId?: number }
@@ -24,12 +22,13 @@ export async function postEntry(
   date: Date,
   lines: Posting[],
   invoiceId?: number,
+  journalCode = 'GEN',
 ) {
   const debit = roundMoney(lines.reduce((sum, line) => sum + line.debit, 0))
   const credit = roundMoney(lines.reduce((sum, line) => sum + line.credit, 0))
   if (Math.abs(debit - credit) > 0.001) throw new AppError(500, 'The journal entry does not balance.')
-  const journal = await tx.journal.findFirst({ where: { companyId, code: 'GEN' } })
-  if (!journal) throw new AppError(500, 'The general journal is missing.')
+  const journal = await tx.journal.findFirst({ where: { companyId, code: journalCode } })
+  if (!journal) throw new AppError(400, `Journal ${journalCode} is not in this company.`)
   const kept = lines.filter((line) => line.debit !== 0 || line.credit !== 0)
   return tx.journalEntry.create({
     data: {

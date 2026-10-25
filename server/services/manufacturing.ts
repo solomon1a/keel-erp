@@ -2,6 +2,8 @@ import { roundMoney } from '../../src/domain/money.ts'
 import type { BomInput, ManufacturingInput, ProduceInput } from '../../shared/schemas.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { readSetting } from './company-settings.ts'
+import { allocateKnown } from './number-series.ts'
 import { assertQualityClear, ensureQualityChecks, prepareQualityChecks } from './quality.ts'
 import { applyQuant, companyLocations, onHand, resolveWarehouseId, roundQty, warehouseStockLocation } from './stock.ts'
 import { postValuationJournal, valueDoneMove } from './valuation.ts'
@@ -117,12 +119,8 @@ export function rollupBoms(boms: BomCostSource[]): Map<number, BomRollup> {
   return memo
 }
 
-async function nextManufacturingName(tx: Tx): Promise<string> {
-  const sequence = await tx.sequence.update({
-    where: { name: 'manufacturing.order' },
-    data: { next: { increment: 1 } },
-  })
-  return `MO${String(sequence.next).padStart(4, '0')}`
+async function nextManufacturingName(tx: Tx, companyId: number): Promise<string> {
+  return allocateKnown(tx, companyId, 'manufacturing.order')
 }
 
 async function requireFinished(tx: Tx, companyId: number, productId: number) {
@@ -354,7 +352,7 @@ export async function createManufacturing(companyId: number, userId: number, inp
     const destWarehouseId = await resolveWarehouseId(tx, companyId, input.destWarehouseId)
     const order = await tx.manufacturingOrder.create({
       data: {
-        name: await nextManufacturingName(tx),
+        name: await nextManufacturingName(tx, companyId),
         state: 'draft',
         productId: input.productId,
         bomId: built.bom.id,
@@ -381,7 +379,9 @@ export async function updateManufacturing(companyId: number, orderId: number, in
   return prisma.$transaction(async (tx) => {
     const order = await tx.manufacturingOrder.findFirst({ where: { id: orderId, companyId } })
     if (!order) throw new AppError(404, 'Manufacturing order not found.')
-    if (order.state !== 'draft') throw new AppError(409, 'Only a draft manufacturing order can be edited.')
+    const lock = await readSetting(tx, companyId, 'manufacturing', 'lock', 'yes')
+    const editable = lock === 'no' ? order.state === 'draft' || order.state === 'confirmed' : order.state === 'draft'
+    if (!editable) throw new AppError(409, 'Only a draft manufacturing order can be edited.')
     await requireFinished(tx, companyId, input.productId)
     const built = await componentLines(tx, companyId, input.productId, input.quantity)
     const sourceWarehouseId = await resolveWarehouseId(tx, companyId, input.sourceWarehouseId)
@@ -477,15 +477,17 @@ async function openJobCards(tx: Tx, companyId: number, orderId: number, bomId: n
   const existing = await tx.jobCard.count({ where: { orderId } })
   if (existing > 0) return
   const operations = await tx.bomOperation.findMany({ where: { bomId }, orderBy: { sequence: 'asc' } })
-  const name = `job.card.${companyId}`
+  const center = await readSetting(tx, companyId, 'manufacturing', 'center', 'Cutting table')
+  if (center !== 'Cutting table') {
+    const station = await tx.workstation.findFirst({ where: { companyId, name: center } })
+    if (!station) throw new AppError(400, `Work center ${center} is not in this company.`)
+  }
   for (const operation of operations) {
-    await tx.sequence.upsert({ where: { name }, update: {}, create: { name, next: 0 } })
-    const sequence = await tx.sequence.update({ where: { name }, data: { next: { increment: 1 } } })
     await tx.jobCard.create({
       data: {
         companyId,
         orderId,
-        name: `JC${String(sequence.next).padStart(4, '0')}`,
+        name: await allocateKnown(tx, companyId, 'job.card'),
         sequence: operation.sequence,
         operationName: operation.name,
         workstationId: operation.workstationId,

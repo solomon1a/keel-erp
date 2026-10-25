@@ -129,6 +129,7 @@ export const orderLineSchema = z.object({
   unitPrice: z.number().min(0, 'Price cannot be negative'),
   discount: z.number().min(0).max(100),
   taxId: z.number().int().positive().nullable(),
+  taxGroupId: z.number().int().positive().nullable().optional(),
 })
 
 const optionalWarehouseId = z.number().int().positive().optional()
@@ -149,6 +150,7 @@ export const purchaseLineSchema = z.object({
   quantity: z.number().positive('Quantity must be greater than zero'),
   unitCost: z.number().min(0, 'Cost cannot be negative'),
   taxId: z.number().int().positive().nullable(),
+  taxGroupId: z.number().int().positive().nullable().optional(),
 })
 
 export const purchaseInputSchema = z.object({
@@ -305,6 +307,7 @@ export const posOrderLineSchema = z.object({
   productId: z.number().int().positive('Choose a product'),
   quantity: z.number().positive('Quantity must be greater than zero'),
   discount: z.number().min(0).max(100).optional(),
+  taxGroupId: z.number().int().positive().nullable().optional(),
 })
 
 export const posOrderSchema = z.object({
@@ -505,6 +508,38 @@ export const deskRecordSchema = z.object({
 })
 
 export const deskRecordPatchSchema = deskRecordSchema.omit({ module: true, screen: true })
+
+export const numberSeriesSchema = z.object({
+  document: z.string().trim().min(1).max(40),
+  prefix: z.string().trim().min(1).max(12),
+  padding: z.number().int().min(1).max(8),
+  next: z.number().int().min(0),
+})
+
+export const paymentDraftSchema = z.object({
+  kind: z.enum(['customer', 'vendor']),
+  partnerId: z.number().int().positive(),
+  amount: z.number().positive(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  method: z.string().trim().min(1).max(40),
+  memo: z.string().trim().max(200).optional(),
+})
+
+export const paymentAllocateSchema = z.object({
+  invoiceId: z.number().int().positive(),
+  amount: z.number().positive(),
+})
+
+export const manualJournalSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  journal: z.string().trim().min(1).max(12).optional(),
+  lines: z.array(z.object({
+    account: z.string().trim().min(1).max(20),
+    debit: z.number().min(0),
+    credit: z.number().min(0),
+    label: z.string().trim().max(120).optional(),
+  })).min(2),
+})
 
 export const moduleSettingsSchema = z.object({
   module: z.string().trim().min(1).max(40),

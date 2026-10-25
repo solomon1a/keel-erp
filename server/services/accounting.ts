@@ -3,7 +3,10 @@ import { scheduleInstalments } from '../../shared/payment-terms.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { assertYearOpen, ensureCompanyFrame } from './books.ts'
+import { readSetting } from './company-settings.ts'
+import { linesForInvoiceTax, loadSlices, rememberTaxes, type TaxSlice } from './document-tax.ts'
 import { assertBooksOpen } from './locks.ts'
+import { accountDocument, allocateDocument } from './number-series.ts'
 import { applyQuant, companyLocations, roundQty, warehouseStockLocation } from './stock.ts'
 import { valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
@@ -98,6 +101,8 @@ export async function ensureBooks(companyId: number) {
 }
 
 export async function nextName(tx: Tx, sequenceName: string, prefix: string) {
+  const parsed = accountDocument(sequenceName)
+  if (parsed) return allocateDocument(tx, parsed.companyId, parsed.document, sequenceName, prefix)
   const sequence = await tx.sequence.update({
     where: { name: sequenceName },
     data: { next: { increment: 1 } },
@@ -139,6 +144,8 @@ function postingLines(
   total: number,
   charge: number,
   label: string,
+  receivable = '1122',
+  payable = '2202',
 ): PostingLine[] {
   const id = (code: string) => {
     const account = accounts.get(code)
@@ -154,16 +161,16 @@ function postingLines(
   let lines: PostingLine[]
   switch (moveType) {
     case 'out_invoice':
-      lines = [row('1122', total, 0), row('6001', 0, untaxed), row('222101', 0, tax), row('6051', 0, charge)]
+      lines = [row(receivable, total, 0), row('6001', 0, untaxed), row('222101', 0, tax), row('6051', 0, charge)]
       break
     case 'out_refund':
-      lines = [row('1122', 0, total), row('6001', untaxed, 0), row('222101', tax, 0), row('6051', charge, 0)]
+      lines = [row(receivable, 0, total), row('6001', untaxed, 0), row('222101', tax, 0), row('6051', charge, 0)]
       break
     case 'in_invoice':
-      lines = [row('1405', untaxed, 0), row('222102', tax, 0), row('6402', charge, 0), row('2202', 0, total)]
+      lines = [row('1405', untaxed, 0), row('222102', tax, 0), row('6402', charge, 0), row(payable, 0, total)]
       break
     case 'in_refund':
-      lines = [row('1405', 0, untaxed), row('222102', 0, tax), row('6402', 0, charge), row('2202', total, 0)]
+      lines = [row('1405', 0, untaxed), row('222102', 0, tax), row('6402', 0, charge), row(payable, total, 0)]
       break
     default:
       throw new AppError(400, 'Unknown invoice type.')
@@ -180,6 +187,8 @@ type DraftLine = {
   taxAmount: number
   salesOrderLineId?: number
   purchaseOrderLineId?: number
+  withheld?: number
+  slices?: TaxSlice[]
 }
 
 async function createDraft(
@@ -193,10 +202,11 @@ async function createDraft(
 ) {
   const amountUntaxed = roundMoney(lines.reduce((sum, line) => sum + line.subtotal, 0))
   const amountTax = roundMoney(lines.reduce((sum, line) => sum + line.taxAmount, 0))
-  const amountTotal = roundMoney(amountUntaxed + amountTax)
+  const withheld = roundMoney(lines.reduce((sum, line) => sum + (line.withheld ?? 0), 0))
+  const amountTotal = roundMoney(amountUntaxed + amountTax - withheld)
   const { sequence, prefix } = prefixFor(moveType)
   const name = await nextName(tx, `account.${sequence}.${companyId}`, prefix)
-  return tx.invoice.create({
+  const invoice = await tx.invoice.create({
     data: {
       name,
       moveType,
@@ -232,6 +242,13 @@ async function createDraft(
     },
     include: invoiceInclude,
   })
+  const saved = [...invoice.lines].sort((left, right) => left.id - right.id)
+  for (let index = 0; index < lines.length; index += 1) {
+    const source = lines[index]
+    const row = saved[index]
+    if (source?.slices?.length && row) await rememberTaxes(tx, companyId, 'account.move.line', row.id, source.slices)
+  }
+  return invoice
 }
 
 async function assertNoInvoice(tx: Tx, where: { salesOrderId?: number; purchaseOrderId?: number; posOrderId?: number }) {
@@ -276,20 +293,30 @@ export async function invoiceFromSales(
       const quantity = roundQty(requested ? asked.get(line.id) ?? 0 : open)
       if (quantity <= 0) throw new AppError(400, 'Quantity must be greater than zero.')
       if (quantity - open > 0.0001) throw new AppError(400, 'You cannot bill more than the open quantity.')
-      const amounts = lineAmounts({
-        quantity,
-        unitPrice: line.unitPrice,
-        discount: line.discount,
-        taxRate: line.tax?.rate ?? 0,
-      })
+      const slices = await loadSlices(tx, companyId, 'sale.order.line', line.id, quantity, line.quantity)
+      const ratio = line.quantity === 0 ? 0 : quantity / line.quantity
+      const amounts = slices
+        ? {
+            subtotal: roundMoney(line.subtotal * ratio),
+            taxAmount: roundMoney(slices.filter((slice) => !slice.withheld).reduce((sum, slice) => sum + slice.amount, 0)),
+          }
+        : lineAmounts({
+            quantity,
+            unitPrice: line.unitPrice,
+            discount: line.discount,
+            taxRate: line.tax?.rate ?? 0,
+          })
+      const withheld = slices ? roundMoney(slices.filter((slice) => slice.withheld).reduce((sum, slice) => sum + slice.amount, 0)) : 0
       bill.push({
         description: line.description,
         quantity,
         unitPrice: line.unitPrice,
-        taxRate: line.tax?.rate ?? 0,
+        taxRate: slices ? 0 : line.tax?.rate ?? 0,
         subtotal: amounts.subtotal,
         taxAmount: amounts.taxAmount,
         salesOrderLineId: line.id,
+        withheld,
+        slices: slices ?? undefined,
       })
       await tx.salesOrderLine.update({
         where: { id: line.id },
@@ -338,30 +365,41 @@ export async function invoiceFromPurchase(
     await legacyCover(tx, { purchaseOrderId: order.id }, 'purchaseOrderLineId')
     const asked = new Map((requested ?? []).map((row) => [row.lineId, row.quantity]))
     if (requested && requested.length === 0) throw new AppError(400, 'Enter a quantity to bill.')
+    const controlReceipt = await readSetting(tx, companyId, 'purchase', 'receipt', 'yes')
     const bill: DraftLine[] = []
     for (const line of order.lines) {
       const cap = line.product.type === 'product'
-        ? roundQty(line.qtyReceived - line.qtyBilled)
+        ? roundQty((controlReceipt === 'no' ? line.quantity : line.qtyReceived) - line.qtyBilled)
         : roundQty(line.quantity - line.qtyBilled)
       if (!requested && cap <= 0.0001) continue
       if (requested && !asked.has(line.id)) continue
       const quantity = roundQty(requested ? asked.get(line.id) ?? 0 : cap)
       if (quantity <= 0) throw new AppError(400, 'Quantity must be greater than zero.')
       if (quantity - cap > 0.0001) throw new AppError(409, 'Receive the goods before billing.')
-      const amounts = lineAmounts({
-        quantity,
-        unitPrice: line.unitCost,
-        discount: 0,
-        taxRate: line.tax?.rate ?? 0,
-      })
+      const slices = await loadSlices(tx, companyId, 'purchase.order.line', line.id, quantity, line.quantity)
+      const ratio = line.quantity === 0 ? 0 : quantity / line.quantity
+      const amounts = slices
+        ? {
+            subtotal: roundMoney(line.subtotal * ratio),
+            taxAmount: roundMoney(slices.filter((slice) => !slice.withheld).reduce((sum, slice) => sum + slice.amount, 0)),
+          }
+        : lineAmounts({
+            quantity,
+            unitPrice: line.unitCost,
+            discount: 0,
+            taxRate: line.tax?.rate ?? 0,
+          })
+      const withheld = slices ? roundMoney(slices.filter((slice) => slice.withheld).reduce((sum, slice) => sum + slice.amount, 0)) : 0
       bill.push({
         description: line.description,
         quantity,
         unitPrice: line.unitCost,
-        taxRate: line.tax?.rate ?? 0,
+        taxRate: slices ? 0 : line.tax?.rate ?? 0,
         subtotal: amounts.subtotal,
         taxAmount: amounts.taxAmount,
         purchaseOrderLineId: line.id,
+        withheld,
+        slices: slices ?? undefined,
       })
       await tx.purchaseOrderLine.update({
         where: { id: line.id },
@@ -379,6 +417,12 @@ export async function invoiceFromPurchase(
       bill,
       { buyerName: order.vendor.name, buyerTaxId: order.vendor.taxId, buyerAddress: address || null },
     )
+    const terms = await readSetting(tx, companyId, 'purchase', 'terms', '30 days')
+    if (terms !== '30 days') {
+      const term = await tx.paymentTerm.findFirst({ where: { companyId, name: terms } })
+      if (!term) throw new AppError(400, `Payment term ${terms} is not in this company.`)
+      await tx.invoice.update({ where: { id: invoice.id }, data: { paymentTermId: term.id } })
+    }
     await tx.chatterMessage.create({
       data: {
         companyId,
@@ -411,20 +455,36 @@ export async function invoiceFromPos(companyId: number, orderId: number) {
       partnerId = created.id
     }
     const partner = await tx.contact.findFirstOrThrow({ where: { id: partnerId } })
+    const docs = await tx.documentTax.findMany({
+      where: { companyId, model: 'pos.order.line', recordId: { in: order.lines.map((line) => line.id) } },
+    })
+    const byLine = new Map<number, TaxSlice[]>()
+    for (const doc of docs) {
+      const list = byLine.get(doc.recordId) ?? []
+      list.push({ taxId: doc.taxId, base: doc.base, amount: doc.amount, withheld: doc.withheld })
+      byLine.set(doc.recordId, list)
+    }
     return createDraft(
       tx,
       companyId,
       'out_invoice',
       partnerId,
       { posOrderId: order.id },
-      order.lines.map((line) => ({
-        description: line.description,
-        quantity: line.quantity,
-        unitPrice: line.unitPrice,
-        taxRate: line.taxRate,
-        subtotal: line.subtotal,
-        taxAmount: line.taxAmount,
-      })),
+      order.lines.map((line) => {
+        const slices = byLine.get(line.id) ?? []
+        const withheld = roundMoney(slices.filter((slice) => slice.withheld).reduce((sum, slice) => sum + slice.amount, 0))
+        const added = roundMoney(slices.filter((slice) => !slice.withheld).reduce((sum, slice) => sum + slice.amount, 0))
+        return {
+          description: line.description,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          taxRate: slices.length > 0 ? 0 : line.taxRate,
+          subtotal: line.subtotal,
+          taxAmount: slices.length > 0 ? added : line.taxAmount,
+          withheld,
+          slices,
+        }
+      }),
       { buyerName: partner.name, buyerTaxId: partner.taxId, buyerAddress: partner.city },
     )
   })
@@ -485,18 +545,72 @@ export async function postInvoiceTx(tx: Tx, companyId: number, invoiceId: number
     to: 'posted',
     label: invoice.name,
   })
+  const taxGate = await readSetting(tx, companyId, 'accounting', 'tax', 'Not submitted')
+  if (taxGate !== 'Not submitted' && Math.abs(invoice.amountTax) > 0.001) {
+    throw new AppError(409, 'Tax on this document is blocked until the return status is cleared.')
+  }
+  if (invoice.posOrderId) {
+    const pos = await tx.posOrder.findFirst({ where: { id: invoice.posOrderId, companyId } })
+    if (pos) {
+      const linked = await tx.journalItem.findFirst({
+        where: { label: pos.name, entry: { companyId, invoiceId: null } },
+      })
+      if (linked) {
+        await tx.journalEntry.update({ where: { id: linked.entryId }, data: { invoiceId: invoice.id } })
+        const due = await dueForInvoice(tx, companyId, invoice.partnerId, invoice.paymentTermId, invoice.invoiceDate, invoice.amountTotal)
+        await tx.invoiceInstalment.deleteMany({ where: { invoiceId: invoice.id } })
+        if (due.instalments.length > 0) {
+          await tx.invoiceInstalment.createMany({
+            data: due.instalments.map((row) => ({
+              invoiceId: invoice.id,
+              sequence: row.sequence,
+              dueDate: new Date(row.dueDate),
+              amount: row.amount,
+              percent: row.percent,
+            })),
+          })
+        }
+        return tx.invoice.update({
+          where: { id: invoice.id },
+          data: { state: 'posted', dueDate: invoice.dueDate ?? due.dueDate, paymentTermId: invoice.paymentTermId ?? due.termId },
+          include: invoiceInclude,
+        })
+      }
+    }
+  }
   const accounts = await accountMap(tx, companyId)
+  const receivable = await readSetting(tx, companyId, 'accounting', 'receivable', '1122')
+  const payable = await readSetting(tx, companyId, 'accounting', 'payable', '2202')
+  if (!accounts.has(receivable)) throw new AppError(400, `Account ${receivable} is not in this company.`)
+  if (!accounts.has(payable)) throw new AppError(400, `Account ${payable} is not in this company.`)
   const journalCode = invoice.moveType.startsWith('in') ? 'PUR' : 'SAL'
   const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: journalCode } })
-  const lines = postingLines(
-    invoice.moveType,
-    accounts,
-    invoice.amountUntaxed,
-    invoice.amountTax,
-    invoice.amountTotal,
-    invoice.chargeAmount,
-    invoice.name,
-  )
+  const invoiceLines = await tx.invoiceLine.findMany({ where: { invoiceId: invoice.id }, select: { id: true } })
+  const taxed = await tx.documentTax.count({
+    where: { companyId, model: 'account.move.line', recordId: { in: invoiceLines.map((line) => line.id) } },
+  })
+  const lines = taxed > 0
+    ? await linesForInvoiceTax(
+        tx,
+        companyId,
+        invoice.moveType,
+        accounts,
+        invoice,
+        invoiceLines.map((line) => line.id),
+        receivable,
+        payable,
+      )
+    : postingLines(
+        invoice.moveType,
+        accounts,
+        invoice.amountUntaxed,
+        invoice.amountTax,
+        invoice.amountTotal,
+        invoice.chargeAmount,
+        invoice.name,
+        receivable,
+        payable,
+      )
   const debit = roundMoney(lines.reduce((sum, line) => sum + line.debit, 0))
   const credit = roundMoney(lines.reduce((sum, line) => sum + line.credit, 0))
   if (Math.abs(debit - credit) > 0.001) throw new AppError(500, 'The journal entry does not balance.')

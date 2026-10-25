@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { allocateKnown } from './number-series.ts'
 
 async function ignoreDuplicate(run: () => Promise<unknown>) {
   try {
@@ -107,13 +108,9 @@ export async function closeFiscalYear(companyId: number, name: string) {
       })
     }
     if (lines.length > 0) {
-      const sequence = await tx.sequence.update({
-        where: { name: `account.entry.${companyId}` },
-        data: { next: { increment: 1 } },
-      })
       await tx.journalEntry.create({
         data: {
-          name: `JE${String(sequence.next).padStart(4, '0')}`,
+          name: await allocateKnown(tx, companyId, 'account.entry'),
           journalId: journal.id,
           date: year.endsOn,
           companyId,
