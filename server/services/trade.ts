@@ -6,6 +6,7 @@ import { allocateDocument, allocateKnown } from './number-series.ts'
 import { assertQualityClear, prepareQualityChecks } from './quality.ts'
 import { applyQuant, roundQty } from './stock.ts'
 import { landedCost, valueDoneMove } from './valuation.ts'
+import { toBase } from './fx.ts'
 import { guardWorkflow } from './workflow.ts'
 
 async function nextDoc(tx: Tx, name: string, prefix: string) {
@@ -24,11 +25,11 @@ export async function noteChatter(tx: Tx, companyId: number, model: string, reco
 export async function assertCreditLimit(tx: Tx, companyId: number, customerId: number, orderTotal: number) {
   const customer = await tx.contact.findFirst({ where: { id: customerId, companyId } })
   if (!customer || customer.creditLimit <= 0) return
-  const open = await tx.invoice.aggregate({
+  const open = await tx.invoice.findMany({
     where: { companyId, partnerId: customerId, moveType: 'out_invoice', state: 'posted' },
-    _sum: { residual: true },
+    select: { residual: true, currency: true, rate: true },
   })
-  const exposure = (open._sum.residual ?? 0) + orderTotal
+  const exposure = roundMoney(open.reduce((sum, invoice) => sum + toBase(invoice.residual, invoice.currency ? invoice.rate : 1), 0) + orderTotal)
   if (exposure - customer.creditLimit > 0.001) {
     throw new AppError(409, `${customer.name} is over the credit limit of ${customer.creditLimit}.`)
   }

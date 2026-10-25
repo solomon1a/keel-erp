@@ -342,6 +342,8 @@ export const deskScreens: DeskScreen[] = [
   settings('accounting', 'Accounting settings', '会计设置', 'Journals and the tax report.', '日记账和税务报表。', [
     { key: 'receivable', labelEn: 'Receivable account', labelZh: '应收账款科目', value: '1122' },
     { key: 'payable', labelEn: 'Payable account', labelZh: '应付账款科目', value: '2202' },
+    { key: 'fxGain', labelEn: 'Exchange gain account', labelZh: '汇兑收益科目', value: '6061' },
+    { key: 'fxLoss', labelEn: 'Exchange loss account', labelZh: '汇兑损失科目', value: '6606' },
     { key: 'tax', labelEn: 'Tax return status', labelZh: '纳税申报状态', value: 'Not submitted' },
   ]),
   list('accounting', 'journals', 'Journals', '日记账', 'The books the company posts into.', '公司过账使用的日记账。', ['active'], [

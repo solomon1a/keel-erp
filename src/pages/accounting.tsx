@@ -13,7 +13,7 @@ import { Input } from '../components/ui/input.tsx'
 import { useI18n, type Translate } from '../i18n/locale.tsx'
 import type { MessageKey } from '../i18n/messages.ts'
 import { api, ApiError } from '../lib/api.ts'
-import { useMoney, useShortDate } from '../lib/format.ts'
+import { formatMoney, useMoney, useShortDate } from '../lib/format.ts'
 import { AgedReport, CashFlowReport } from './statement-reports.tsx'
 
 type Invoice = {
@@ -27,6 +27,8 @@ type Invoice = {
   amountTax: number
   amountTotal: number
   residual: number
+  currency: string
+  rate: number
   buyerName: string | null
   buyerTaxId: string | null
   buyerAddress: string | null
@@ -90,8 +92,13 @@ const filters = [
   ['in_refund', 'acct.type.in_refund'],
 ] as const satisfies ReadonlyArray<readonly [string, MessageKey]>
 
+function documentAmount(amount: number, currency: string, locale: 'en' | 'zh', money: (value: number) => string) {
+  if (!currency) return money(amount)
+  return formatMoney(amount, currency, locale)
+}
+
 export function AccountingPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const money = useMoney()
   const shortDate = useShortDate()
   const [params, setParams] = useSearchParams()
@@ -123,6 +130,7 @@ export function AccountingPage() {
           <Link to="/accounting/payments"><Button variant="outline">{t('acct.payments')}</Button></Link>
           <Link to="/accounting/journal"><Button variant="outline">{t('acct.journal')}</Button></Link>
           <Link to="/accounting/trial-balance"><Button variant="outline">{t('acct.trial')}</Button></Link>
+          <Link to="/accounting/fx"><Button variant="outline">{t('acct.fx')}</Button></Link>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -145,7 +153,7 @@ export function AccountingPage() {
                 <td className="px-4 py-3">{invoice.partner.name}</td>
                 <td className="px-4 py-3">{stateLabel(invoice.state, t)}</td>
                 <td className="px-4 py-3">{shortDate(invoice.invoiceDate)}{invoice.dueDate ? ` · ${t('phase.due')} ${shortDate(invoice.dueDate)}` : ''}</td>
-                <td className="px-4 py-3">{money(invoice.amountTotal)}</td>
+                <td className="px-4 py-3">{documentAmount(invoice.amountTotal, invoice.currency, locale, money)}</td>
               </tr>
             ))}
           </tbody>
@@ -157,13 +165,20 @@ export function AccountingPage() {
 
 export function InvoicePage() {
   const { id } = useParams()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const money = useMoney()
   const shortDate = useShortDate()
   const queryClient = useQueryClient()
   const [error, setError] = useState('')
   const [payAmount, setPayAmount] = useState('')
+  const [payRate, setPayRate] = useState('')
+  const [docCurrency, setDocCurrency] = useState('')
+  const [docRate, setDocRate] = useState('')
   const [method, setMethod] = useState('bank')
+  const rates = useQuery({
+    queryKey: ['exchange-rates'],
+    queryFn: () => api<{ base: string; rates: Array<{ currency: string; rate: number }> }>('/api/exchange-rates'),
+  })
   const invoice = useQuery({ queryKey: ['invoice', id], queryFn: () => api<Invoice>(`/api/invoices/${id}`) })
   const terms = useQuery({
     queryKey: ['invoice-terms', id],
@@ -203,11 +218,27 @@ export function InvoicePage() {
     onSuccess: () => void refresh(),
     onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('acct.failed')),
   })
+  const saveCurrency = useMutation({
+    mutationFn: () =>
+      api(`/api/invoices/${id}/currency`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          currency: docCurrency || invoice.data?.currency || rates.data?.base || 'CNY',
+          rate: Number(docRate || invoice.data?.rate || 1),
+        }),
+      }),
+    onSuccess: () => void refresh(),
+    onError: (reason) => setError(reason instanceof ApiError ? reason.message : t('acct.failed')),
+  })
   const pay = useMutation({
     mutationFn: () =>
       api(`/api/invoices/${id}/pay`, {
         method: 'POST',
-        body: JSON.stringify({ amount: Number(payAmount), method }),
+        body: JSON.stringify({
+          amount: Number(payAmount),
+          method,
+          ...(invoice.data?.currency && payRate ? { rate: Number(payRate) } : {}),
+        }),
       }),
     onSuccess: () => {
       setPayAmount('')
@@ -268,14 +299,50 @@ export function InvoicePage() {
               <tr key={line.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3">{line.description}</td>
                 <td className="px-4 py-3">{line.quantity}</td>
-                <td className="px-4 py-3">{money(line.subtotal)}</td>
-                <td className="px-4 py-3">{money(line.taxAmount)}</td>
+                <td className="px-4 py-3">{documentAmount(line.subtotal, row.currency, locale, money)}</td>
+                <td className="px-4 py-3">{documentAmount(line.taxAmount, row.currency, locale, money)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p>{t('acct.residual')} {money(row.residual)} / {money(row.amountTotal)}</p>
+      {row.state === 'draft' ? (
+        <form
+          className="flex flex-wrap items-end gap-3"
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault()
+            saveCurrency.mutate()
+          }}
+        >
+          <Field label={t('acct.currency')}>
+            <select
+              className="h-10 rounded-md border border-border bg-card px-3"
+              value={docCurrency || row.currency}
+              onChange={(event) => {
+                const next = event.target.value
+                setDocCurrency(next)
+                const known = rates.data?.rates.find((item) => item.currency === next)
+                if (known) setDocRate(String(known.rate))
+              }}
+            >
+              <option value="">{rates.data?.base ?? t('acct.currency')}</option>
+              {rates.data?.rates.filter((item) => item.currency !== rates.data?.base).map((item) => (
+                <option key={item.currency} value={item.currency}>{item.currency}</option>
+              ))}
+            </select>
+          </Field>
+          {docCurrency || row.currency ? (
+            <Field label={t('acct.rate')}>
+              <Input type="number" min="0" step="0.0001" value={docRate || String(row.rate || '')} onChange={(event) => setDocRate(event.target.value)} required />
+            </Field>
+          ) : null}
+          <Button type="submit" variant="outline" disabled={saveCurrency.isPending}>{t('acct.saveCurrency')}</Button>
+        </form>
+      ) : null}
+      <p>
+        {t('acct.residual')} {documentAmount(row.residual, row.currency, locale, money)} / {documentAmount(row.amountTotal, row.currency, locale, money)}
+        {row.currency ? ` · ${row.currency} @ ${row.rate} · ${t('acct.inBase')} ${money(row.amountTotal / (row.rate || 1))}` : ''}
+      </p>
       {row.state === 'posted' && row.residual > 0 ? (
         <form
           className="flex flex-wrap items-end gap-3"
@@ -285,7 +352,14 @@ export function InvoicePage() {
           }}
         >
           <BaseCurrencyNote />
-          <Field label={<BaseMoneyLabel text={t('acct.amount')} />}><Input type="number" min="0" step="0.01" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} required /></Field>
+          <Field label={row.currency ? `${t('acct.amount')} (${row.currency})` : <BaseMoneyLabel text={t('acct.amount')} />}>
+            <Input type="number" min="0" step="0.01" value={payAmount} onChange={(event) => setPayAmount(event.target.value)} required />
+          </Field>
+          {row.currency ? (
+            <Field label={t('acct.payRate')}>
+              <Input type="number" min="0" step="0.0001" value={payRate} placeholder={String(row.rate)} onChange={(event) => setPayRate(event.target.value)} />
+            </Field>
+          ) : null}
           <Field label={t('acct.method')}>
             <select className="h-10 rounded-md border border-border bg-card px-3" value={method} onChange={(event) => setMethod(event.target.value)}>
               <option value="bank">{t('acct.bank')}</option>
@@ -460,7 +534,7 @@ function ClassicReports({ view }: { view: string | null }) {
 
 export function InvoicePrintPage() {
   const { id } = useParams()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const money = useMoney()
   const invoice = useQuery({ queryKey: ['invoice', id], queryFn: () => api<Invoice>(`/api/invoices/${id}`) })
   const settings = useQuery({ queryKey: ['settings'], queryFn: () => api<{ name: string; city: string }>('/api/settings') })
@@ -488,13 +562,13 @@ export function InvoicePrintPage() {
             <tr key={line.id} className="border-t border-black">
               <td className="py-2">{line.description}</td>
               <td>{line.quantity}</td>
-              <td>{money(line.subtotal)}</td>
-              <td>{money(line.taxAmount)}</td>
+              <td>{documentAmount(line.subtotal, row.currency, locale, money)}</td>
+              <td>{documentAmount(line.taxAmount, row.currency, locale, money)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="mt-4 font-semibold">{money(row.amountTotal)}</p>
+      <p className="mt-4 font-semibold">{documentAmount(row.amountTotal, row.currency, locale, money)}{row.currency ? ` ${row.currency}` : ''}</p>
     </div>
   )
 }

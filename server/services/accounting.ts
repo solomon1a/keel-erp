@@ -9,6 +9,7 @@ import { assertBooksOpen } from './locks.ts'
 import { accountDocument, allocateDocument } from './number-series.ts'
 import { applyQuant, companyLocations, roundQty, warehouseStockLocation } from './stock.ts'
 import { valueDoneMove } from './valuation.ts'
+import { fxAccounts, scalePosting, settlementBases, settlementLines, toBase } from './fx.ts'
 import { guardWorkflow } from './workflow.ts'
 
 const invoiceInclude = {
@@ -196,7 +197,7 @@ async function createDraft(
   companyId: number,
   moveType: string,
   partnerId: number,
-  source: { salesOrderId?: number; purchaseOrderId?: number; posOrderId?: number; reversalOfId?: number },
+  source: { salesOrderId?: number; purchaseOrderId?: number; posOrderId?: number; reversalOfId?: number; currency?: string; rate?: number },
   lines: DraftLine[],
   buyer: { buyerName?: string | null; buyerTaxId?: string | null; buyerAddress?: string | null },
 ) {
@@ -222,6 +223,8 @@ async function createDraft(
       amountTax,
       amountTotal,
       residual: amountTotal,
+      currency: source.currency ?? '',
+      rate: source.rate && source.rate > 0 ? source.rate : 1,
       buyerName: buyer.buyerName ?? null,
       buyerTaxId: buyer.buyerTaxId ?? null,
       buyerAddress: buyer.buyerAddress ?? null,
@@ -589,7 +592,9 @@ export async function postInvoiceTx(tx: Tx, companyId: number, invoiceId: number
   const taxed = await tx.documentTax.count({
     where: { companyId, model: 'account.move.line', recordId: { in: invoiceLines.map((line) => line.id) } },
   })
-  const lines = taxed > 0
+  const documentRate = invoice.currency ? invoice.rate : 1
+  if (invoice.currency && !(documentRate > 0)) throw new AppError(400, 'The exchange rate has to be greater than zero.')
+  const lines = scalePosting(taxed > 0
     ? await linesForInvoiceTax(
         tx,
         companyId,
@@ -610,7 +615,7 @@ export async function postInvoiceTx(tx: Tx, companyId: number, invoiceId: number
         invoice.name,
         receivable,
         payable,
-      )
+      ), documentRate)
   const debit = roundMoney(lines.reduce((sum, line) => sum + line.debit, 0))
   const credit = roundMoney(lines.reduce((sum, line) => sum + line.credit, 0))
   if (Math.abs(debit - credit) > 0.001) throw new AppError(500, 'The journal entry does not balance.')
@@ -674,12 +679,12 @@ export async function postInvoice(companyId: number, invoiceId: number) {
   return prisma.$transaction((tx) => postInvoiceTx(tx, companyId, invoiceId), transactionOptions)
 }
 
-export async function payInvoice(companyId: number, invoiceId: number, amount: number, method: string) {
+export async function payInvoice(companyId: number, invoiceId: number, amount: number, method: string, rate?: number) {
   await ensureBooks(companyId)
-  return prisma.$transaction((tx) => payInvoiceTx(tx, companyId, invoiceId, amount, method), transactionOptions)
+  return prisma.$transaction((tx) => payInvoiceTx(tx, companyId, invoiceId, amount, method, rate), transactionOptions)
 }
 
-export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number, amount: number, method: string) {
+export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number, amount: number, method: string, rate?: number) {
     const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, companyId } })
     if (!invoice) throw new AppError(404, 'Invoice not found.')
     if (invoice.state !== 'posted' && invoice.state !== 'paid') {
@@ -690,43 +695,32 @@ export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number,
     const pay = roundMoney(amount)
     if (pay <= 0) throw new AppError(400, 'Payment amount must be greater than zero.')
     if (pay - invoice.residual > 0.001) throw new AppError(400, 'That payment is more than the amount still open.')
+    const documentRate = invoice.currency ? invoice.rate : 1
+    if (!invoice.currency && rate !== undefined && rate !== 1) {
+      throw new AppError(400, 'Set the document currency before using an exchange rate.')
+    }
+    const payRate = rate ?? documentRate
+    const bases = settlementBases(pay, documentRate, payRate)
     const accounts = await accountMap(tx, companyId)
     const cashAccount = method === 'cash' ? '1001' : '1002'
     const cash = accounts.get(cashAccount)
     const ar = accounts.get('1122')
     const ap = accounts.get('2202')
     if (!cash || !ar || !ap) throw new AppError(500, 'Payment accounts are missing.')
-    const label = invoice.name
-    const partnerId = invoice.partnerId
-    let lines: Array<{ accountId: number; debit: number; credit: number; label: string; partnerId: number }>
-    switch (invoice.moveType) {
-      case 'out_invoice':
-        lines = [
-          { accountId: cash.id, debit: pay, credit: 0, label, partnerId },
-          { accountId: ar.id, debit: 0, credit: pay, label, partnerId },
-        ]
-        break
-      case 'out_refund':
-        lines = [
-          { accountId: ar.id, debit: pay, credit: 0, label, partnerId },
-          { accountId: cash.id, debit: 0, credit: pay, label, partnerId },
-        ]
-        break
-      case 'in_invoice':
-        lines = [
-          { accountId: ap.id, debit: pay, credit: 0, label, partnerId },
-          { accountId: cash.id, debit: 0, credit: pay, label, partnerId },
-        ]
-        break
-      case 'in_refund':
-        lines = [
-          { accountId: cash.id, debit: pay, credit: 0, label, partnerId },
-          { accountId: ap.id, debit: 0, credit: pay, label, partnerId },
-        ]
-        break
-      default:
-        throw new AppError(400, 'Unknown invoice type.')
-    }
+    const fx = bases.fx === 0 ? null : await fxAccounts(tx, companyId)
+    const lines = settlementLines({
+      moveType: invoice.moveType,
+      clearBase: bases.clearBase,
+      cashBase: bases.cashBase,
+      fx: bases.fx,
+      cashId: cash.id,
+      arId: ar.id,
+      apId: ap.id,
+      gainId: fx?.gain.id ?? 0,
+      lossId: fx?.loss.id ?? 0,
+      label: invoice.name,
+      partnerId: invoice.partnerId,
+    })
     const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: 'BNK' } })
     await tx.journalEntry.create({
       data: {
@@ -739,7 +733,7 @@ export async function payInvoiceTx(tx: Tx, companyId: number, invoiceId: number,
       },
     })
     await tx.invoicePayment.create({
-      data: { invoiceId: invoice.id, amount: pay, method },
+      data: { invoiceId: invoice.id, amount: pay, method, rate: payRate },
     })
     const residual = roundMoney(invoice.residual - pay)
     const next = residual <= 0.001 ? 'paid' : 'posted'
@@ -764,42 +758,29 @@ export async function reversePaymentTx(tx: Tx, companyId: number, invoiceId: num
   const pay = roundMoney(amount)
   if (pay <= 0) throw new AppError(400, 'Payment amount must be greater than zero.')
   await assertYearOpen(tx, companyId, new Date())
+  const stored = await tx.invoicePayment.findFirst({ where: { invoiceId: invoice.id, amount: pay }, orderBy: { id: 'desc' } })
+  const documentRate = invoice.currency ? invoice.rate : 1
+  const bases = settlementBases(pay, documentRate, stored?.rate ?? documentRate)
   const accounts = await accountMap(tx, companyId)
   const cash = accounts.get('1002')
   const ar = accounts.get('1122')
   const ap = accounts.get('2202')
   if (!cash || !ar || !ap) throw new AppError(500, 'Payment accounts are missing.')
-  const label = `${invoice.name} reversal`
-  const partnerId = invoice.partnerId
-  let lines: Array<{ accountId: number; debit: number; credit: number; label: string; partnerId: number }>
-  switch (invoice.moveType) {
-    case 'out_invoice':
-      lines = [
-        { accountId: ar.id, debit: pay, credit: 0, label, partnerId },
-        { accountId: cash.id, debit: 0, credit: pay, label, partnerId },
-      ]
-      break
-    case 'out_refund':
-      lines = [
-        { accountId: cash.id, debit: pay, credit: 0, label, partnerId },
-        { accountId: ar.id, debit: 0, credit: pay, label, partnerId },
-      ]
-      break
-    case 'in_invoice':
-      lines = [
-        { accountId: cash.id, debit: pay, credit: 0, label, partnerId },
-        { accountId: ap.id, debit: 0, credit: pay, label, partnerId },
-      ]
-      break
-    case 'in_refund':
-      lines = [
-        { accountId: ap.id, debit: pay, credit: 0, label, partnerId },
-        { accountId: cash.id, debit: 0, credit: pay, label, partnerId },
-      ]
-      break
-    default:
-      throw new AppError(400, 'Unknown invoice type.')
-  }
+  const fx = bases.fx === 0 ? null : await fxAccounts(tx, companyId)
+  const forward = settlementLines({
+    moveType: invoice.moveType,
+    clearBase: bases.clearBase,
+    cashBase: bases.cashBase,
+    fx: bases.fx,
+    cashId: cash.id,
+    arId: ar.id,
+    apId: ap.id,
+    gainId: fx?.gain.id ?? 0,
+    lossId: fx?.loss.id ?? 0,
+    label: `${invoice.name} reversal`,
+    partnerId: invoice.partnerId,
+  })
+  const lines = forward.map((line) => ({ ...line, debit: line.credit, credit: line.debit }))
   const journal = await tx.journal.findFirstOrThrow({ where: { companyId, code: 'BNK' } })
   await tx.journalEntry.create({
     data: {
@@ -853,6 +834,8 @@ export async function creditInvoice(companyId: number, invoiceId: number) {
         salesOrderId: invoice.salesOrderId ?? undefined,
         purchaseOrderId: invoice.purchaseOrderId ?? undefined,
         posOrderId: invoice.posOrderId ?? undefined,
+        currency: invoice.currency,
+        rate: invoice.rate,
       },
       invoice.lines.map((line) => ({
         description: line.description,
@@ -930,6 +913,8 @@ export async function returnGoods(
         salesOrderId: invoice.salesOrderId ?? undefined,
         purchaseOrderId: invoice.purchaseOrderId ?? undefined,
         reversalOfId: invoice.id,
+        currency: invoice.currency,
+        rate: invoice.rate,
       },
       bill,
       { buyerName: invoice.buyerName, buyerTaxId: invoice.buyerTaxId, buyerAddress: invoice.buyerAddress },
@@ -1126,24 +1111,25 @@ export async function vatReport(companyId: number, from?: string, to?: string) {
       state: { in: ['posted', 'paid'] },
       invoiceDate: entryDate(from, to),
     },
-    select: { moveType: true, amountTax: true, invoiceDate: true },
+    select: { moveType: true, amountTax: true, invoiceDate: true, rate: true, currency: true },
   })
   let output = 0
   let input = 0
   for (const invoice of invoices) {
     if (!inRange(invoice.invoiceDate, from, to)) continue
+    const tax = toBase(invoice.amountTax, invoice.currency ? invoice.rate : 1)
     switch (invoice.moveType) {
       case 'out_invoice':
-        output += invoice.amountTax
+        output += tax
         break
       case 'out_refund':
-        output -= invoice.amountTax
+        output -= tax
         break
       case 'in_invoice':
-        input += invoice.amountTax
+        input += tax
         break
       case 'in_refund':
-        input -= invoice.amountTax
+        input -= tax
         break
       default:
         break

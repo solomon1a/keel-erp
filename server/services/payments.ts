@@ -103,6 +103,7 @@ export async function allocatePayment(companyId: number, paymentId: number, invo
     const expected = payment.kind === 'customer' ? 'out_invoice' : 'in_invoice'
     if (invoice.moveType !== expected) throw new AppError(400, 'That document is not open for this payment.')
     if (invoice.state !== 'posted') throw new AppError(409, 'Post the invoice before reconciling a payment.')
+    if (invoice.currency) throw new AppError(400, 'Record the payment on the invoice so the exchange rate can be applied.')
     const amount = roundMoney(rawAmount)
     if (amount <= 0) throw new AppError(400, 'Amount must be greater than zero.')
     if (amount - payment.unapplied > 0.001) throw new AppError(400, 'That is more than the payment still has open.')

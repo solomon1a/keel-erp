@@ -6,6 +6,7 @@ import { ThemeProvider } from './brand/theme.tsx'
 import { LocaleProvider } from './i18n/locale.tsx'
 import { AccountingPage, InvoicePage, InvoicePrintPage, LedgerPage, ReportsPage } from './pages/accounting.tsx'
 import { JournalPage, NumberSeriesPage, PaymentsPage, TrialBalancePage } from './pages/books-pages.tsx'
+import { FxPage } from './pages/fx-page.tsx'
 import { ImportPage } from './pages/import-page.tsx'
 import { TaxPage } from './pages/tax-page.tsx'
 import { AccessPage } from './pages/access-page.tsx'
@@ -146,6 +147,7 @@ export default function App() {
             <Route path="/accounting/payments" element={<PaymentsPage />} />
             <Route path="/accounting/journal" element={<JournalPage />} />
             <Route path="/accounting/trial-balance" element={<TrialBalancePage />} />
+            <Route path="/accounting/fx" element={<FxPage />} />
             <Route path="/accounting/:id" element={<InvoicePage />} />
             <Route path="/crm/activities" element={<ActivitiesPage />} />
             <Route path="/crm/analysis" element={<CrmAnalysisPage />} />

@@ -120,6 +120,7 @@ model Company {
   onlineWarehouseId Int?
   numberSeries     NumberSeries[]
   paymentEntries   PaymentEntry[]
+  fxRevaluations   FxRevaluation[]
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
@@ -155,6 +156,19 @@ model User {
   qualityOverrides     QualityCheck[]      @relation("QualityOverride")
   assignedTickets      Ticket[]            @relation("TicketAssignee")
   createdAt            DateTime            @default(now())
+}
+
+/// One open revaluation at a time. The next run reverses it, then posts today's rates.
+model FxRevaluation {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  entryId   Int?          @unique
+  entry     JournalEntry? @relation(fields: [entryId], references: [id])
+  reversed  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+
+  @@index([companyId])
 }
 
 /// How many units of `currency` equal one unit of the company currency. A demo table until an admin edits it.
@@ -994,6 +1008,10 @@ model Invoice {
   amountTax       Float
   amountTotal     Float
   residual        Float
+  /// Empty means the company currency. Amounts on the document stay in this currency.
+  currency        String           @default("")
+  /// Units of `currency` per 1 unit of the company currency, frozen when the draft is posted.
+  rate            Float            @default(1)
   buyerName       String?
   buyerTaxId      String?
   buyerAddress    String?
@@ -1058,6 +1076,8 @@ model InvoicePayment {
   amount    Float
   /// bank, cash, wechat, alipay, card
   method    String
+  /// Rate used for this receipt. 1 when the document is in the company currency.
+  rate      Float    @default(1)
   paidAt    DateTime @default(now())
 }
 
@@ -1081,6 +1101,7 @@ model JournalEntry {
   reconcileMatches ReconcileMatch[]
   paymentEntry PaymentEntry?
   paymentAllocations PaymentAllocation[]
+  fxRevaluation FxRevaluation?
 
   @@unique([companyId, name])
   @@index([companyId, date])

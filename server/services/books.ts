@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
+import { toBase } from './fx.ts'
 import { AppError } from '../errors.ts'
 import { allocateKnown } from './number-series.ts'
 
@@ -161,7 +162,7 @@ export async function agingReport(companyId: number, asOf: string) {
   if (Number.isNaN(day.getTime())) throw new AppError(400, 'Enter a valid as-of date.')
   const invoices = await prisma.invoice.findMany({
     where: { companyId, state: { in: ['posted', 'paid'] }, residual: { gt: 0.001 }, invoiceDate: { lte: day } },
-    select: { name: true, moveType: true, invoiceDate: true, residual: true },
+    select: { name: true, moveType: true, invoiceDate: true, residual: true, currency: true, rate: true },
     orderBy: { invoiceDate: 'asc' },
   })
   const empty = () => ({ current: 0, d30: 0, d60: 0, older: 0, total: 0 })
@@ -170,10 +171,11 @@ export async function agingReport(companyId: number, asOf: string) {
   const lines = invoices.map((invoice) => {
     const days = Math.floor((day.getTime() - invoice.invoiceDate.getTime()) / 86_400_000)
     const bucket = bucketFor(days)
+    const residual = toBase(invoice.residual, invoice.currency ? invoice.rate : 1)
     const side = invoice.moveType === 'out_invoice' || invoice.moveType === 'in_refund' ? receivable : payable
-    side[bucket] = roundMoney(side[bucket] + invoice.residual)
-    side.total = roundMoney(side.total + invoice.residual)
-    return { name: invoice.name, moveType: invoice.moveType, bucket, residual: invoice.residual, days }
+    side[bucket] = roundMoney(side[bucket] + residual)
+    side.total = roundMoney(side.total + residual)
+    return { name: invoice.name, moveType: invoice.moveType, bucket, residual, days }
   })
   return { asOf, receivable, payable, lines }
 }

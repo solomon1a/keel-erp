@@ -405,6 +405,12 @@ export const fapiaoSchema = z.object({
 export const invoicePaySchema = z.object({
   amount: z.number().positive('Payment amount must be greater than zero'),
   method: z.enum(['bank', 'cash', 'wechat', 'alipay', 'card']),
+  rate: z.number().positive('The exchange rate has to be greater than zero.').max(1_000_000).optional(),
+})
+
+export const invoiceCurrencySchema = z.object({
+  currency: z.string().regex(/^[A-Z]{3}$/, 'Choose a currency.'),
+  rate: z.number().positive('The exchange rate has to be greater than zero.').max(1_000_000),
 })
 
 export type FapiaoInput = z.infer<typeof fapiaoSchema>

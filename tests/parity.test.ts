@@ -30,6 +30,8 @@ const defaults: Array<[string, string, string]> = [
   ['website', 'warehouse', 'Online'],
   ['accounting', 'receivable', '1122'],
   ['accounting', 'payable', '2202'],
+  ['accounting', 'fxGain', '6061'],
+  ['accounting', 'fxLoss', '6606'],
   ['accounting', 'tax', 'Not submitted'],
   ['contacts', 'unique', 'yes'],
   ['hr', 'week', 'Mon–Fri'],

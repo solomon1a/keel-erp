@@ -1,6 +1,7 @@
 import { roundMoney } from '../../src/domain/money.ts'
 import { prisma } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { toBase } from './fx.ts'
 
 export type AgeBucket = 'current' | 'd1_30' | 'd31_60' | 'd61_90' | 'd90'
 
@@ -82,6 +83,8 @@ export async function agedStatement(companyId: number, side: AgedSide, asOf: str
       invoiceDate: true,
       dueDate: true,
       residual: true,
+      currency: true,
+      rate: true,
       partnerId: true,
       partner: { select: { name: true } },
     },
@@ -90,7 +93,7 @@ export async function agedStatement(companyId: number, side: AgedSide, asOf: str
   const partners = new Map<number, AgedPartner>()
   const totals = emptyTotals()
   for (const invoice of invoices) {
-    const amount = signedAmount(side, invoice.moveType, invoice.residual)
+    const amount = signedAmount(side, invoice.moveType, toBase(invoice.residual, invoice.currency ? invoice.rate : 1))
     if (amount === null || Math.abs(amount) < 0.001) continue
     const due = invoice.dueDate ?? invoice.invoiceDate
     const days = Math.floor((day.getTime() - due.getTime()) / 86_400_000)
