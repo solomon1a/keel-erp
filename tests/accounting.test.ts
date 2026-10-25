@@ -54,6 +54,73 @@ describe('accounting', () => {
       equity: jiangbeiBooks.equity,
       balanced: true,
     })
+    expect(jiangbeiBooks.profit).toBeGreaterThan(0)
+    expect(jiangbeiBooks.assets).toBeGreaterThan(0)
+    const margin = roundMoney((jiangbeiBooks.profit / jiangbeiBooks.income) * 100)
+    expect(margin).toBeGreaterThanOrEqual(5)
+    expect(margin).toBeLessThanOrEqual(25)
+
+    const company = await prisma.company.findFirstOrThrow({ where: { name: 'Jiangbei Goods Co.' } })
+    const chart = await prisma.account.findMany({
+      where: { companyId: company.id },
+      select: { id: true, code: true, type: true },
+    })
+    const byId = new Map(chart.map((account) => [account.id, account]))
+    const items = await prisma.journalItem.findMany({
+      where: { entry: { companyId: company.id } },
+      select: { accountId: true, debit: true, credit: true, entry: { select: { date: true } } },
+    })
+    const closing = new Map<string, number>()
+    for (const item of items) {
+      const account = byId.get(item.accountId)
+      if (!account) continue
+      closing.set(account.code, roundMoney((closing.get(account.code) ?? 0) + item.debit - item.credit))
+    }
+    for (const account of chart) {
+      if (account.type !== 'asset' || account.code === '1602') continue
+      expect(closing.get(account.code) ?? 0, account.code).toBeGreaterThanOrEqual(0)
+    }
+    expect(closing.get('1602') ?? 0).toBeLessThanOrEqual(0)
+    expect(roundMoney((closing.get('1601') ?? 0) + (closing.get('1602') ?? 0))).toBeGreaterThanOrEqual(0)
+
+    const cashCodes = new Set(['1001', '1002'])
+    const running = new Map<string, number>()
+    const monthEnd = new Map<string, number>()
+    const ordered = items
+      .filter((item) => cashCodes.has(byId.get(item.accountId)?.code ?? ''))
+      .sort((a, b) => a.entry.date.getTime() - b.entry.date.getTime() || a.accountId - b.accountId)
+    for (const item of ordered) {
+      const code = byId.get(item.accountId)?.code ?? ''
+      const balanceNow = roundMoney((running.get(code) ?? 0) + item.debit - item.credit)
+      running.set(code, balanceNow)
+      monthEnd.set(`${code}:${item.entry.date.toISOString().slice(0, 7)}`, balanceNow)
+    }
+    for (const [key, amount] of monthEnd) expect(amount, key).toBeGreaterThanOrEqual(0)
+
+    const volumeProducts = await prisma.product.findMany({
+      where: { companyId: company.id, sku: { startsWith: 'VOL-' } },
+      select: { id: true, sku: true },
+    })
+    const ledgers = await prisma.stockLedger.findMany({
+      where: { companyId: company.id, productId: { in: volumeProducts.map((product) => product.id) } },
+      orderBy: { id: 'asc' },
+      select: { productId: true, balanceQty: true },
+    })
+    const latestQty = new Map<number, number>()
+    for (const row of ledgers) latestQty.set(row.productId, row.balanceQty)
+    const quants = await prisma.stockQuant.groupBy({
+      by: ['productId'],
+      where: { location: { companyId: company.id }, productId: { in: [...latestQty.keys()] } },
+      _sum: { quantity: true },
+    })
+    const onHand = new Map(quants.map((row) => [row.productId, row._sum.quantity ?? 0]))
+    for (const product of volumeProducts) {
+      const qty = latestQty.get(product.id)
+      if (qty === undefined) continue
+      expect(onHand.get(product.id) ?? 0, product.sku).toBe(qty)
+    }
+    expect(latestQty.size).toBeGreaterThan(0)
+    expect(closing.get('1405') ?? 0).toBeGreaterThan(0)
 
     const aging = await call('/api/reports/aging?asOf=2026-10-16', maya)
     expect(aging.status).toBe(200)

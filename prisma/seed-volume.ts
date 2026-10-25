@@ -14,6 +14,7 @@ import {
   volumeDraftLeaves,
   volumeEmployees,
   volumeInvoices,
+  volumeJobTitles,
   volumeJournals,
   volumeLeads,
   volumeManufacturing,
@@ -836,7 +837,6 @@ async function seedMaking(client: PrismaClient, companyId: number, userId: numbe
 
 async function seedPeople(client: PrismaClient, companyId: number, now: Date) {
   if (await client.employee.findFirst({ where: { companyId, name: volumeEmployees[0] }, select: { id: true } })) return
-  const titles = ['Dyer', 'Stitcher', 'Picker', 'Buyer', 'Bookkeeper', 'Pattern maker']
   await client.$transaction(async (tx) => {
     await tx.department.createMany({
       data: volumeDepartments.map((name) => ({ companyId, name })),
@@ -852,7 +852,7 @@ async function seedPeople(client: PrismaClient, companyId: number, now: Date) {
         name,
         email: `staff${pad(index + 1, 2)}@volume.jiangbei.example`,
         phone: `+86 21 5600 ${pad(2000 + index, 4)}`,
-        jobTitle: titles[index % titles.length]!,
+        jobTitle: volumeJobTitles[index] ?? 'Stitcher',
         hourlyCost: 48,
         hourlyRate: 120,
         departmentId: departmentId.get(volumeDepartments[index % volumeDepartments.length]!) ?? null,
@@ -942,7 +942,10 @@ async function seedAccounting(client: PrismaClient, companyId: number, now: Date
   if (customers.length === 0 || vendors.length === 0 || people.length === 0) throw new Error('Volume books are missing partners.')
   await client.$transaction(async (tx) => {
     await ensurePayrollAccounts(tx, companyId)
-    await ensureAccounts(tx, companyId, [['6608', 'Utilities', 'expense']])
+    await ensureAccounts(tx, companyId, [
+      ['6608', 'Utilities', 'expense'],
+      ['2231', 'Owner loan', 'liability'],
+    ])
     await ensureAssetCategory(tx, companyId)
     const accounts = await tx.account.findMany({ where: { companyId }, select: { id: true, code: true } })
     const accountId = new Map(accounts.map((row) => [row.code, row.id]))
