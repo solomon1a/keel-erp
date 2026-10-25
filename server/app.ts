@@ -906,7 +906,7 @@ export function createApp() {
         ...(state && state !== 'all' ? { state } : {}),
       },
       include: { product: { select: { id: true, name: true, sku: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { id: 'desc' },
       take: 200,
     })
     return c.json(orders)

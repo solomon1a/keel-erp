@@ -222,7 +222,24 @@ describe('guided demo', () => {
     }
 
     const restored = await call('/api/reports/pnl', maya)
-    expect(restored.body).toMatchObject({ profit: jiangbeiBooks.profit })
+    expect(restored.body).toMatchObject({
+      income: jiangbeiBooks.income,
+      expense: jiangbeiBooks.expense,
+      profit: jiangbeiBooks.profit,
+    })
+    const restoredBalance = await call('/api/reports/balance', maya)
+    expect(restoredBalance.body).toMatchObject({
+      assets: jiangbeiBooks.assets,
+      liabilities: jiangbeiBooks.liabilities,
+      equity: jiangbeiBooks.equity,
+      balanced: true,
+    })
+    const restoredVat = await call('/api/reports/vat', maya)
+    expect(restoredVat.body).toMatchObject({
+      output: jiangbeiBooks.outputVat,
+      input: jiangbeiBooks.inputVat,
+      payable: jiangbeiBooks.vatPayable,
+    })
     expect(await prisma.quotation.count({ where: { companyId, name: { startsWith: 'GD' } } })).toBe(0)
     expect(await prisma.demoRun.count({ where: { companyId } })).toBe(0)
     expect(await prisma.qualityPoint.count({ where: { companyId, name: { startsWith: 'Guided demo' } } })).toBe(0)

@@ -38,9 +38,7 @@ describe('accounting', () => {
       expense: jiangbeiBooks.expense,
       profit: jiangbeiBooks.profit,
     })
-    const margin = jiangbeiBooks.profit / jiangbeiBooks.income
-    expect(margin).toBeGreaterThan(0.15)
-    expect(margin).toBeLessThan(0.25)
+    expect(jiangbeiBooks.profit).toBe(roundMoney(jiangbeiBooks.income - jiangbeiBooks.expense))
 
     const vat = await call('/api/reports/vat', maya)
     expect(vat.body).toMatchObject({

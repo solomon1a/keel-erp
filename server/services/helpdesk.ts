@@ -137,7 +137,7 @@ async function healDemoClocks(companyId: number) {
 export async function helpdeskBoard(companyId: number) {
   await healDemoClocks(companyId)
   const [rows, teams, tags, policies, users, customers] = await Promise.all([
-    prisma.ticket.findMany({ where: { companyId }, include: ticketInclude, orderBy: { createdAt: 'desc' } }),
+    prisma.ticket.findMany({ where: { companyId }, include: ticketInclude, orderBy: { id: 'desc' } }),
     prisma.helpdeskTeam.findMany({ where: { companyId }, orderBy: { name: 'asc' } }),
     prisma.helpdeskTag.findMany({ where: { companyId }, orderBy: { name: 'asc' } }),
     prisma.slaPolicy.findMany({ where: { companyId }, orderBy: { priority: 'asc' } }),

@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { volumePayroll } from '../prisma/volume-plan.ts'
 import { demoPasswords, seedDatabase } from '../prisma/seed.ts'
 import { prisma } from '../server/db.ts'
+import { roundMoney } from '../src/domain/money.ts'
 import { call, signIn } from './http.ts'
 import { resetAndSeed } from './reset-db.ts'
 
@@ -54,8 +56,9 @@ describe('payroll and expenses', () => {
     })
     const debit = entry.lines.reduce((sum, line) => sum + line.debit, 0)
     const credit = entry.lines.reduce((sum, line) => sum + line.credit, 0)
-    expect(debit).toBe(12000)
-    expect(credit).toBe(12000)
+    const workshop = roundMoney(volumePayroll.reduce((sum, row) => sum + row.gross, 0))
+    expect(debit).toBe(roundMoney(12000 + workshop))
+    expect(credit).toBe(roundMoney(12000 + workshop))
   })
 
   it('approves and reimburses a claim, and keeps one seeded run', async () => {

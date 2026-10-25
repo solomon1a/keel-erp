@@ -18,8 +18,7 @@ import {
   volumeLeads,
   volumeManufacturing,
   volumeMarker,
-  volumePayrollEach,
-  volumePayrollNames,
+  volumePayroll,
   volumeProducts,
   volumeProjects,
   volumePurchases,
@@ -1136,17 +1135,25 @@ async function seedAccounting(client: PrismaClient, companyId: number, now: Date
 
 async function seedPayroll(client: PrismaClient, companyId: number) {
   if (await client.payrollRun.findFirst({ where: { companyId, name: 'PR-V-01' }, select: { id: true } })) return
+  const payByName = new Map<string, { gross: number; deduction: number; net: number }>(volumePayroll.map((row) => [row.name, row]))
   const people = await client.employee.findMany({
-    where: { companyId, name: { in: [...volumePayrollNames] } },
+    where: { companyId, name: { in: volumePayroll.map((row) => row.name) } },
     select: { id: true, name: true },
   })
   const entries = await client.journalEntry.findMany({
     where: { companyId, name: { startsWith: 'JE-V-W' } },
     select: { id: true, name: true, date: true },
   })
-  if (people.length !== volumePayrollNames.length || entries.length < 12) throw new Error('Volume payroll is missing people or journals.')
+  if (people.length !== volumePayroll.length || entries.length < 12) throw new Error('Volume payroll is missing people or journals.')
   const wage = entries.filter((row) => /^JE-V-W\d\d$/.test(row.name)).sort((a, b) => a.name.localeCompare(b.name))
   await client.$transaction(async (tx) => {
+    await tx.salaryStructure.createMany({
+      data: people.map((person) => ({
+        companyId,
+        employeeId: person.id,
+        monthlyGross: payByName.get(person.name)?.gross ?? 0,
+      })),
+    })
     await tx.payrollRun.createMany({
       data: wage.map((row, index) => ({
         companyId,
@@ -1160,21 +1167,27 @@ async function seedPayroll(client: PrismaClient, companyId: number) {
       where: { companyId, name: { startsWith: 'PR-V-' } },
       select: { id: true },
     })
-    await chunks(runs.flatMap((run) => people.map((person) => ({
-      runId: run.id,
-      employeeId: person.id,
-      gross: volumePayrollEach.gross,
-      deduction: volumePayrollEach.deduction,
-      net: volumePayrollEach.net,
-    }))), (part) => tx.payslip.createMany({ data: part }))
+    await chunks(runs.flatMap((run) => people.map((person) => {
+      const pay = payByName.get(person.name)
+      return {
+        runId: run.id,
+        employeeId: person.id,
+        gross: pay?.gross ?? 0,
+        deduction: pay?.deduction ?? 0,
+        net: pay?.net ?? 0,
+      }
+    })), (part) => tx.payslip.createMany({ data: part }))
     const slips = await tx.payslip.findMany({
       where: { run: { companyId, name: { startsWith: 'PR-V-' } } },
-      select: { id: true },
+      select: { id: true, employee: { select: { name: true } } },
     })
-    await chunks(slips.flatMap((slip) => [
-      { payslipId: slip.id, code: 'BASIC', label: 'Basic pay', kind: 'earning', amount: volumePayrollEach.gross },
-      { payslipId: slip.id, code: 'IIT', label: 'Wage withholding', kind: 'deduction', amount: volumePayrollEach.deduction },
-    ]), (part) => tx.payslipLine.createMany({ data: part }))
+    await chunks(slips.flatMap((slip) => {
+      const pay = payByName.get(slip.employee.name)
+      return [
+        { payslipId: slip.id, code: 'BASIC', label: 'Basic pay', kind: 'earning', amount: pay?.gross ?? 0 },
+        { payslipId: slip.id, code: 'IIT', label: 'Wage withholding', kind: 'deduction', amount: pay?.deduction ?? 0 },
+      ]
+    }), (part) => tx.payslipLine.createMany({ data: part }))
   }, transactionOptions)
 }
 

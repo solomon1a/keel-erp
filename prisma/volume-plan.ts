@@ -13,9 +13,9 @@ const BILL_BASE = 24_000
 const RENT = 8_500
 const FREIGHT = 1_800
 const UTILITIES = 1_200
-const PAY_GROSS = 22_000
-const PAY_DEDUCTION = 3_300
-const PAY_NET = 18_700
+const PAY_GROSS = 193_400
+const PAY_DEDUCTION = 29_010
+const PAY_NET = 164_390
 const CLAIM = 240
 const CLAIM_COUNT = 6
 const CREDIT_UNTAXED = 4_800
@@ -372,8 +372,18 @@ export const volumeEmployees = [
   'Yasmin Noor', 'Zhuo Min', 'Adeel Khan', 'Bianca Rossi',
 ] as const
 
-export const volumePayrollNames = volumeEmployees.slice(0, 8)
-export const volumePayrollEach = { gross: 2750, deduction: 412.5, net: 2337.5 }
+const volumeGrosses = [
+  6800, 5600, 5400, 7600, 8200, 7800, 7200, 5800, 5600, 7400, 8600, 9200,
+  6400, 5400, 5200, 7000, 8000, 8400, 6600, 5600, 5200, 7200, 8800, 9600,
+  6200, 5800, 5000, 7800,
+] as const
+
+export const volumePayroll = volumeEmployees.map((name, index) => {
+  const gross = volumeGrosses[index] ?? 0
+  const deduction = roundMoney(gross * 0.15)
+  const net = roundMoney(gross - deduction)
+  return { name, gross, deduction, net }
+})
 export const volumeDraftLeaves = 3
 export const volumeDepartments = ['Dye house', 'Stitching', 'Warehouse', 'Showroom', 'Accounts', 'Design'] as const
 
@@ -692,9 +702,10 @@ if (productSkus.size !== volumeProducts.length) throw new Error('Volume products
 if (!productSkus.has('VOL-FG-01')) throw new Error('Volume marker product is missing.')
 if (volumeProducts.length < 80 || volumeProducts.length > 120) throw new Error('Volume product count is out of range.')
 if (volumeCrm.won !== volumeCrm.lost) throw new Error('Volume won and lost leads must stay level so conversion holds.')
-if (volumePayrollNames.length * volumePayrollEach.gross !== PAY_GROSS) throw new Error('Volume payslips do not add up to the payroll journal.')
-if (roundMoney(volumePayrollNames.length * volumePayrollEach.deduction) !== PAY_DEDUCTION) throw new Error('Volume payroll deductions do not add up.')
-if (roundMoney(volumePayrollNames.length * volumePayrollEach.net) !== PAY_NET) throw new Error('Volume payroll net does not add up.')
+if (volumePayroll.length !== volumeEmployees.length) throw new Error('Every Jiangbei employee needs a salary.')
+if (roundMoney(volumePayroll.reduce((sum, row) => sum + row.gross, 0)) !== PAY_GROSS) throw new Error('Volume payslips do not add up to the payroll journal.')
+if (roundMoney(volumePayroll.reduce((sum, row) => sum + row.deduction, 0)) !== PAY_DEDUCTION) throw new Error('Volume payroll deductions do not add up.')
+if (roundMoney(volumePayroll.reduce((sum, row) => sum + row.net, 0)) !== PAY_NET) throw new Error('Volume payroll net does not add up.')
 if (jiangbeiHelpdeskBoard.tickets !== 12 + volumeTickets.length) throw new Error('Volume helpdesk board drifted.')
 
 export function volumeDate(monthsAgo: number, day: number, now = new Date()) {
