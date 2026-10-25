@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 
-async function deleteCompany(client: PrismaClient, companyId: number) {
+export async function deleteCompany(client: PrismaClient, companyId: number) {
   await client.$transaction(async (tx) => {
     await tx.company.update({ where: { id: companyId }, data: { onlineWarehouseId: null } })
     await tx.chatterMessage.deleteMany({ where: { companyId } })

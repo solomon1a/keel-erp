@@ -23,6 +23,7 @@ import { seedCrm } from './seed-crm.ts'
 import { seedHelpdesk } from './seed-helpdesk.ts'
 import { seedPhase } from './seed-phase.ts'
 import { seedVolume } from './seed-volume.ts'
+import { refreshOutdatedJiangbei, restoreDisplayCurrency } from './refresh-jiangbei.ts'
 
 const prisma = new PrismaClient({ transactionOptions })
 
@@ -51,6 +52,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
   forgetBooks()
   clearSessionCache()
   const failures: string[] = []
+  let refreshed: Awaited<ReturnType<typeof refreshOutdatedJiangbei>> = null
+  await runStage('refresh-jiangbei', async () => { refreshed = await refreshOutdatedJiangbei(client) }, failures)
   await runStage('cleanup', () => removeStrayCompanies(client), failures)
   await runStage('jiangbei', () => seedJiangbei(client), failures)
   await runStage('regions', () => seedRegionalCompanies(client), failures)
@@ -79,6 +82,8 @@ export async function seedDatabase(client: PrismaClient = prisma) {
     const companies = await client.company.findMany({ select: { id: true, currency: true } })
     for (const company of companies) await ensureDemoRates(client, company.id, company.currency)
   }, failures)
+  const kept = refreshed as Awaited<ReturnType<typeof refreshOutdatedJiangbei>>
+  if (kept) await runStage('refresh-jiangbei-settings', () => restoreDisplayCurrency(client, kept.displayCurrency), failures)
   if (failures.length > 0) {
     throw new Error(`KEEL SEED FAILED: ${failures.join('; ')}`)
   }
