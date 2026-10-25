@@ -51,6 +51,12 @@ import { WarehouseDetailPage } from './pages/warehouse-detail-page.tsx'
 import { WarehouseFormPage } from './pages/warehouse-form-page.tsx'
 import { WarehousesPage } from './pages/warehouses-page.tsx'
 import { JobCardsPage } from './pages/job-cards-page.tsx'
+import { BomToolsPage } from './pages/bom-tools-page.tsx'
+import { MfgDowntimePage } from './pages/mfg-downtime-page.tsx'
+import { MfgForecastPage } from './pages/mfg-forecast-page.tsx'
+import { MfgLeadPage } from './pages/mfg-lead-page.tsx'
+import { MfgReportsPage } from './pages/mfg-reports-page.tsx'
+import { MfgUnbuildPage } from './pages/mfg-unbuild-page.tsx'
 import { ManufacturingDetailPage } from './pages/manufacturing-detail-page.tsx'
 import { ManufacturingFormPage } from './pages/manufacturing-form-page.tsx'
 import { ManufacturingPage } from './pages/manufacturing-page.tsx'
@@ -181,6 +187,11 @@ export default function App() {
             <Route path="/vendors" element={<VendorsPage />} />
             <Route path="/manufacturing" element={<ManufacturingPage />} />
             <Route path="/manufacturing/plan" element={<ProductionPlanPage />} />
+            <Route path="/manufacturing/forecasts" element={<MfgForecastPage />} />
+            <Route path="/manufacturing/downtime" element={<MfgDowntimePage />} />
+            <Route path="/manufacturing/unbuild" element={<MfgUnbuildPage />} />
+            <Route path="/manufacturing/reports" element={<MfgReportsPage />} />
+            <Route path="/manufacturing/lead-times" element={<MfgLeadPage />} />
             <Route path="/manufacturing/wastage" element={<WastagePage />} />
             <Route path="/manufacturing/workstations" element={<WorkstationsPage />} />
             <Route path="/manufacturing/routings" element={<RoutingsPage />} />
@@ -189,6 +200,7 @@ export default function App() {
             <Route path="/manufacturing/:id" element={<ManufacturingDetailPage />} />
             <Route path="/manufacturing/:id/edit" element={<ManufacturingFormPage />} />
             <Route path="/boms" element={<BomsPage />} />
+            <Route path="/boms/tools" element={<BomToolsPage />} />
             <Route path="/boms/new" element={<BomFormPage />} />
             <Route path="/boms/:id" element={<BomDetailPage />} />
             <Route path="/boms/:id/edit" element={<BomFormPage />} />

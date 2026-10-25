@@ -50,6 +50,9 @@ export function ManufacturingPage() {
         </div>
         <div className="keel-actions">
           <Link to="/manufacturing/plan"><Button variant="outline">{t('floor.plan')}</Button></Link>
+          <Link to="/manufacturing/reports"><Button variant="outline">{t('mfg.reports')}</Button></Link>
+          <Link to="/manufacturing/downtime"><Button variant="outline">{t('mfg.downtime')}</Button></Link>
+          <Link to="/manufacturing/unbuild"><Button variant="outline">{t('mfg.unbuild')}</Button></Link>
           <Link to="/manufacturing/wastage"><Button variant="outline">{t('floor.wastage')}</Button></Link>
           <Link to="/boms"><Button variant="outline">{t('manufacturing.boms')}</Button></Link>
           <Link to="/manufacturing/new"><Button size="lg">{t('manufacturing.new')}</Button></Link>

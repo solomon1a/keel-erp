@@ -25,6 +25,11 @@ import {
   workstationInputSchema,
   subcontractReceiveSchema,
   wastageSchema,
+  forecastInputSchema,
+  downtimeInputSchema,
+  unbuildInputSchema,
+  leadDaysSchema,
+  bomCompareSchema,
   productInputSchema,
   purchaseInputSchema,
   receivePurchaseSchema,
@@ -153,6 +158,23 @@ import {
   wastageReport,
   workspacePulse,
 } from './services/floor.ts'
+import {
+  compareBoms,
+  completeUnbuild,
+  confirmDowntime,
+  createDowntime,
+  createForecast,
+  createUnbuild,
+  deleteForecast,
+  draftPlanPurchases,
+  explodeBom,
+  listDowntime,
+  listForecasts,
+  listLeadTimes,
+  listUnbuilds,
+  manufacturingReports,
+  saveLeadDays,
+} from './services/mfg-plan.ts'
 
 function parseBody<T>(schema: { safeParse: (value: unknown) => { success: true; data: T } | { success: false; error: { issues: Array<{ message: string }> } } }, body: unknown): T {
   const parsed = schema.safeParse(body)
@@ -864,6 +886,87 @@ export function createApp() {
   app.post('/api/manufacturing/plans/:id/raise', async (c) => {
     const user = c.get('user')
     return c.json(await raiseProductionPlan(user.companyId, user.id, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/manufacturing/plans/:id/purchases', async (c) => {
+    const user = c.get('user')
+    return c.json(await draftPlanPurchases(user.companyId, user.id, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/manufacturing/forecasts', async (c) => {
+    const user = c.get('user')
+    return c.json(await listForecasts(user.companyId))
+  })
+
+  app.post('/api/manufacturing/forecasts', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(forecastInputSchema, await c.req.json())
+    return c.json(await createForecast(user.companyId, input), 201)
+  })
+
+  app.delete('/api/manufacturing/forecasts/:id', async (c) => {
+    const user = c.get('user')
+    await deleteForecast(user.companyId, Number(c.req.param('id')))
+    return c.body(null, 204)
+  })
+
+  app.get('/api/manufacturing/downtime', async (c) => {
+    const user = c.get('user')
+    return c.json(await listDowntime(user.companyId))
+  })
+
+  app.post('/api/manufacturing/downtime', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(downtimeInputSchema, await c.req.json())
+    return c.json(await createDowntime(user.companyId, input), 201)
+  })
+
+  app.post('/api/manufacturing/downtime/:id/confirm', async (c) => {
+    const user = c.get('user')
+    return c.json(await confirmDowntime(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/manufacturing/unbuild', async (c) => {
+    const user = c.get('user')
+    return c.json(await listUnbuilds(user.companyId))
+  })
+
+  app.post('/api/manufacturing/unbuild', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(unbuildInputSchema, await c.req.json())
+    return c.json(await createUnbuild(user.companyId, input), 201)
+  })
+
+  app.post('/api/manufacturing/unbuild/:id/done', async (c) => {
+    const user = c.get('user')
+    return c.json(await completeUnbuild(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.get('/api/manufacturing/lead-times', async (c) => {
+    const user = c.get('user')
+    return c.json(await listLeadTimes(user.companyId))
+  })
+
+  app.put('/api/products/:id/lead', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(leadDaysSchema, await c.req.json())
+    return c.json(await saveLeadDays(user.companyId, Number(c.req.param('id')), input))
+  })
+
+  app.get('/api/manufacturing/reports', async (c) => {
+    const user = c.get('user')
+    return c.json(await manufacturingReports(user.companyId))
+  })
+
+  app.get('/api/boms/:id/explode', async (c) => {
+    const user = c.get('user')
+    return c.json(await explodeBom(user.companyId, Number(c.req.param('id'))))
+  })
+
+  app.post('/api/boms/compare', async (c) => {
+    const user = c.get('user')
+    const input = parseBody(bomCompareSchema, await c.req.json())
+    return c.json(await compareBoms(user.companyId, input))
   })
 
   app.get('/api/manufacturing/wastage', async (c) => {

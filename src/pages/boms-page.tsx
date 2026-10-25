@@ -20,6 +20,7 @@ export function BomsPage() {
           <p className="mt-1 text-muted-foreground">{t('boms.lead')}</p>
         </div>
         <div className="flex gap-2">
+          <Link to="/boms/tools"><Button variant="outline">{t('mfg.bomTools')}</Button></Link>
           <Link to="/manufacturing"><Button variant="outline">{t('boms.orders')}</Button></Link>
           <Link to="/boms/new"><Button>{t('boms.new')}</Button></Link>
         </div>

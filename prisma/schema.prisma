@@ -27,6 +27,9 @@ model Company {
   jobCards      JobCard[]
   wastageEntries WastageEntry[]
   productionPlans ProductionPlan[]
+  demandForecasts DemandForecast[]
+  downtimeEntries DowntimeEntry[]
+  unbuildOrders   UnbuildOrder[]
   warehouses    Warehouse[]
   transfers     StockTransfer[]
   reorderRules  ReorderRule[]
@@ -285,6 +288,8 @@ model Product {
   kind         String              @default("finished")
   listPrice    Float
   costPrice    Float               @default(0)
+  /// Days the planner allows before this product is needed. Zero uses the purchase default for bought items.
+  leadDays     Int                 @default(0)
   /// `fifo` or `avco`. Receipts and issues post a valuation layer.
   costMethod   String              @default("avco")
   purchasable  Boolean             @default(false)
@@ -307,6 +312,8 @@ model Product {
   quants                   StockQuant[]
   moves                    StockMove[]
   reorderRules             ReorderRule[]
+  demandForecasts          DemandForecast[]
+  unbuildOrders            UnbuildOrder[]
   transferLines            StockTransferLine[]
   categoryId   Int?
   category     ProductCategory?    @relation(fields: [categoryId], references: [id])
@@ -470,6 +477,7 @@ model PurchaseOrder {
   receipts      PurchaseReceipt[]
   quotes        SupplierQuotation[]
   qualityChecks QualityCheck[]
+  planLines     ProductionPlanLine[]
   warehouseId   Int?
   warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
   createdById   Int?
@@ -517,6 +525,7 @@ model BillOfMaterials {
   operations BomOperation[]
   byproducts BomByproduct[]
   orders     ManufacturingOrder[]
+  unbuilds   UnbuildOrder[]
   subcontractOrders SubcontractOrder[]
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
@@ -553,6 +562,7 @@ model Workstation {
   operations    BomOperation[]
   jobCards      JobCard[]
   wastage       WastageEntry[]
+  downtimes     DowntimeEntry[]
 
   @@unique([companyId, name])
 }
@@ -711,6 +721,67 @@ model ProductionPlanLine {
   bomId             Int?
   workOrderId       Int?
   materialRequestId Int?
+  /// `order`, `forecast`, `reorder`, or `mixed`.
+  source            String         @default("order")
+  leadDays          Int            @default(0)
+  purchaseOrderId   Int?
+  purchaseOrder     PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+}
+
+model DemandForecast {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name      String
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  /// Calendar month, `YYYY-MM`.
+  period    String
+  quantity  Float
+  note      String   @default("")
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId, period])
+}
+
+model DowntimeEntry {
+  id            Int         @id @default(autoincrement())
+  companyId     Int
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name          String
+  workstationId Int
+  workstation   Workstation @relation(fields: [workstationId], references: [id], onDelete: Cascade)
+  date          DateTime
+  minutes       Float
+  reason        String
+  /// `draft` or `confirmed`. Only confirmed minutes reduce OEE availability.
+  state         String      @default("draft")
+  createdAt     DateTime    @default(now())
+
+  @@unique([companyId, name])
+  @@index([workstationId])
+}
+
+model UnbuildOrder {
+  id          Int              @id @default(autoincrement())
+  companyId   Int
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  productId   Int
+  product     Product          @relation(fields: [productId], references: [id])
+  bomId       Int?
+  bom         BillOfMaterials? @relation(fields: [bomId], references: [id], onDelete: SetNull)
+  quantity    Float
+  warehouseId Int?
+  /// `draft` or `done`. Stock moves only when the order is done.
+  state       String           @default("draft")
+  note        String           @default("")
+  date        DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
 }
 
 model ManufacturingComponent {

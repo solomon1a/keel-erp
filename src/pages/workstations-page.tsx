@@ -25,6 +25,7 @@ type Station = {
   quality: number | null
   oee: number | null
   loggedMinutes: number
+  downtimeMinutes?: number
 }
 
 const dayKeys = ['mfg.day1', 'mfg.day2', 'mfg.day3', 'mfg.day4', 'mfg.day5', 'mfg.day6', 'mfg.day7'] as const satisfies ReadonlyArray<MessageKey>
@@ -168,6 +169,9 @@ export function WorkstationsPage() {
               </div>
             </dl>
             <p className="text-sm text-muted-foreground">{station.oee == null ? t('mfg.noOee') : t('mfg.oeeHint')}</p>
+            {(station.downtimeMinutes ?? 0) > 0 ? (
+              <p className="text-sm text-muted-foreground">{t('mfg.downtimeMinutes')}: {station.downtimeMinutes}</p>
+            ) : null}
           </article>
         ))}
       </div>
