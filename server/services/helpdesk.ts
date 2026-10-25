@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
-import { nextName } from './accounting.ts'
+import { readSetting } from './company-settings.ts'
+import { allocateKnown } from './number-series.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { demoClockStale, demoOpenClocks, demoTicketTimes } from './demo-sla.ts'
@@ -85,9 +86,41 @@ async function hoursFor(tx: Tx, companyId: number, priority: TicketPriority) {
   return policy?.hours ?? defaultHours[priority]
 }
 
+function windowMinutes(value: string) {
+  const match = value.trim().match(/^(\d{2}):(\d{2})[–-](\d{2}):(\d{2})$/)
+  if (!match?.[1] || !match[2] || !match[3] || !match[4]) return null
+  const start = Number(match[1]) * 60 + Number(match[2])
+  const end = Number(match[3]) * 60 + Number(match[4])
+  if (end <= start || start > 24 * 60 || end > 24 * 60) return null
+  return { start, end }
+}
+
+function addWorkingHours(start: Date, hours: number, window: { start: number; end: number }) {
+  let left = Math.round(hours * 60)
+  const cursor = new Date(start.getTime())
+  let guard = 0
+  while (left > 0 && guard < 200_000) {
+    guard += 1
+    const minutes = cursor.getUTCHours() * 60 + cursor.getUTCMinutes()
+    if (minutes >= window.start && minutes < window.end) {
+      const step = Math.min(window.end - minutes, left)
+      cursor.setUTCMinutes(cursor.getUTCMinutes() + step)
+      left -= step
+    } else if (minutes < window.start) {
+      cursor.setUTCHours(Math.floor(window.start / 60), window.start % 60, 0, 0)
+    } else {
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+      cursor.setUTCHours(Math.floor(window.start / 60), window.start % 60, 0, 0)
+    }
+  }
+  return cursor
+}
+
 async function deadlineFor(tx: Tx, companyId: number, priority: TicketPriority, createdAt: Date) {
   const hours = await hoursFor(tx, companyId, priority)
-  return new Date(createdAt.getTime() + hours * 3_600_000)
+  const window = windowMinutes(await readSetting(tx, companyId, 'helpdesk', 'hours', '09:00–18:00'))
+  if (!window) return new Date(createdAt.getTime() + hours * 3_600_000)
+  return addWorkingHours(createdAt, hours, window)
 }
 
 function mailbox(from: string) {
@@ -137,7 +170,7 @@ async function healDemoClocks(companyId: number) {
 export async function helpdeskBoard(companyId: number) {
   await healDemoClocks(companyId)
   const [rows, teams, tags, policies, users, customers] = await Promise.all([
-    prisma.ticket.findMany({ where: { companyId }, include: ticketInclude, orderBy: { createdAt: 'desc' } }),
+    prisma.ticket.findMany({ where: { companyId }, include: ticketInclude, orderBy: { id: 'desc' } }),
     prisma.helpdeskTeam.findMany({ where: { companyId }, orderBy: { name: 'asc' } }),
     prisma.helpdeskTag.findMany({ where: { companyId }, orderBy: { name: 'asc' } }),
     prisma.slaPolicy.findMany({ where: { companyId }, orderBy: { priority: 'asc' } }),
@@ -181,13 +214,16 @@ export async function createTicket(
       const user = await tx.user.findFirst({ where: { id: input.assigneeId, companyId } })
       if (!user) throw new AppError(400, 'Choose an assignee from this company.')
     }
-    await tx.sequence.upsert({
-      where: { name: `helpdesk.ticket.${companyId}` },
-      update: {},
-      create: { name: `helpdesk.ticket.${companyId}`, next: 0 },
-    })
-    const number = await nextName(tx, `helpdesk.ticket.${companyId}`, 'HD')
+    const number = await allocateKnown(tx, companyId, 'helpdesk.ticket')
     const createdAt = new Date()
+    let teamId = input.teamId ?? null
+    if (!teamId) {
+      const teamName = await readSetting(tx, companyId, 'helpdesk', 'team', 'Desk')
+      if (teamName !== 'Desk') {
+        const team = await tx.helpdeskTeam.findFirst({ where: { companyId, name: teamName } })
+        if (team) teamId = team.id
+      }
+    }
     const ticket = await tx.ticket.create({
       data: {
         companyId,
@@ -195,7 +231,7 @@ export async function createTicket(
         partnerId: partner.id,
         subject,
         description: input.description?.trim() ?? '',
-        teamId: input.teamId ?? null,
+        teamId,
         assigneeId: input.assigneeId ?? null,
         priority,
         stage: 'new',

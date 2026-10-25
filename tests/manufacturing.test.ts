@@ -23,6 +23,11 @@ describe('manufacturing', () => {
     const canvas = await prisma.product.findFirstOrThrow({ where: { sku: 'RM-CV' } })
     const yarn = await prisma.product.findFirstOrThrow({ where: { sku: 'RM-YN' } })
 
+    const listed = await call('/api/manufacturing', maya)
+    const names = (listed.body as unknown as Array<{ name: string }>).map((row) => row.name)
+    expect(names[0]?.startsWith('MOV-')).toBe(true)
+    expect(names.indexOf('MOV-001')).toBeLessThan(names.indexOf('MO0001'))
+
     const seeded = await prisma.manufacturingOrder.findFirstOrThrow({ where: { name: 'MO0001' } })
     expect(seeded.state).toBe('draft')
     expect(seeded.quantity).toBe(4)

@@ -53,6 +53,7 @@ describe('helpdesk', () => {
     const data = board.body as unknown as Board
     expect(board.status).toBe(200)
     expect(data.tickets).toHaveLength(jiangbeiHelpdeskBoard.tickets)
+    expect(data.tickets[0]?.number.startsWith('HDV-')).toBe(true)
     expect(data.tickets.map((ticket) => ticket.number)).toEqual(expect.arrayContaining([
       'HD0001', 'HD0002', 'HD0003', 'HD0004', 'HD0005', 'HD0006',
       'HD0007', 'HD0008', 'HD0009', 'HD0010', 'HD0011', 'HD0012',

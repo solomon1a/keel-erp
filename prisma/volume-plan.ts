@@ -7,26 +7,30 @@ import { roundMoney } from '../src/domain/money.ts'
  */
 
 const TAX = 0.13
-const SALE_BASE = 82_000
+// A 28-person workshop cannot live on the old ~1.2M year. Sales and cloth
+// purchases are sized to that payroll: gross margin stays 60%, and the owner
+// funds the opening warehouse plus the bank so cash never starts in the red.
+const SALE_BASE = 420_000
 const COST_RATIO = 0.4
-const BILL_BASE = 24_000
+const BILL_BASE = 122_000
 const RENT = 8_500
 const FREIGHT = 1_800
 const UTILITIES = 1_200
-const PAY_GROSS = 22_000
-const PAY_DEDUCTION = 3_300
-const PAY_NET = 18_700
+const PAY_GROSS = 193_400
+const PAY_DEDUCTION = 29_010
+const PAY_NET = 164_390
 const CLAIM = 240
 const CLAIM_COUNT = 6
 const CREDIT_UNTAXED = 4_800
 const CREDIT_COST = 1_920
+const OWNER_CASH = 250_000
 
 const seasonWeights = [0.72, 0.78, 0.88, 1.02, 1.12, 1.18, 0.96, 0.9, 1.08, 1.22, 1.4, 1.55] as const
 
 const INCOME = new Set(['6001'])
 const EXPENSE = new Set(['6401', '6601', '6602', '6603', '6604', '6605', '6608'])
 const ASSET = new Set(['1002', '1122', '1405', '1601', '1602'])
-const LIABILITY = new Set(['2202', '222101', '222102', '2241', '222103'])
+const LIABILITY = new Set(['2202', '222101', '222102', '2231', '2241', '222103'])
 
 export const volumeMarker = 'VOL Spring dispatch'
 
@@ -372,8 +376,27 @@ export const volumeEmployees = [
   'Yasmin Noor', 'Zhuo Min', 'Adeel Khan', 'Bianca Rossi',
 ] as const
 
-export const volumePayrollNames = volumeEmployees.slice(0, 8)
-export const volumePayrollEach = { gross: 2750, deduction: 412.5, net: 2337.5 }
+const volumeGrosses = [
+  6800, 5600, 5400, 7600, 8200, 7800, 7200, 5800, 5600, 7400, 8600, 9200,
+  6400, 5400, 5200, 7000, 8000, 8400, 6600, 5600, 5200, 7200, 8800, 9600,
+  6200, 5800, 5000, 7800,
+] as const
+
+/** Shop-floor and office mix. The lower bands are part-time stitchers and packers. */
+export const volumeJobTitles = [
+  'Dyer', 'Stitcher', 'Packer', 'Buyer', 'Bookkeeper', 'Pattern maker',
+  'Cutter', 'Stitcher', 'Picker', 'Showroom', 'Line lead', 'Dye lead',
+  'Warehouse', 'Stitcher', 'Packer', 'Cutter', 'Buyer', 'Bookkeeper',
+  'Dyer', 'Picker', 'Stitcher', 'Warehouse', 'Pattern maker', 'Works manager',
+  'Cutter', 'Packer', 'Stitcher', 'Showroom lead',
+] as const
+
+export const volumePayroll = volumeEmployees.map((name, index) => {
+  const gross = volumeGrosses[index] ?? 0
+  const deduction = roundMoney(gross * 0.15)
+  const net = roundMoney(gross - deduction)
+  return { name, gross, deduction, net }
+})
 export const volumeDraftLeaves = 3
 export const volumeDepartments = ['Dye house', 'Stitching', 'Warehouse', 'Showroom', 'Accounts', 'Design'] as const
 
@@ -465,7 +488,7 @@ function buildJournals() {
     const total = roundMoney(untaxed + tax)
     const cost = roundMoney(untaxed * COST_RATIO)
     saleCost = roundMoney(saleCost + cost)
-    const paid = monthsAgo >= 4 ? total : monthsAgo >= 2 ? roundMoney(total / 2) : 0
+    const paid = monthsAgo >= 2 ? total : monthsAgo === 1 ? roundMoney(total * 0.55) : roundMoney(total * 0.35)
     const residual = roundMoney(total - paid)
     const label = `Volume sales ${n}`
     invoices.push({
@@ -603,9 +626,13 @@ function buildJournals() {
     ], 16))
   }
   const opening = roundMoney(volumeStockValue + saleCost - CREDIT_COST)
+  journals.push(posting('JE-V-LN', 11, [
+    line('1002', OWNER_CASH, 0, 'Owner working capital'),
+    line('2231', 0, OWNER_CASH, 'Owner working capital'),
+  ], 1))
   journals.push(posting('JE-V-STK', 11, [
     line('1405', opening, 0, 'Volume stock on hand'),
-    line('2202', 0, opening, 'Volume stock on hand'),
+    line('2231', 0, opening, 'Volume stock on hand'),
   ], 2))
   journals.push(posting('JE-V-A01', 11, [
     line('1601', 86_000, 0, 'Delivery van'),
@@ -616,6 +643,7 @@ function buildJournals() {
     line('1002', 0, 42_000, 'Embroidery machine'),
   ], 4))
   bank.push(
+    { label: 'Owner working capital', amount: OWNER_CASH, monthsAgo: 11, day: 1, reference: 'OWN-V-01', matchedJournal: 'JE-V-LN' },
     { label: 'Unidentified receipt', amount: 860, monthsAgo: 1, day: 9, reference: 'UNMATCHED-IN', matchedJournal: null },
     { label: 'Card processor fee', amount: -45, monthsAgo: 0, day: 22, reference: 'UNMATCHED-FEE', matchedJournal: null },
     { label: 'Counter deposit', amount: 320, monthsAgo: 2, day: 5, reference: 'UNMATCHED-CASH', matchedJournal: null },
@@ -683,6 +711,31 @@ function booksFromJournals() {
 
 export const volumeBooks = booksFromJournals()
 
+function assertVolumeBankStaysPositive() {
+  const events: Array<{ monthsAgo: number; day: number; delta: number }> = []
+  for (const entry of volumeJournals) {
+    for (const row of entry.lines) {
+      if (row.code !== '1002') continue
+      const delta = roundMoney(row.debit - row.credit)
+      if (delta !== 0) events.push({ monthsAgo: entry.monthsAgo, day: entry.day, delta })
+    }
+  }
+  events.sort((a, b) => b.monthsAgo - a.monthsAgo || a.day - b.day || b.delta - a.delta)
+  let running = 0
+  let month = events[0]?.monthsAgo
+  for (const event of events) {
+    if (event.monthsAgo !== month) {
+      if (running < 0) throw new Error(`Volume bank is negative at a month-end (${running}).`)
+      month = event.monthsAgo
+    }
+    running = roundMoney(running + event.delta)
+    if (running < 0) throw new Error(`Volume bank goes negative (${running}).`)
+  }
+  if (running < 0) throw new Error(`Volume bank closes negative (${running}).`)
+}
+
+assertVolumeBankStaysPositive()
+
 const customerNames = new Set(volumeCustomers.map((row) => row.name))
 const vendorNames = new Set(volumeVendors.map((row) => row.name))
 const productSkus = new Set(volumeProducts.map((row) => row.sku))
@@ -692,9 +745,11 @@ if (productSkus.size !== volumeProducts.length) throw new Error('Volume products
 if (!productSkus.has('VOL-FG-01')) throw new Error('Volume marker product is missing.')
 if (volumeProducts.length < 80 || volumeProducts.length > 120) throw new Error('Volume product count is out of range.')
 if (volumeCrm.won !== volumeCrm.lost) throw new Error('Volume won and lost leads must stay level so conversion holds.')
-if (volumePayrollNames.length * volumePayrollEach.gross !== PAY_GROSS) throw new Error('Volume payslips do not add up to the payroll journal.')
-if (roundMoney(volumePayrollNames.length * volumePayrollEach.deduction) !== PAY_DEDUCTION) throw new Error('Volume payroll deductions do not add up.')
-if (roundMoney(volumePayrollNames.length * volumePayrollEach.net) !== PAY_NET) throw new Error('Volume payroll net does not add up.')
+if (volumePayroll.length !== volumeEmployees.length) throw new Error('Every Jiangbei employee needs a salary.')
+if (roundMoney(volumePayroll.reduce((sum, row) => sum + row.gross, 0)) !== PAY_GROSS) throw new Error('Volume payslips do not add up to the payroll journal.')
+if (roundMoney(volumePayroll.reduce((sum, row) => sum + row.deduction, 0)) !== PAY_DEDUCTION) throw new Error('Volume payroll deductions do not add up.')
+if (roundMoney(volumePayroll.reduce((sum, row) => sum + row.net, 0)) !== PAY_NET) throw new Error('Volume payroll net does not add up.')
+if (volumeJobTitles.length !== volumeEmployees.length) throw new Error('Every Jiangbei employee needs a role.')
 if (jiangbeiHelpdeskBoard.tickets !== 12 + volumeTickets.length) throw new Error('Volume helpdesk board drifted.')
 
 export function volumeDate(monthsAgo: number, day: number, now = new Date()) {

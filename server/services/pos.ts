@@ -1,8 +1,12 @@
-import { lineAmounts, roundMoney, sumLines } from '../../src/domain/money.ts'
+import { lineAmounts, roundMoney } from '../../src/domain/money.ts'
 import type { PosOrderInput, PosRefundInput, PosSessionCloseInput, PosSessionOpenInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import type { SessionUser } from '../auth.ts'
+import { readSetting } from './company-settings.ts'
+import { heldTotal, priceCommercial, rememberTaxes } from './document-tax.ts'
+import { ensureAccounts, postEntry } from './journals.ts'
+import { allocateKnown } from './number-series.ts'
 import { applyQuant, companyLocations, onHand, roundQty, warehouseStockLocation } from './stock.ts'
 import { resolvePrice } from './trade.ts'
 import { valueDoneMove } from './valuation.ts'
@@ -36,12 +40,8 @@ function methodTotals(payments: PaymentRow[], direction: string) {
   return totals
 }
 
-async function nextName(tx: Tx, sequenceName: string, prefix: string) {
-  const sequence = await tx.sequence.update({
-    where: { name: sequenceName },
-    data: { next: { increment: 1 } },
-  })
-  return `${prefix}${String(sequence.next).padStart(4, '0')}`
+async function nextName(tx: Tx, companyId: number, document: 'pos.session' | 'pos.order') {
+  return allocateKnown(tx, companyId, document)
 }
 
 function moneyMatches(left: number, right: number) {
@@ -108,6 +108,11 @@ export async function getSession(companyId: number, sessionId: number) {
 
 export async function openPosSession(companyId: number, userId: number, input: PosSessionOpenInput) {
   return prisma.$transaction(async (tx) => {
+    const shop = await readSetting(tx, companyId, 'pos', 'shop', 'Shop')
+    const warehouse = await tx.warehouse.findFirst({ where: { id: input.warehouseId, companyId } })
+    if (shop !== 'Shop' && warehouse && warehouse.name !== shop && warehouse.code !== shop) {
+      throw new AppError(400, 'Open the session in the default shop.')
+    }
     await warehouseStockLocation(tx, companyId, input.warehouseId)
     const open = await tx.posSession.findFirst({
       where: { companyId, warehouseId: input.warehouseId, state: 'open' },
@@ -115,7 +120,7 @@ export async function openPosSession(companyId: number, userId: number, input: P
     if (open) throw new AppError(409, 'This shop already has an open session.')
     const created = await tx.posSession.create({
       data: {
-        name: await nextName(tx, 'pos.session', 'SES'),
+        name: await nextName(tx, companyId, 'pos.session'),
         state: 'open',
         warehouseId: input.warehouseId,
         companyId,
@@ -135,7 +140,8 @@ export async function closePosSession(user: SessionUser, sessionId: number, inpu
     const summary = await summarize(tx, session)
     const closingCash = roundMoney(input.closingCash)
     const difference = roundMoney(closingCash - summary.expectedCash)
-    if (!moneyMatches(difference, 0) && user.role !== 'admin') {
+    const cashControl = await readSetting(tx, user.companyId, 'pos', 'cash', 'yes')
+    if (cashControl !== 'no' && !moneyMatches(difference, 0) && user.role !== 'admin') {
       throw new AppError(403, 'Only an admin can close a session when the counted cash does not match.')
     }
     await tx.posSession.update({
@@ -202,23 +208,92 @@ async function pricedLines(tx: Tx, companyId: number, lines: PosOrderInput['line
       customerId,
     })
     const discount = line.discount && line.discount > 0 ? line.discount : quote.discount
-    const amounts = lineAmounts({
-      quantity: line.quantity,
-      unitPrice: quote.unitPrice,
-      discount,
-      taxRate,
-    })
-    priced.push({
-      product,
-      quantity: roundQty(line.quantity),
-      unitPrice: quote.unitPrice,
-      discount,
-      taxRate,
-      description: product.name,
-      ...amounts,
-    })
+    if (line.taxGroupId) {
+      const commercial = await priceCommercial(tx, companyId, customerId, line.quantity, quote.unitPrice, discount, line.taxGroupId, 0)
+      priced.push({
+        product,
+        quantity: roundQty(line.quantity),
+        unitPrice: quote.unitPrice,
+        discount,
+        taxRate: 0,
+        taxGroupId: line.taxGroupId,
+        description: product.name,
+        subtotal: commercial.subtotal,
+        taxAmount: commercial.taxAmount,
+        withheld: commercial.withheld,
+        slices: commercial.slices,
+      })
+    } else {
+      const amounts = lineAmounts({
+        quantity: line.quantity,
+        unitPrice: quote.unitPrice,
+        discount,
+        taxRate,
+      })
+      priced.push({
+        product,
+        quantity: roundQty(line.quantity),
+        unitPrice: quote.unitPrice,
+        discount,
+        taxRate,
+        taxGroupId: null as number | null,
+        description: product.name,
+        subtotal: amounts.subtotal,
+        taxAmount: amounts.taxAmount,
+        withheld: 0,
+        slices: [] as Array<{ taxId: number; base: number; amount: number; withheld: boolean }>,
+      })
+    }
   }
   return priced
+}
+
+async function postPosTax(
+  tx: Tx,
+  companyId: number,
+  name: string,
+  partnerId: number | null,
+  untaxed: number,
+  total: number,
+  priced: Array<{ slices: Array<{ taxId: number; amount: number; withheld: boolean }> }>,
+) {
+  await ensureAccounts(tx, companyId, [
+    ['1001', '库存现金', 'asset'],
+    ['6001', '主营业务收入', 'income'],
+    ['222101', '应交税费-销项税额', 'liability'],
+    ['1221', 'Withholding receivable', 'asset'],
+  ])
+  const accounts = await tx.account.findMany({ where: { companyId } })
+  const byCode = new Map(accounts.map((row) => [row.code, row]))
+  const taxes = await tx.companyTax.findMany({ where: { companyId } })
+  const taxCode = new Map(taxes.map((tax) => [tax.id, tax.accountCode || '222101']))
+  const buckets = new Map<string, number>()
+  let withheld = 0
+  for (const line of priced) {
+    for (const slice of line.slices) {
+      if (slice.withheld) withheld = roundMoney(withheld + slice.amount)
+      else {
+        const code = taxCode.get(slice.taxId) || '222101'
+        buckets.set(code, roundMoney((buckets.get(code) ?? 0) + slice.amount))
+      }
+    }
+  }
+  const idOf = (code: string) => {
+    const account = byCode.get(code)
+    if (!account) throw new AppError(400, `Account ${code} is not in this company.`)
+    return account.id
+  }
+  const label = name
+  const partner = partnerId ?? undefined
+  const lines = [
+    { accountId: idOf('1001'), debit: total, credit: 0, label, partnerId: partner },
+    { accountId: idOf('6001'), debit: 0, credit: untaxed, label, partnerId: partner },
+  ]
+  if (withheld > 0.001) lines.push({ accountId: idOf('1221'), debit: withheld, credit: 0, label, partnerId: partner })
+  for (const [code, amount] of buckets) {
+    if (amount > 0.001) lines.push({ accountId: idOf(code), debit: 0, credit: amount, label, partnerId: partner })
+  }
+  await postEntry(tx, companyId, new Date(), lines, undefined, 'SAL')
 }
 
 export async function createPosOrder(companyId: number, userId: number, input: PosOrderInput) {
@@ -232,7 +307,7 @@ export async function createPosOrder(companyId: number, userId: number, input: P
     }
     const company = await tx.company.findUniqueOrThrow({ where: { id: companyId } })
     const priced = await pricedLines(tx, companyId, input.lines, company.defaultTaxRate, input.customerId ?? null)
-    const totals = sumLines(priced)
+    const totals = heldTotal(priced)
     const { location } = await warehouseStockLocation(tx, companyId, session.warehouseId)
     const { customer } = await companyLocations(tx, companyId)
     const needed = new Map<number, { name: string; quantity: number }>()
@@ -253,7 +328,7 @@ export async function createPosOrder(companyId: number, userId: number, input: P
     if (!moneyMatches(paid, totals.amountTotal)) {
       throw new AppError(400, 'Payments must equal the total.')
     }
-    const name = await nextName(tx, 'pos.order', 'POS')
+    const name = await nextName(tx, companyId, 'pos.order')
     const order = await tx.posOrder.create({
       data: {
         name,
@@ -274,6 +349,7 @@ export async function createPosOrder(companyId: number, userId: number, input: P
             unitPrice: line.unitPrice,
             discount: line.discount,
             taxRate: line.taxRate,
+            taxGroupId: line.taxGroupId,
             subtotal: line.subtotal,
             taxAmount: line.taxAmount,
           })),
@@ -309,7 +385,17 @@ export async function createPosOrder(companyId: number, userId: number, input: P
       })
       await valueDoneMove(tx, companyId, move.id)
     }
-    return tx.posOrder.findFirstOrThrow({ where: { id: order.id }, include: orderInclude })
+    const saved = await tx.posOrder.findFirstOrThrow({ where: { id: order.id }, include: orderInclude })
+    const ordered = [...saved.lines].sort((left, right) => left.id - right.id)
+    for (let index = 0; index < priced.length; index += 1) {
+      const source = priced[index]
+      const row = ordered[index]
+      if (source && row && source.slices.length > 0) await rememberTaxes(tx, companyId, 'pos.order.line', row.id, source.slices)
+    }
+    if (priced.some((line) => line.slices.length > 0)) {
+      await postPosTax(tx, companyId, name, input.customerId ?? null, totals.amountUntaxed, totals.amountTotal, priced)
+    }
+    return saved
   })
 }
 

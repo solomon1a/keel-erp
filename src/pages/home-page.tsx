@@ -406,11 +406,20 @@ export function HomePage() {
   const { locale, t } = useI18n()
   const money = useMoney()
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<User>('/api/session/me'), retry: false })
-  const [range, setRange] = useState<HomeRange>('month')
+  const dash = useQuery({
+    queryKey: ['module-settings', 'dashboard'],
+    queryFn: () => api<Array<{ key: string; value: string }>>('/api/module-settings?module=dashboard'),
+  })
+  const [chosen, setChosen] = useState<HomeRange | null>(null)
   const [skipped, setSkipped] = useState(false)
+  const savedRange = dash.data?.find((row) => row.key === 'range')?.value
+  const range: HomeRange = chosen ?? (savedRange === 'This year' ? 'year' : savedRange === 'Today' ? 'today' : savedRange === 'This week' ? 'week' : 'month')
+  const hideMoney = dash.data?.find((row) => row.key === 'currency')?.value === 'no'
+  const shownMoney = hideMoney ? () => '—' : money
   const home = useQuery({
     queryKey: ['home', range],
     queryFn: () => api<HomeData>(`/api/home?range=${range}`),
+    enabled: dash.isFetched,
   })
   const name = (me.data?.name ?? '').split(/\s+/)[0] ?? ''
   const company = me.data?.company.name ?? ''
@@ -444,7 +453,7 @@ export function HomePage() {
           <>
             <div className="home-tabs" role="tablist" aria-label={t('home.range.month')}>
               {ranges.map((item) => (
-                <button key={item} type="button" role="tab" aria-selected={range === item} className="home-tab" onClick={() => setRange(item)}>
+                <button key={item} type="button" role="tab" aria-selected={range === item} className="home-tab" onClick={() => setChosen(item)}>
                   {t(rangeKey(item))}
                 </button>
               ))}
@@ -475,7 +484,7 @@ export function HomePage() {
       ) : null}
 
       {home.data?.empty ? <EmptyBoard data={home.data} company={company} skipped={skipped} onSkip={() => setSkipped(true)} /> : null}
-      {home.data && !home.data.empty ? <LiveBoard data={home.data} range={range} locale={locale} money={money} t={t} busy={home.isFetching} /> : null}
+      {home.data && !home.data.empty ? <LiveBoard data={home.data} range={range} locale={locale} money={shownMoney} t={t} busy={home.isFetching} /> : null}
     </div>
   )
 }

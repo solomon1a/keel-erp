@@ -3,6 +3,8 @@ import type { ExpenseInput, PayrollRunInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { ensureBooks } from './accounting.ts'
+import { readSetting } from './company-settings.ts'
+import { allocateKnown } from './number-series.ts'
 
 const runInclude = {
   payslips: {
@@ -125,10 +127,7 @@ export async function ensurePayrollAccounts(tx: Tx, companyId: number) {
 }
 
 async function nextEntryName(tx: Tx, companyId: number) {
-  const name = `account.entry.${companyId}`
-  await tx.sequence.upsert({ where: { name }, update: {}, create: { name, next: 0 } })
-  const sequence = await tx.sequence.update({ where: { name }, data: { next: { increment: 1 } } })
-  return `JE${String(sequence.next).padStart(4, '0')}`
+  return allocateKnown(tx, companyId, 'account.entry')
 }
 
 export async function listSalaries(companyId: number) {
@@ -166,6 +165,8 @@ export async function getRun(companyId: number, runId: number) {
 
 export async function createRun(companyId: number, input: PayrollRunInput) {
   const company = await prisma.company.findFirstOrThrow({ where: { id: companyId } })
+  const country = await readSetting(prisma, companyId, 'payroll', 'country', 'Company country')
+  const currency = country === 'CNY' || country === 'GBP' || country === 'USD' ? country : company.currency
   const existing = await prisma.payrollRun.findFirst({ where: { companyId, period: input.period } })
   if (existing) throw new AppError(409, 'That month already has a payroll run.')
   const structures = await prisma.salaryStructure.findMany({
@@ -183,7 +184,7 @@ export async function createRun(companyId: number, input: PayrollRunInput) {
       companyId,
       payslips: {
         create: structures.map((structure) => {
-          const slip = estimatePayslip(company.currency, structure.monthlyGross)
+          const slip = estimatePayslip(currency, structure.monthlyGross)
           return {
             employeeId: structure.employeeId,
             gross: slip.gross,
@@ -210,8 +211,9 @@ export async function postRun(companyId: number, runId: number) {
     const gross = roundMoney(run.payslips.reduce((sum, slip) => sum + slip.gross, 0))
     const net = roundMoney(run.payslips.reduce((sum, slip) => sum + slip.net, 0))
     const deduction = roundMoney(gross - net)
-    const journal = await tx.journal.findFirst({ where: { companyId, code: 'GEN' } })
-    if (!journal) throw new AppError(500, 'The general journal is missing.')
+    const journalCode = await readSetting(tx, companyId, 'payroll', 'journal', 'GEN')
+    const journal = await tx.journal.findFirst({ where: { companyId, code: journalCode } })
+    if (!journal) throw new AppError(400, `Journal ${journalCode} is not in this company.`)
     const salary = byCode.get('6601')
     const payable = byCode.get('2241')
     const statutory = byCode.get('222103')
@@ -315,10 +317,12 @@ export async function reimburseExpense(companyId: number, expenseId: number) {
     await ensurePayrollAccounts(tx, companyId)
     const accounts = await tx.account.findMany({ where: { companyId } })
     const byCode = new Map(accounts.map((row) => [row.code, row]))
-    const journal = await tx.journal.findFirst({ where: { companyId, code: 'BNK' } })
+    const journalCode = await readSetting(tx, companyId, 'expenses', 'journal', 'BNK')
+    const journal = await tx.journal.findFirst({ where: { companyId, code: journalCode } })
     const expense = byCode.get('6602')
     const bank = byCode.get('1002')
-    if (!journal || !expense || !bank) throw new AppError(500, 'Expense accounts are missing.')
+    if (!journal) throw new AppError(400, `Journal ${journalCode} is not in this company.`)
+    if (!expense || !bank) throw new AppError(500, 'Expense accounts are missing.')
     const entry = await tx.journalEntry.create({
       data: {
         name: await nextEntryName(tx, companyId),

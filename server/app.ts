@@ -54,6 +54,7 @@ import { dbTarget, prisma } from './db.ts'
 import { startQueryTiming } from './timing.ts'
 import { roundMoney } from '../src/domain/money.ts'
 import { listRates, replaceRates } from './services/exchange-rates.ts'
+import { readSetting } from './services/company-settings.ts'
 import { registerAccountingRoutes } from './accounting-routes.ts'
 import { registerDemoTourRoutes } from './demo-tour-routes.ts'
 import { registerTradeRoutes } from './trade-routes.ts'
@@ -536,6 +537,13 @@ export function createApp() {
     const user = c.get('user')
     const input = parseBody(contactInputSchema, await c.req.json())
     await assertContactLinks(user.companyId, input.parentId, input.countryId, input.isCompany)
+    if (input.email) {
+      const unique = await readSetting(prisma, user.companyId, 'contacts', 'unique', 'yes')
+      if (unique !== 'no') {
+        const duplicate = await prisma.contact.findFirst({ where: { companyId: user.companyId, email: input.email } })
+        if (duplicate) throw new AppError(409, 'A contact with that email already exists.')
+      }
+    }
     const contact = await prisma.contact.create({
       data: {
         ...input,
@@ -906,7 +914,7 @@ export function createApp() {
         ...(state && state !== 'all' ? { state } : {}),
       },
       include: { product: { select: { id: true, name: true, sku: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { id: 'desc' },
       take: 200,
     })
     return c.json(orders)
@@ -959,7 +967,7 @@ export function createApp() {
   app.post('/api/manufacturing/:id/wastage', async (c) => {
     const user = c.get('user')
     const input = parseBody(wastageSchema, await c.req.json())
-    return c.json(await recordWastage(user.companyId, Number(c.req.param('id')), input), 201)
+    return c.json(await recordWastage(user.companyId, Number(c.req.param('id')), input, user.name), 201)
   })
 
   app.post('/api/manufacturing/:id/subcontract/send', async (c) => {

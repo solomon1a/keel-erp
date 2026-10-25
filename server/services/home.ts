@@ -2,6 +2,7 @@ import { roundMoney } from '../../src/domain/money.ts'
 import { prisma } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { summarizePnl } from './accounting.ts'
+import { toBase } from './fx.ts'
 
 export const homeRanges = ['today', 'week', 'month', 'year'] as const
 export type HomeRange = (typeof homeRanges)[number]
@@ -233,13 +234,13 @@ export async function homeDashboard(companyId: number, range: HomeRange, now = n
       },
       select: { debit: true, credit: true, entry: { select: { date: true } } },
     }),
-    prisma.invoice.aggregate({
+    prisma.invoice.findMany({
       where: { companyId, moveType: 'out_invoice', state: 'posted' },
-      _sum: { residual: true },
+      select: { residual: true, rate: true, currency: true },
     }),
-    prisma.invoice.aggregate({
+    prisma.invoice.findMany({
       where: { companyId, moveType: 'in_invoice', state: 'posted' },
-      _sum: { residual: true },
+      select: { residual: true, rate: true, currency: true },
     }),
     prisma.invoice.findMany({
       where: {
@@ -253,6 +254,8 @@ export async function homeDashboard(companyId: number, range: HomeRange, now = n
         name: true,
         moveType: true,
         residual: true,
+        currency: true,
+        rate: true,
         invoiceDate: true,
         partner: { select: { name: true } },
       },
@@ -335,8 +338,11 @@ export async function homeDashboard(companyId: number, range: HomeRange, now = n
 
   const overdue = openInvoices.filter((invoice) => invoice.moveType === 'out_invoice' && ageDays(invoice.invoiceDate, asOf) > 30)
   const dueSoon = openInvoices.filter((invoice) => invoice.moveType === 'in_invoice' && ageDays(invoice.invoiceDate, asOf) <= 7)
-  const overdueAmount = roundMoney(overdue.reduce((sum, invoice) => sum + invoice.residual, 0))
-  const dueSoonAmount = roundMoney(dueSoon.reduce((sum, invoice) => sum + invoice.residual, 0))
+  const openBase = (invoice: { residual: number; currency: string; rate: number }) => toBase(invoice.residual, invoice.currency ? invoice.rate : 1)
+  const overdueAmount = roundMoney(overdue.reduce((sum, invoice) => sum + openBase(invoice), 0))
+  const dueSoonAmount = roundMoney(dueSoon.reduce((sum, invoice) => sum + openBase(invoice), 0))
+  const receivableAmount = roundMoney(receivable.reduce((sum, invoice) => sum + openBase(invoice), 0))
+  const payableAmount = roundMoney(payable.reduce((sum, invoice) => sum + openBase(invoice), 0))
 
   const months = Array.from({ length: 12 }, (_, index) => {
     const cursor = new Date(Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth() - (11 - index), 1))
@@ -398,7 +404,7 @@ export async function homeDashboard(companyId: number, range: HomeRange, now = n
       id: invoice.id,
       name: invoice.name,
       partner: invoice.partner.name,
-      amount: invoice.residual,
+      amount: openBase(invoice),
       days: ageDays(invoice.invoiceDate, asOf),
       dateFrom: null,
       dateTo: null,
@@ -466,8 +472,8 @@ export async function homeDashboard(companyId: number, range: HomeRange, now = n
     kpis: {
       revenue: { amount: current.income, changePct: changePct(current.income, prior.income) },
       profit: { amount: current.profit, margin: revenueMargin, marginDelta: roundMoney(revenueMargin - priorMargin) },
-      receivable: { amount: roundMoney(receivable._sum.residual ?? 0), overdueCount: overdue.length, overdueAmount },
-      payable: { amount: roundMoney(payable._sum.residual ?? 0), dueSoonAmount },
+      receivable: { amount: receivableAmount, overdueCount: overdue.length, overdueAmount },
+      payable: { amount: payableAmount, dueSoonAmount },
     },
     chart: { months },
     pipeline: {

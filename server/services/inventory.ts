@@ -2,6 +2,8 @@ import { roundMoney } from '../../src/domain/money.ts'
 import type { LocationInput, ReorderRuleInput, TransferInput, WarehouseInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { readSetting } from './company-settings.ts'
+import { allocateKnown } from './number-series.ts'
 import { applyQuant, onHand, roundQty } from './stock.ts'
 import { valueDoneMove } from './valuation.ts'
 import { guardWorkflow } from './workflow.ts'
@@ -24,12 +26,8 @@ const transferInclude = {
   route: { select: { id: true, name: true, kind: true, steps: true } },
 }
 
-async function nextTransferName(tx: Tx): Promise<string> {
-  const sequence = await tx.sequence.update({
-    where: { name: 'stock.transfer' },
-    data: { next: { increment: 1 } },
-  })
-  return `INT${String(sequence.next).padStart(4, '0')}`
+async function nextTransferName(tx: Tx, companyId: number): Promise<string> {
+  return allocateKnown(tx, companyId, 'stock.transfer')
 }
 
 function cleanCode(code: string) {
@@ -86,6 +84,8 @@ export async function addLocation(companyId: number, warehouseId: number, input:
     include: { _count: { select: { locations: true } } },
   })
   if (!warehouse) throw new AppError(404, 'Warehouse not found.')
+  const multi = await readSetting(prisma, companyId, 'inventory', 'multi', 'yes')
+  if (multi === 'no') throw new AppError(409, 'Storage locations are turned off for this company.')
   return prisma.stockLocation.create({
     data: {
       name: input.name,
@@ -144,7 +144,7 @@ export async function createTransfer(companyId: number, userId: number, input: T
     }
     return tx.stockTransfer.create({
       data: {
-        name: await nextTransferName(tx),
+        name: await nextTransferName(tx, companyId),
         state: 'draft',
         companyId,
         locationFromId: input.locationFromId,

@@ -2,6 +2,7 @@ import { roundMoney } from '../../src/domain/money.ts'
 import type { JobCompleteInput, JobLogInput, JobStartInput, WastageInput, WorkstationInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { readSetting } from './company-settings.ts'
 import { createManufacturing } from './manufacturing.ts'
 import { guardWorkflow } from './workflow.ts'
 import { applyQuant, roundQty, warehouseStockLocation } from './stock.ts'
@@ -122,13 +123,20 @@ export async function finishJobCard(companyId: number, jobCardId: number, input:
   return completeJobCard(companyId, jobCardId, input)
 }
 
-export async function recordWastage(companyId: number, orderId: number, input: WastageInput) {
+export async function recordWastage(companyId: number, orderId: number, input: WastageInput, actorName?: string) {
   return prisma.$transaction(async (tx) => {
     const order = await requireOpenOrder(tx, companyId, orderId)
     const product = await tx.product.findFirst({ where: { id: input.productId, companyId } })
     if (!product) throw new AppError(400, 'Choose a product from this company.')
     const unit = input.unitCost != null ? input.unitCost : product.costPrice
     const cost = roundMoney(unit * input.quantity)
+    if (actorName) {
+      const approver = await readSetting(tx, companyId, 'wastage', 'approver', 'August')
+      const limit = Number(await readSetting(tx, companyId, 'wastage', 'limit', '500'))
+      if (Number.isFinite(limit) && cost > limit && actorName !== approver) {
+        throw new AppError(403, 'This wastage is above the approval limit.')
+      }
+    }
     const card = input.jobCardId
       ? await tx.jobCard.findFirst({ where: { id: input.jobCardId, orderId: order.id } })
       : null

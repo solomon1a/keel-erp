@@ -2,22 +2,18 @@ import { lineAmounts, roundMoney, sumLines } from '../../src/domain/money.ts'
 import { fulfillmentStatus, resolveUnitPrice, type FulfillmentStatus } from '../../src/domain/trade.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { allocateDocument, allocateKnown } from './number-series.ts'
 import { assertQualityClear, prepareQualityChecks } from './quality.ts'
 import { applyQuant, roundQty } from './stock.ts'
 import { landedCost, valueDoneMove } from './valuation.ts'
+import { toBase } from './fx.ts'
 import { guardWorkflow } from './workflow.ts'
 
 async function nextDoc(tx: Tx, name: string, prefix: string) {
-  await tx.sequence.upsert({
-    where: { name },
-    update: {},
-    create: { name, next: 0 },
-  })
-  const sequence = await tx.sequence.update({
-    where: { name },
-    data: { next: { increment: 1 } },
-  })
-  return `${prefix}${String(sequence.next).padStart(4, '0')}`
+  const match = name.match(/^(delivery|receipt|material|supplier\.quote)\.(\d+)$/)
+  if (!match?.[1] || !match[2]) throw new AppError(500, 'That document has no number series.')
+  const document = match[1] === 'supplier.quote' ? 'supplier.quote' : match[1]
+  return allocateDocument(tx, Number(match[2]), document, name, prefix)
 }
 
 export async function noteChatter(tx: Tx, companyId: number, model: string, recordId: number, summary: string) {
@@ -29,11 +25,11 @@ export async function noteChatter(tx: Tx, companyId: number, model: string, reco
 export async function assertCreditLimit(tx: Tx, companyId: number, customerId: number, orderTotal: number) {
   const customer = await tx.contact.findFirst({ where: { id: customerId, companyId } })
   if (!customer || customer.creditLimit <= 0) return
-  const open = await tx.invoice.aggregate({
+  const open = await tx.invoice.findMany({
     where: { companyId, partnerId: customerId, moveType: 'out_invoice', state: 'posted' },
-    _sum: { residual: true },
+    select: { residual: true, currency: true, rate: true },
   })
-  const exposure = (open._sum.residual ?? 0) + orderTotal
+  const exposure = roundMoney(open.reduce((sum, invoice) => sum + toBase(invoice.residual, invoice.currency ? invoice.rate : 1), 0) + orderTotal)
   if (exposure - customer.creditLimit > 0.001) {
     throw new AppError(409, `${customer.name} is over the credit limit of ${customer.creditLimit}.`)
   }
@@ -464,13 +460,9 @@ export async function orderFromQuotation(companyId: number, userId: number, quot
       }
     })
     const totals = sumLines(built)
-    const sequence = await tx.sequence.update({
-      where: { name: 'sales.order' },
-      data: { next: { increment: 1 } },
-    })
     const order = await tx.salesOrder.create({
       data: {
-        name: `SO${String(sequence.next).padStart(4, '0')}`,
+        name: await allocateKnown(tx, companyId, 'sales.order'),
         state: 'draft',
         customerId: quote.customerId,
         companyId,

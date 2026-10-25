@@ -118,6 +118,9 @@ model Company {
   inboundToken String? @unique
   /// Warehouse that fills online orders. Empty uses the default warehouse.
   onlineWarehouseId Int?
+  numberSeries     NumberSeries[]
+  paymentEntries   PaymentEntry[]
+  fxRevaluations   FxRevaluation[]
   onlineWarehouse   Warehouse? @relation("CompanyOnlineWarehouse", fields: [onlineWarehouseId], references: [id])
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
@@ -153,6 +156,19 @@ model User {
   qualityOverrides     QualityCheck[]      @relation("QualityOverride")
   assignedTickets      Ticket[]            @relation("TicketAssignee")
   createdAt            DateTime            @default(now())
+}
+
+/// One open revaluation at a time. The next run reverses it, then posts today's rates.
+model FxRevaluation {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  entryId   Int?          @unique
+  entry     JournalEntry? @relation(fields: [entryId], references: [id])
+  reversed  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+
+  @@index([companyId])
 }
 
 /// How many units of `currency` equal one unit of the company currency. A demo table until an admin edits it.
@@ -218,6 +234,7 @@ model Contact {
   posOrders      PosOrder[]
   shopCustomers  ShopCustomer[]
   invoices       Invoice[]
+  paymentEntries PaymentEntry[]
   tickets        Ticket[]
   quotations     Quotation[]
   supplierQuotes SupplierQuotation[]
@@ -358,6 +375,19 @@ model Sequence {
   next Int    @default(0)
 }
 
+/// Per-company document numbers. `next` is the last number issued.
+model NumberSeries {
+  id        Int     @id @default(autoincrement())
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+  document  String
+  prefix    String
+  padding   Int     @default(4)
+  next      Int     @default(0)
+
+  @@unique([companyId, document])
+}
+
 model SalesOrder {
   id            Int              @id @default(autoincrement())
   name          String
@@ -386,6 +416,8 @@ model SalesOrder {
   paymentMethod String?
   /// `recorded` when a shop payment was stored. No gateway capture.
   paymentState  String?
+  /// Quotation offers an online payment link. Recorded only; no gateway capture.
+  onlinePay     Boolean          @default(false)
   publicToken   String?          @unique
   createdById   Int?
   createdBy     User?            @relation("OrderCreatedBy", fields: [createdById], references: [id])
@@ -410,6 +442,7 @@ model SalesOrderLine {
   discount  Float       @default(0)
   taxId     Int?
   tax       Tax?        @relation(fields: [taxId], references: [id])
+  taxGroupId Int?
   subtotal  Float
   taxAmount Float
   qtyDelivered Float @default(0)
@@ -460,6 +493,7 @@ model PurchaseOrderLine {
   unitCost    Float
   taxId       Int?
   tax         Tax?          @relation(fields: [taxId], references: [id])
+  taxGroupId  Int?
   subtotal    Float
   taxAmount   Float
   qtyReceived Float         @default(0)
@@ -902,6 +936,7 @@ model PosOrderLine {
   unitPrice   Float
   discount    Float    @default(0)
   taxRate     Float
+  taxGroupId  Int?
   subtotal    Float
   taxAmount   Float
 }
@@ -973,6 +1008,10 @@ model Invoice {
   amountTax       Float
   amountTotal     Float
   residual        Float
+  /// Empty means the company currency. Amounts on the document stay in this currency.
+  currency        String           @default("")
+  /// Units of `currency` per 1 unit of the company currency, frozen when the draft is posted.
+  rate            Float            @default(1)
   buyerName       String?
   buyerTaxId      String?
   buyerAddress    String?
@@ -988,6 +1027,7 @@ model Invoice {
   costCentre      CostCentre?      @relation(fields: [costCentreId], references: [id])
   lines           InvoiceLine[]
   payments        InvoicePayment[]
+  paymentAllocations PaymentAllocation[]
   entries         JournalEntry[]
   matches         ReconcileMatch[]
   subcontractReceipts SubcontractReceipt[]
@@ -1036,6 +1076,8 @@ model InvoicePayment {
   amount    Float
   /// bank, cash, wechat, alipay, card
   method    String
+  /// Rate used for this receipt. 1 when the document is in the company currency.
+  rate      Float    @default(1)
   paidAt    DateTime @default(now())
 }
 
@@ -1057,6 +1099,9 @@ model JournalEntry {
   valuations   ValuationLayer[]
   qualityAlerts QualityAlert[]
   reconcileMatches ReconcileMatch[]
+  paymentEntry PaymentEntry?
+  paymentAllocations PaymentAllocation[]
+  fxRevaluation FxRevaluation?
 
   @@unique([companyId, name])
   @@index([companyId, date])
@@ -1286,6 +1331,9 @@ model Attendance {
   note       String?
   checkIn    DateTime?
   checkOut   DateTime?
+  overtimeMinutes Int @default(0)
+  /// waiting, approved, or empty when there is no overtime.
+  overtimeState String @default("")
   createdAt  DateTime @default(now())
 
   @@unique([employeeId, workDate])
@@ -2478,6 +2526,8 @@ model CompanyTax {
   withholding  Boolean            @default(false)
   sequence     Int                @default(0)
   active       Boolean            @default(true)
+  /// Empty uses output VAT on a sale and input VAT on a purchase.
+  accountCode  String             @default("")
   groupLines   TaxGroupTax[]
   mapsFrom     FiscalPositionMap[] @relation("MapFrom")
   mapsTo       FiscalPositionMap[] @relation("MapTo")
@@ -2491,9 +2541,48 @@ model TaxGroup {
   companyId Int
   company   Company       @relation(fields: [companyId], references: [id])
   name      String
+  isDefault Boolean       @default(false)
   lines     TaxGroupTax[]
 
   @@unique([companyId, name])
+}
+
+model PaymentEntry {
+  id          Int                 @id @default(autoincrement())
+  companyId   Int
+  company     Company             @relation(fields: [companyId], references: [id])
+  name        String
+  /// customer or vendor
+  kind        String
+  partnerId   Int
+  partner     Contact             @relation(fields: [partnerId], references: [id])
+  amount      Float
+  unapplied   Float
+  date        DateTime
+  method      String
+  memo        String              @default("")
+  /// draft or posted
+  state       String
+  entryId     Int?                @unique
+  entry       JournalEntry?       @relation(fields: [entryId], references: [id])
+  allocations PaymentAllocation[]
+
+  @@unique([companyId, name])
+  @@index([companyId, state])
+}
+
+model PaymentAllocation {
+  id        Int           @id @default(autoincrement())
+  paymentId Int
+  payment   PaymentEntry  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId Int
+  invoice   Invoice       @relation(fields: [invoiceId], references: [id])
+  amount    Float
+  entryId   Int?
+  entry     JournalEntry? @relation(fields: [entryId], references: [id])
+
+  @@index([paymentId])
+  @@index([invoiceId])
 }
 
 model TaxGroupTax {

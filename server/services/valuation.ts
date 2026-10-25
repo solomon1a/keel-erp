@@ -3,6 +3,7 @@ import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { assertYearOpen } from './books.ts'
+import { allocateKnown } from './number-series.ts'
 import { assertBooksOpen } from './locks.ts'
 import { roundQty } from './stock.ts'
 
@@ -29,11 +30,7 @@ async function ensureStockAccounts(tx: Tx, companyId: number) {
 }
 
 async function nextEntryName(tx: Tx, companyId: number) {
-  const sequence = await tx.sequence.update({
-    where: { name: `account.entry.${companyId}` },
-    data: { next: { increment: 1 } },
-  })
-  return `JE${String(sequence.next).padStart(4, '0')}`
+  return allocateKnown(tx, companyId, 'account.entry')
 }
 
 async function internalQty(tx: Tx, productId: number) {

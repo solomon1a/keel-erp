@@ -1,6 +1,8 @@
 import type { CrmActivityInput, CrmLeadInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
+import { namedUserId, readSetting } from './company-settings.ts'
+import { allocateKnown } from './number-series.ts'
 import { resolveWarehouseId } from './stock.ts'
 
 const leadInclude = {
@@ -39,12 +41,8 @@ function presentLead<T extends { tags: Array<{ tag: { id: number; name: string }
   return { ...lead, tags: lead.tags.map((row) => row.tag) }
 }
 
-async function nextOrderName(tx: Tx) {
-  const sequence = await tx.sequence.update({
-    where: { name: 'sales.order' },
-    data: { next: { increment: 1 } },
-  })
-  return `SO${String(sequence.next).padStart(4, '0')}`
+async function nextOrderName(tx: Tx, companyId: number) {
+  return allocateKnown(tx, companyId, 'sales.order')
 }
 
 export async function listLeads(companyId: number) {
@@ -80,6 +78,8 @@ async function assigneeInCompany(companyId: number, assigneeId: number | null | 
 
 export async function createLead(companyId: number, userId: number, input: CrmLeadInput) {
   const lostReasonId = await reasonInCompany(companyId, input.lostReasonId)
+  const assign = await readSetting(prisma, companyId, 'crm', 'assign', 'Direct')
+  const owner = await namedUserId(prisma, companyId, assign)
   const lead = await prisma.lead.create({
     data: {
       name: input.name,
@@ -91,7 +91,7 @@ export async function createLead(companyId: number, userId: number, input: CrmLe
       lostReasonId: lostReasonId ?? null,
       stage: 'new',
       companyId,
-      userId,
+      userId: owner ?? userId,
     },
   })
   if (input.tags) await replaceTags(companyId, lead.id, input.tags)
@@ -170,7 +170,7 @@ export async function convertLead(companyId: number, userId: number, leadId: num
     const warehouseId = await resolveWarehouseId(tx, companyId, null)
     const order = await tx.salesOrder.create({
       data: {
-        name: await nextOrderName(tx),
+        name: await nextOrderName(tx, companyId),
         state: 'draft',
         customerId: contact.id,
         companyId,

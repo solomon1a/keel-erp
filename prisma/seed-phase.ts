@@ -63,11 +63,11 @@ async function ensureTerm(client: PrismaClient, companyId: number, name: string,
   return term
 }
 
-async function ensureGroup(client: PrismaClient, companyId: number, name: string, taxIds: number[]) {
+async function ensureGroup(client: PrismaClient, companyId: number, name: string, taxIds: number[], isDefault = false) {
   const group = await client.taxGroup.upsert({
     where: { companyId_name: { companyId, name } },
-    update: {},
-    create: { companyId, name },
+    update: { isDefault },
+    create: { companyId, name, isDefault },
   })
   for (const [index, taxId] of taxIds.entries()) {
     await client.taxGroupTax.upsert({
@@ -94,9 +94,11 @@ export async function seedPhase(client: PrismaClient) {
   const withholding = byCode.get('WHT')
   if (!vat || !zero || !stamp || !surcharge || !withholding) return
 
-  await ensureGroup(client, companyId, 'Standard', [vat.id])
+  await ensureGroup(client, companyId, 'Standard', [vat.id], true)
   await ensureGroup(client, companyId, 'Standard plus surcharge', [vat.id, surcharge.id])
   await ensureGroup(client, companyId, 'Withholding', [vat.id, withholding.id])
+  const included = byCode.get('VAT-IN')
+  if (included) await ensureGroup(client, companyId, 'Included', [included.id])
 
   const position = await client.fiscalPosition.upsert({
     where: { companyId_name: { companyId, name: 'Export' } },

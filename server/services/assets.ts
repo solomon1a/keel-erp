@@ -4,6 +4,7 @@ import { roundMoney } from '../../src/domain/money.ts'
 import { prisma, transactionOptions, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
 import { assertYearOpen } from './books.ts'
+import { readSetting } from './company-settings.ts'
 import { accountId, ensureAccounts, postEntry } from './journals.ts'
 import { assertBooksOpen } from './locks.ts'
 
@@ -178,7 +179,8 @@ export async function createAssetTx(tx: Tx, companyId: number, input: AssetDraft
   if (!name) throw new AppError(400, 'Name the asset.')
   const months = Math.round(input.months)
   if (months < 1 || months > 600) throw new AppError(400, 'Useful life is between 1 and 600 months.')
-  const method = asMethod(input.method)
+  const methodSetting = await readSetting(tx, companyId, 'assets', 'method', 'Straight line')
+  const method = methodSetting === 'Declining balance' || methodSetting === 'Declining' ? asMethod('declining') : asMethod(input.method)
   let purchaseValue = roundMoney(input.purchaseValue)
   let invoiceLineId: number | null = null
   if (input.invoiceLineId) {
@@ -252,10 +254,11 @@ async function postLineTx(tx: Tx, companyId: number, assetId: number, lineId: nu
   const category = await tx.assetCategory.findFirstOrThrow({ where: { id: asset.categoryId } })
   await assertBooksOpen(tx, companyId, line.date, false)
   await assertYearOpen(tx, companyId, line.date)
+  const journalCode = await readSetting(tx, companyId, 'assets', 'journal', 'GEN')
   const entry = await postEntry(tx, companyId, line.date, [
     { accountId: category.expenseAccountId, debit: line.amount, credit: 0, label: asset.name },
     { accountId: category.accumAccountId, debit: 0, credit: line.amount, label: asset.name },
-  ])
+  ], undefined, journalCode)
   await tx.assetDepreciation.update({ where: { id: line.id }, data: { state: 'posted', entryId: entry.id } })
   return present(await load(tx, companyId, asset.id))
 }
