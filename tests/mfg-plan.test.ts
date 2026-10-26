@@ -242,7 +242,7 @@ describe('manufacturing part 2', () => {
       wip: { orders: unknown[]; value: number }
       variance: unknown[]
       utilisation: Array<{ name: string; downtimeMinutes: number }>
-      scrap: { byReason: Array<{ reason: string }> }
+      scrap: { cost: number; expected: number; actual: number; variancePct: number; byReason: Array<{ reason: string }> }
     }
     expect(body.production.length).toBeGreaterThan(0)
     expect(Array.isArray(body.variance)).toBe(true)
@@ -250,6 +250,12 @@ describe('manufacturing part 2', () => {
     expect(body.utilisation.find((row) => row.name === 'Packing table')?.downtimeMinutes).toBe(45)
     expect(body.utilisation.find((row) => row.name === 'Dye vat')?.downtimeMinutes).toBe(0)
     expect(body.scrap.byReason.length).toBeGreaterThan(0)
+    expect(body.scrap.variancePct).toBeGreaterThanOrEqual(0)
+    expect(body.scrap.variancePct).toBeLessThanOrEqual(100)
+    if (body.scrap.expected > 0.0001) {
+      const inflated = roundMoney(((body.scrap.actual - body.scrap.expected) / body.scrap.expected) * 100)
+      if (inflated > 100) expect(body.scrap.variancePct).toBeLessThan(inflated)
+    }
 
     const bills = await call('/api/boms', maya)
     const rows = bills.body as unknown as Array<{ id: number; unitCost: number; product: { sku: string; name: string }; active?: boolean }>

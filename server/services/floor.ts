@@ -1,4 +1,5 @@
 import { roundMoney } from '../../src/domain/money.ts'
+import { scrapRatePct } from '../../src/domain/scrap-rate.ts'
 import type { JobCompleteInput, JobLogInput, JobStartInput, WastageInput, WorkstationInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
@@ -235,7 +236,12 @@ export async function wastageReport(companyId: number) {
     if (row.kind === 'process_loss') expense = roundMoney(expense + row.cost)
     else scrap = roundMoney(scrap + row.cost)
   }
-  const variancePct = expected > 0.0001 ? roundMoney(((actual - expected) / expected) * 100) : 0
+  const finished = await prisma.manufacturingOrder.findMany({
+    where: { companyId, quantityDone: { gt: 0 } },
+    select: { quantityDone: true, product: { select: { costPrice: true } } },
+  })
+  const finishedStandard = roundMoney(finished.reduce((sum, order) => sum + order.quantityDone * order.product.costPrice, 0))
+  const variancePct = scrapRatePct(roundMoney(expense + scrap), finishedStandard)
   return {
     rows,
     byItem: [...byItem.values()],

@@ -1,4 +1,5 @@
 import { roundMoney } from '../../src/domain/money.ts'
+import { scrapRatePct } from '../../src/domain/scrap-rate.ts'
 import type { BomCompareInput, DowntimeInput, ForecastInput, LeadDaysInput, UnbuildInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
@@ -413,6 +414,7 @@ export async function manufacturingReports(companyId: number) {
   })
   const costs = rollupBoms(bills as BomCostSource[])
   const production = new Map<string, { month: string; quantity: number; orders: number }>()
+  let finishedStandard = 0
   const wipOrders: Array<{ id: number; name: string; product: string; remaining: number; value: number }> = []
   const variance: Array<{ id: number; name: string; product: string; quantityDone: number; standard: number; actual: number; variance: number }> = []
   for (const order of orders) {
@@ -424,6 +426,7 @@ export async function manufacturingReports(companyId: number) {
       production.set(month, bucket)
       const standardUnit = order.bomId ? costs.get(order.bomId)?.unitCost ?? order.product.costPrice : order.product.costPrice
       const standard = roundMoney(standardUnit * order.quantityDone)
+      finishedStandard = roundMoney(finishedStandard + standard)
       const material = roundMoney(order.lines.reduce((sum, line) => sum + line.consumed * line.product.costPrice, 0))
       const actual = roundMoney(material + order.operatingAbsorbed)
       variance.push({
@@ -487,7 +490,7 @@ export async function manufacturingReports(companyId: number) {
       scrap,
       expected,
       actual,
-      variancePct: expected > 0.0001 ? roundMoney(((actual - expected) / expected) * 100) : 0,
+      variancePct: scrapRatePct(roundMoney(expense + scrap), finishedStandard),
       byReason: [...byReason.values()],
     },
   }
