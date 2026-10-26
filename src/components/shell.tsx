@@ -367,12 +367,12 @@ export function Shell() {
   const mod = moduleForPath(location.pathname)
   const section = mod ? sectionForPath(mod, location.pathname, location.search) : null
   const sectionMatches = Boolean(section && linkActive(section.to, location.pathname, location.search))
-  const pageCrumb = sectionMatches && section && section.to.split('?')[0] !== mod?.home
-    ? menuLabel(section.label, locale, t)
+  const pageCrumb = invoiceId
+    ? (invoiceCrumb.data?.name ?? t('menu.invoices'))
     : location.pathname === '/accounting/payments'
       ? t('acct.payments')
-      : invoiceId
-        ? (invoiceCrumb.data?.name ?? t('menu.invoices'))
+      : sectionMatches && section && section.to.split('?')[0] !== mod?.home
+        ? menuLabel(section.label, locale, t)
         : null
   const showPulse = Boolean(mod && location.pathname === mod.home && !location.pathname.startsWith('/go/'))
 
