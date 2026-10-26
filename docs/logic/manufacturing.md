@@ -50,7 +50,31 @@ A job card is one operation on one work order. It stores the planned quantity, t
 
 ## Planning
 
-A production plan reads open sales orders, explodes the active bills, and nets each stocked product against internal quantity on hand. A made product with a bill becomes quantity to make. A bought component that is short becomes quantity to buy. Raising the plan opens work orders for what must be made and a material request for what must be bought. Doing that twice does not open a second set.
+A production plan reads open sales orders, and, when the company settings say so, demand forecasts and reorder rules. It explodes the active bills and nets each stocked product against internal quantity on hand. A made product with a bill becomes quantity to make. A bought component that is short becomes quantity to buy. Each line keeps the source (sales order, forecast, reorder, or a mix) and a lead time in days. A made product uses the lead stored on the product. A bought product uses its own lead, or the default purchase lead from manufacturing settings when that lead is zero.
+
+A forecast is a quantity of one product in one calendar month. It is not a sales order and it does not post. The planning horizon, in days, drops sales orders and forecast months that start after today plus that many days. Zero means no cutoff.
+
+A reorder rule adds demand only for a product the orders and forecasts did not already ask for, and only when on-hand is below the minimum. The quantity is the maximum minus on-hand.
+
+Raising the plan opens work orders for what must be made and a material request for what must be bought. Doing that twice does not open a second set. Drafting purchase orders is a separate step. Those drafts use an explicit name and do not take the next purchase-order number. They stay drafts until someone confirms them.
+
+## Downtime and OEE
+
+A downtime entry belongs to one work center. Draft minutes are a record only. When the downtime setting is on, confirmed minutes shorten the scheduled day in proportion: availability is logged time against one full day, multiplied by the share of the day that was not down. Zero downtime leaves the previous ratio. A work center with no logged time and no completed or rejected quantity still has no OEE. Turning the setting off ignores downtime.
+
+## Unbuild
+
+An unbuild order names a finished product that has an active bill, and a quantity. While it is a draft, stock does not move. Marking it done issues the finished good from the internal shelf into production and receives each component back, at the component's current cost, for the bill quantity divided by the yield. Expected loss is not returned, because that material was never in the finished piece. By-products are not reversed.
+
+## Reports and bill tools
+
+Production analysis sums finished quantity by month. Work in progress is the remaining quantity on orders that are in process or stopped, valued at the product cost. Cost variance is the rolled-up bill cost of the quantity finished, compared with component issues at current cost plus operating cost already absorbed. Work center utilisation is logged minutes against one scheduled day, and it also shows confirmed downtime. Scrap and wastage reuse the wastage entries already stored on the orders.
+
+Comparing two bills lists each component quantity on the left and the right, and the rolled-up unit cost of each bill. Exploding a bill walks every level until a bought item or a cycle. Saving the rolled-up cost writes that unit cost onto the product. It does not revalue finished goods already in stock.
+
+## Settings that change the workshop
+
+Locking confirmed orders blocks edits. The default work center is required when an order is confirmed. The planning horizon, forecast switch, reorder switch, downtime switch, and default purchase lead each change the plan or the OEE figure, as described above. A blank setting uses the same default the settings screen shows.
 
 ## Subcontracting
 
@@ -58,4 +82,4 @@ A subcontract order sends its components from the source warehouse to a subcontr
 
 ## What this slice does not do
 
-It does not schedule a finite capacity board, and it does not revalue older finished goods when a bill is revised. The product cost changes only when someone saves the rolled-up cost, or when a moving-average receipt updates it.
+It does not schedule a finite capacity board, and it does not revalue older finished goods when a bill is revised. The product cost changes only when someone saves the rolled-up cost, or when a moving-average receipt updates it. Planning does not post journals. A draft unbuild does not either.

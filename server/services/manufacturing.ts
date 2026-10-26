@@ -61,7 +61,7 @@ const bomInclude = {
   orders: { select: { id: true, name: true, state: true }, orderBy: { id: 'asc' as const } },
 }
 
-type BomCostSource = {
+export type BomCostSource = {
   id?: number
   productId?: number
   yieldQty: number

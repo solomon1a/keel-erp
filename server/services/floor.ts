@@ -250,7 +250,15 @@ export async function wastageReport(companyId: number) {
   }
 }
 
-type Demand = { productId: number; quantity: number; bomId: number | null; purchase: boolean }
+type DemandSource = 'order' | 'forecast' | 'reorder'
+
+type Demand = {
+  productId: number
+  quantity: number
+  bomId: number | null
+  purchase: boolean
+  sources: Set<DemandSource>
+}
 
 function explode(
   productId: number,
@@ -262,14 +270,14 @@ function explode(
   if (seen.has(productId)) return
   const bom = boms.get(productId)
   if (!bom) {
-    const current = out.get(productId) ?? { productId, quantity: 0, bomId: null, purchase: true }
+    const current = out.get(productId) ?? { productId, quantity: 0, bomId: null, purchase: true, sources: new Set<DemandSource>() }
     current.quantity = roundQty(current.quantity + quantity)
     out.set(productId, current)
     return
   }
   const nextSeen = new Set(seen)
   nextSeen.add(productId)
-  const current = out.get(productId) ?? { productId, quantity: 0, bomId: bom.id, purchase: false }
+  const current = out.get(productId) ?? { productId, quantity: 0, bomId: bom.id, purchase: false, sources: new Set<DemandSource>() }
   current.quantity = roundQty(current.quantity + quantity)
   current.bomId = bom.id
   current.purchase = false
@@ -280,10 +288,55 @@ function explode(
   }
 }
 
+function absorbDemand(productId: number, quantity: number, source: DemandSource, boms: Map<number, { id: number; yieldQty: number; lines: Array<{ productId: number; quantity: number; lossPercent: number }> }>, demand: Map<number, Demand>) {
+  const before = new Set(demand.keys())
+  explode(productId, quantity, boms, demand, new Set())
+  for (const [id, row] of demand) {
+    if (!before.has(id)) row.sources.add(source)
+  }
+  demand.get(productId)?.sources.add(source)
+}
+
+function sourceLabel(sources: Set<DemandSource>) {
+  const list = [...sources]
+  if (list.length === 1) {
+    const only = list[0]
+    if (only === 'order' || only === 'forecast' || only === 'reorder') return only
+  }
+  if (list.length === 0) return 'order'
+  return 'mixed'
+}
+
+function wholeSetting(value: string, fallback: number) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback
+  return Math.round(parsed)
+}
+
+function periodStartsAfter(period: string, cutoff: Date) {
+  const match = /^(\d{4})-(\d{2})$/.exec(period)
+  if (!match) return false
+  const start = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1))
+  return start.getTime() > cutoff.getTime()
+}
+
 export async function createProductionPlan(companyId: number) {
-  const [orders, bills, quants] = await Promise.all([
+  const [forecastOn, reorderOn, horizonRaw, pleadRaw] = await Promise.all([
+    readSetting(prisma, companyId, 'manufacturing', 'forecast', 'yes'),
+    readSetting(prisma, companyId, 'manufacturing', 'reorder', 'yes'),
+    readSetting(prisma, companyId, 'manufacturing', 'horizon', '0'),
+    readSetting(prisma, companyId, 'manufacturing', 'plead', '7'),
+  ])
+  const horizon = wholeSetting(horizonRaw, 0)
+  const plead = wholeSetting(pleadRaw, 7)
+  const cutoff = horizon > 0 ? new Date(Date.now() + horizon * 86_400_000) : null
+  const [orders, bills, quants, forecasts, rules] = await Promise.all([
     prisma.salesOrder.findMany({
-      where: { companyId, state: { in: ['sale', 'draft', 'sent'] } },
+      where: {
+        companyId,
+        state: { in: ['sale', 'draft', 'sent'] },
+        ...(cutoff ? { dateOrder: { lte: cutoff } } : {}),
+      },
       include: { lines: { select: { productId: true, quantity: true } } },
       take: 100,
     }),
@@ -295,17 +348,39 @@ export async function createProductionPlan(companyId: number) {
       where: { location: { companyId, type: 'internal' } },
       select: { productId: true, quantity: true },
     }),
+    forecastOn === 'no' ? Promise.resolve([]) : prisma.demandForecast.findMany({ where: { companyId } }),
+    reorderOn === 'no' ? Promise.resolve([]) : prisma.reorderRule.findMany({ where: { companyId } }),
   ])
   const boms = new Map(bills.map((bill) => [bill.productId, bill]))
   const demand = new Map<number, Demand>()
   for (const order of orders) {
     for (const line of order.lines) {
-      if (boms.has(line.productId)) explode(line.productId, line.quantity, boms, demand, new Set())
+      if (boms.has(line.productId)) absorbDemand(line.productId, line.quantity, 'order', boms, demand)
     }
+  }
+  for (const row of forecasts) {
+    if (cutoff && periodStartsAfter(row.period, cutoff)) continue
+    absorbDemand(row.productId, row.quantity, 'forecast', boms, demand)
   }
   const onHand = new Map<number, number>()
   for (const quant of quants) onHand.set(quant.productId, roundQty((onHand.get(quant.productId) ?? 0) + quant.quantity))
+  for (const rule of rules) {
+    if (demand.has(rule.productId)) continue
+    const have = onHand.get(rule.productId) ?? 0
+    if (have + 0.0001 >= rule.minQty) continue
+    const qty = roundQty(Math.max(0, rule.maxQty - have))
+    if (qty <= 0) continue
+    absorbDemand(rule.productId, qty, 'reorder', boms, demand)
+  }
   const count = await prisma.productionPlan.count({ where: { companyId } })
+  const productIds = [...demand.keys()]
+  const products = productIds.length
+    ? await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, sku: true, leadDays: true },
+    })
+    : []
+  const names = new Map(products.map((row) => [row.id, row]))
   const plan = await prisma.productionPlan.create({
     data: {
       companyId,
@@ -315,6 +390,9 @@ export async function createProductionPlan(companyId: number) {
         create: [...demand.values()].map((row) => {
           const have = onHand.get(row.productId) ?? 0
           const short = Math.max(0, roundQty(row.quantity - have))
+          const product = names.get(row.productId)
+          const ownLead = product?.leadDays ?? 0
+          const leadDays = ownLead > 0 ? ownLead : row.purchase ? plead : 0
           return {
             productId: row.productId,
             demandQty: roundQty(row.quantity),
@@ -322,24 +400,28 @@ export async function createProductionPlan(companyId: number) {
             toMake: row.purchase ? 0 : short,
             toBuy: row.purchase ? short : 0,
             bomId: row.bomId,
+            source: sourceLabel(row.sources),
+            leadDays,
           }
         }),
       },
     },
     include: { lines: true },
   })
-  const products = await prisma.product.findMany({
-    where: { id: { in: plan.lines.map((line) => line.productId) } },
-    select: { id: true, name: true, sku: true },
-  })
-  const names = new Map(products.map((row) => [row.id, row]))
-  return { ...plan, lines: plan.lines.map((line) => ({ ...line, product: names.get(line.productId) ?? null })) }
+  return {
+    ...plan,
+    lines: plan.lines.map((line) => ({
+      ...line,
+      product: names.get(line.productId) ?? null,
+      purchaseOrder: null,
+    })),
+  }
 }
 
 export async function listProductionPlans(companyId: number) {
   const plans = await prisma.productionPlan.findMany({
     where: { companyId },
-    include: { lines: true },
+    include: { lines: { include: { purchaseOrder: { select: { id: true, name: true, state: true } } } } },
     orderBy: { id: 'desc' },
     take: 30,
   })
@@ -357,7 +439,7 @@ export async function listProductionPlans(companyId: number) {
 export async function getProductionPlan(companyId: number, planId: number) {
   const plan = await prisma.productionPlan.findFirst({
     where: { id: planId, companyId },
-    include: { lines: true },
+    include: { lines: { include: { purchaseOrder: { select: { id: true, name: true, state: true } } } } },
   })
   if (!plan) throw new AppError(404, 'Production plan not found.')
   const products = await prisma.product.findMany({
@@ -532,11 +614,14 @@ function asPercent(ratio: number | null) {
   return Math.round(Math.min(1, Math.max(0, ratio)) * 1000) / 10
 }
 
-/** OEE from stored cards. Availability is logged minutes against one scheduled day. Empty stations stay null. */
-export function measureOee(station: {
-  capacityHours: number
-  jobCards: Array<{ plannedQty: number; completedQty: number; rejectedQty: number; logs: Array<{ minutes: number }> }>
-}) {
+/** OEE from stored cards. Availability is logged time against one day, times the share of the day not lost to downtime. Empty stations stay null. */
+export function measureOee(
+  station: {
+    capacityHours: number
+    jobCards: Array<{ plannedQty: number; completedQty: number; rejectedQty: number; logs: Array<{ minutes: number }> }>
+  },
+  downtimeMinutes = 0,
+) {
   let logged = 0
   let planned = 0
   let completed = 0
@@ -548,11 +633,13 @@ export function measureOee(station: {
     for (const log of card.logs) logged += log.minutes
   }
   logged = Math.round(logged * 100) / 100
+  const lost = Math.max(0, Math.round(downtimeMinutes * 100) / 100)
   if (logged === 0 && completed === 0 && rejected === 0) {
-    return { availability: null, performance: null, quality: null, oee: null, loggedMinutes: 0 }
+    return { availability: null, performance: null, quality: null, oee: null, loggedMinutes: 0, downtimeMinutes: lost }
   }
   const capacity = station.capacityHours * 60
-  const availability = capacity > 0 ? Math.min(1, logged / capacity) : null
+  const open = capacity > 0 ? Math.max(0, (capacity - Math.min(lost, capacity)) / capacity) : null
+  const availability = capacity > 0 && open != null ? Math.min(1, logged / capacity) * open : null
   const performance = planned > 0 ? Math.min(1, completed / planned) : null
   const touched = completed + rejected
   const quality = touched > 0 ? completed / touched : null
@@ -563,6 +650,7 @@ export function measureOee(station: {
     quality: asPercent(quality),
     oee: asPercent(oee),
     loggedMinutes: logged,
+    downtimeMinutes: lost,
   }
 }
 
@@ -578,22 +666,33 @@ function loggedCost(minutes: number, hourRate: number) {
 }
 
 export async function listWorkstations(companyId: number) {
-  const stations = await prisma.workstation.findMany({
-    where: { companyId },
-    orderBy: { name: 'asc' },
-    include: {
-      jobCards: {
-        select: {
-          plannedQty: true,
-          completedQty: true,
-          rejectedQty: true,
-          logs: { select: { minutes: true } },
+  const feedDowntime = (await readSetting(prisma, companyId, 'manufacturing', 'downtime', 'yes')) !== 'no'
+  const [stations, downtime] = await Promise.all([
+    prisma.workstation.findMany({
+      where: { companyId },
+      orderBy: { name: 'asc' },
+      include: {
+        jobCards: {
+          select: {
+            plannedQty: true,
+            completedQty: true,
+            rejectedQty: true,
+            logs: { select: { minutes: true } },
+          },
         },
       },
-    },
-  })
+    }),
+    feedDowntime
+      ? prisma.downtimeEntry.groupBy({
+        by: ['workstationId'],
+        where: { companyId, state: 'confirmed' },
+        _sum: { minutes: true },
+      })
+      : Promise.resolve([]),
+  ])
+  const lost = new Map(downtime.map((row) => [row.workstationId, row._sum.minutes ?? 0]))
   return stations.map((station) => {
-    const measured = measureOee(station)
+    const measured = measureOee(station, lost.get(station.id) ?? 0)
     return {
       id: station.id,
       name: station.name,

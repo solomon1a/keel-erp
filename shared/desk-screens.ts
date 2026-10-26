@@ -268,6 +268,11 @@ export const deskScreens: DeskScreen[] = [
   settings('manufacturing', 'Manufacturing settings', '制造设置', 'How the workshop confirms work.', '车间如何确认工单。', [
     { key: 'lock', labelEn: 'Lock confirmed orders', labelZh: '锁定已确认的工单', value: 'yes' },
     { key: 'center', labelEn: 'Default work center', labelZh: '默认工作中心', value: 'Cutting table' },
+    { key: 'horizon', labelEn: 'Planning horizon (days, 0 = all)', labelZh: '计划展望天数（0 表示全部）', value: '0' },
+    { key: 'forecast', labelEn: 'Include forecasts', labelZh: '计入预测', value: 'yes' },
+    { key: 'reorder', labelEn: 'Include reorder rules', labelZh: '计入再订货规则', value: 'yes' },
+    { key: 'downtime', labelEn: 'Downtime reduces OEE', labelZh: '停机计入设备综合效率', value: 'yes' },
+    { key: 'plead', labelEn: 'Default purchase lead (days)', labelZh: '默认采购提前期（天）', value: '7' },
   ]),
   list('manufacturing', 'work-centers', 'Work centers', '工作中心', 'Benches on the shop floor.', '车间里的工位。', ['active'], [
     { name: 'Cutting table', state: 'active', owner: 'He Gong', notes: 'Canvas and notebook covers.', recordDate: day('2026-01-01') },

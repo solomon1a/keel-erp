@@ -254,6 +254,39 @@ export const produceSchema = z.object({
   quantity: z.number().positive('Quantity must be greater than zero').optional(),
 })
 
+export const forecastInputSchema = z.object({
+  name: z.string().trim().min(1, 'Give the forecast a name').max(40),
+  productId: z.number().int().positive('Choose a product'),
+  period: z.string().regex(/^\d{4}-\d{2}$/, 'Use a month, YYYY-MM'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  note: z.string().trim().max(160).optional(),
+})
+
+export const downtimeInputSchema = z.object({
+  name: z.string().trim().min(1, 'Give the entry a name').max(40),
+  workstationId: z.number().int().positive('Choose a work center'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date, YYYY-MM-DD'),
+  minutes: z.number().positive('Minutes must be greater than zero'),
+  reason: z.string().trim().min(1, 'Give a reason').max(160),
+  state: z.enum(['draft', 'confirmed']),
+})
+
+export const unbuildInputSchema = z.object({
+  name: z.string().trim().min(1, 'Give the order a name').max(40),
+  productId: z.number().int().positive('Choose a product'),
+  quantity: z.number().positive('Quantity must be greater than zero'),
+  note: z.string().trim().max(160).optional(),
+})
+
+export const leadDaysSchema = z.object({
+  leadDays: z.number().int().min(0, 'Lead time cannot be negative').max(365),
+})
+
+export const bomCompareSchema = z.object({
+  leftId: z.number().int().positive(),
+  rightId: z.number().int().positive(),
+})
+
 export const stockAdjustSchema = z.object({
   productId: z.number().int().positive(),
   locationId: z.number().int().positive().optional(),
@@ -352,6 +385,11 @@ export type WorkstationInput = z.infer<typeof workstationInputSchema>
 export type WastageInput = z.infer<typeof wastageSchema>
 export type ManufacturingInput = z.infer<typeof manufacturingInputSchema>
 export type ProduceInput = z.infer<typeof produceSchema>
+export type ForecastInput = z.infer<typeof forecastInputSchema>
+export type DowntimeInput = z.infer<typeof downtimeInputSchema>
+export type UnbuildInput = z.infer<typeof unbuildInputSchema>
+export type LeadDaysInput = z.infer<typeof leadDaysSchema>
+export type BomCompareInput = z.infer<typeof bomCompareSchema>
 export type StockAdjustInput = z.infer<typeof stockAdjustSchema>
 export type WarehouseInput = z.infer<typeof warehouseInputSchema>
 export type LocationInput = z.infer<typeof locationInputSchema>
