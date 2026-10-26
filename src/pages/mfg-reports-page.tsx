@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { EmptyState } from '../components/field.tsx'
 import { Button } from '../components/ui/button.tsx'
 import { useI18n } from '../i18n/locale.tsx'
@@ -15,15 +15,37 @@ type Report = {
   scrap: { cost: number; expense: number; scrap: number; expected: number; actual: number; variancePct: number; byReason: Array<{ reason: string; quantity: number; cost: number }> }
 }
 
+function desktopReports() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true
+  return window.matchMedia('(min-width: 768px)').matches
+}
+
+function useDesktopReports() {
+  const [desktop, setDesktop] = useState(desktopReports)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const media = window.matchMedia('(min-width: 768px)')
+    const apply = () => setDesktop(media.matches)
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
+  }, [])
+  return desktop
+}
+
 function Fold({ title, aside, count, children }: { title: string; aside?: ReactNode; count: number; children: ReactNode }) {
   const { t } = useI18n()
-  if (count === 0) {
+  const desktop = useDesktopReports()
+  const heading = (
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <h2 className="font-serif text-2xl">{title}</h2>
+      {aside}
+    </div>
+  )
+  if (count === 0 || desktop) {
     return (
       <section className="grid gap-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-serif text-2xl">{title}</h2>
-          {aside}
-        </div>
+        {heading}
         {children}
       </section>
     )

@@ -200,18 +200,6 @@ header.keel-glass {
   display: none;
 }
 
-@media (min-width: 768px) {
-  details.keel-fold:not([open]) > .keel-fold-body,
-  details.keel-fold[open] > .keel-fold-body {
-    display: block;
-  }
-
-  .keel-fold .keel-when-closed,
-  .keel-fold .keel-when-open {
-    display: none;
-  }
-}
-
 .keel-module-nav {
   position: relative;
 }
