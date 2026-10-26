@@ -327,6 +327,12 @@ export function Shell() {
     queryFn: () => api<User>('/api/session/me'),
     retry: false,
   })
+  const invoiceId = /^\/accounting\/(\d+)$/.exec(location.pathname)?.[1]
+  const invoiceCrumb = useQuery({
+    queryKey: ['invoice', invoiceId],
+    queryFn: () => api<{ name: string }>(`/api/invoices/${invoiceId}`),
+    enabled: Boolean(invoiceId && me.data),
+  })
 
   useEffect(() => {
     const onOver = (event: Event) => {
@@ -360,6 +366,14 @@ export function Shell() {
 
   const mod = moduleForPath(location.pathname)
   const section = mod ? sectionForPath(mod, location.pathname, location.search) : null
+  const sectionMatches = Boolean(section && linkActive(section.to, location.pathname, location.search))
+  const pageCrumb = sectionMatches && section && section.to.split('?')[0] !== mod?.home
+    ? menuLabel(section.label, locale, t)
+    : location.pathname === '/accounting/payments'
+      ? t('acct.payments')
+      : invoiceId
+        ? (invoiceCrumb.data?.name ?? t('menu.invoices'))
+        : null
   const showPulse = Boolean(mod && location.pathname === mod.home && !location.pathname.startsWith('/go/'))
 
   return (
@@ -433,9 +447,7 @@ export function Shell() {
           <nav className="keel-crumbs" aria-label={t(mod.label)}>
             <Link to="/">{t('shell.apps')}</Link>
             <Link to={mod.home}>{t(mod.label)}</Link>
-            {section && section.to.split('?')[0] !== mod.home ? (
-              <span aria-current="page">{menuLabel(section.label, locale, t)}</span>
-            ) : null}
+            {pageCrumb ? <span aria-current="page">{pageCrumb}</span> : null}
           </nav>
         ) : null}
         {showPulse && mod ? <ModulePulse mod={mod} /> : null}

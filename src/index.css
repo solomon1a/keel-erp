@@ -148,6 +148,36 @@ header.keel-glass {
   border-width: 0 0 1px;
   border-radius: 0;
   box-shadow: 0 10px 30px rgba(18, 48, 42, 0.06);
+  background: var(--kl-color-semantic-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  opacity: 1;
+}
+
+.keel-fold > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.keel-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.keel-fold[open] .keel-when-closed,
+.keel-fold:not([open]) .keel-when-open {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  details.keel-fold:not([open]) > .keel-fold-body,
+  details.keel-fold[open] > .keel-fold-body {
+    display: block;
+  }
+
+  .keel-fold .keel-when-closed,
+  .keel-fold .keel-when-open {
+    display: none;
+  }
 }
 
 .keel-module-nav {

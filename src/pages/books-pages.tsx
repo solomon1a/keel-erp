@@ -154,7 +154,7 @@ export function PaymentsPage() {
           <Field label={t('acct.method')}><Input value={method} onChange={(event) => setMethod(event.target.value)} /></Field>
           <Field label={t('acct.memo')}><Input value={memo} onChange={(event) => setMemo(event.target.value)} /></Field>
         </div>
-        <Button type="button" disabled={create.isPending} onClick={() => create.mutate()}>{create.isPending ? t('common.saving') : t('acct.payments')}</Button>
+        <Button type="button" disabled={create.isPending} onClick={() => create.mutate()}>{create.isPending ? t('common.saving') : t('acct.pay')}</Button>
       </Panel>
       {payments.isLoading ? <p className="text-sm text-muted-foreground">{t('acct.loading')}</p> : null}
       {payments.data && payments.data.length === 0 ? <p className="text-sm text-muted-foreground">{t('acct.empty')}</p> : null}

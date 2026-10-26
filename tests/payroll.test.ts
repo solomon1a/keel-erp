@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { volumePayroll } from '../prisma/volume-plan.ts'
+import { jiangbeiBasePay, refreshJiangbei, zhouGross, zhouTitle } from '../prisma/refresh-jiangbei.ts'
+import { jiangbeiBooks } from '../prisma/seed-books.ts'
+import { volumeEmployees, volumePayroll } from '../prisma/volume-plan.ts'
 import { demoPasswords, seedDatabase } from '../prisma/seed.ts'
 import { prisma } from '../server/db.ts'
 import { roundMoney } from '../src/domain/money.ts'
@@ -24,6 +26,59 @@ type Run = { id: number; name: string; state: string; payslips: Slip[] }
 type Claim = { id: number; name: string; state: string; amount: number }
 
 describe('payroll and expenses', () => {
+  it('gives every Jiangbei employee a salary without moving the books', async () => {
+    const companyId = (await prisma.user.findUniqueOrThrow({ where: { email: 'maya@northline.example' } })).companyId
+    const people = await prisma.employee.findMany({
+      where: { companyId },
+      include: { salary: true },
+      orderBy: { name: 'asc' },
+    })
+    expect(people).toHaveLength(volumeEmployees.length + 1 + Object.keys(jiangbeiBasePay).length)
+    for (const person of people) {
+      expect(person.salary, person.name).toBeTruthy()
+      const gross = person.salary?.monthlyGross ?? 0
+      if (person.name === 'Zhou Ning') {
+        expect(person.jobTitle).toBe(zhouTitle)
+        expect(gross).toBe(zhouGross)
+      } else if (person.name in jiangbeiBasePay) {
+        expect(gross).toBe(jiangbeiBasePay[person.name as keyof typeof jiangbeiBasePay])
+      } else {
+        expect(gross).toBeGreaterThanOrEqual(5000)
+        expect(gross).toBeLessThanOrEqual(9600)
+      }
+    }
+    const harbour = await prisma.company.findFirstOrThrow({ where: { name: 'Harbour & Line' } })
+    const otherMina = await prisma.employee.findFirst({
+      where: { companyId: harbour.id, name: 'Mina Cole' },
+      include: { salary: true },
+    })
+    expect(otherMina?.salary).toBeNull()
+    const journals = await prisma.journalEntry.count({ where: { companyId } })
+    const again = await refreshJiangbei(prisma)
+    expect(again).toEqual({ added: 0, titled: 0 })
+    expect(await prisma.journalEntry.count({ where: { companyId } })).toBe(journals)
+
+    const pnl = await call('/api/reports/pnl', maya)
+    const balance = await call('/api/reports/balance', maya)
+    expect(pnl.status).toBe(200)
+    expect(balance.status).toBe(200)
+    expect(pnl.body).toMatchObject({
+      income: jiangbeiBooks.income,
+      expense: jiangbeiBooks.expense,
+      profit: jiangbeiBooks.profit,
+    })
+    expect(balance.body).toMatchObject({
+      assets: jiangbeiBooks.assets,
+      liabilities: jiangbeiBooks.liabilities,
+      equity: jiangbeiBooks.equity,
+      balanced: true,
+    })
+    const income = jiangbeiBooks.income
+    const margin = (jiangbeiBooks.profit / income) * 100
+    expect(margin).toBeGreaterThanOrEqual(10)
+    expect(margin).toBeLessThanOrEqual(15)
+  })
+
   it('seeds a posted China payslip and posts a later month once', async () => {
     const listed = await call('/api/payroll', maya)
     expect(listed.status).toBe(200)
@@ -56,9 +111,13 @@ describe('payroll and expenses', () => {
     })
     const debit = entry.lines.reduce((sum, line) => sum + line.debit, 0)
     const credit = entry.lines.reduce((sum, line) => sum + line.credit, 0)
+    const companyId = (await prisma.user.findUniqueOrThrow({ where: { email: 'maya@northline.example' } })).companyId
+    const structures = await prisma.salaryStructure.findMany({ where: { companyId } })
+    const payrollGross = roundMoney(structures.reduce((sum, row) => sum + row.monthlyGross, 0))
     const workshop = roundMoney(volumePayroll.reduce((sum, row) => sum + row.gross, 0))
-    expect(debit).toBe(roundMoney(12000 + workshop))
-    expect(credit).toBe(roundMoney(12000 + workshop))
+    expect(payrollGross).toBe(roundMoney(12000 + workshop + Object.values(jiangbeiBasePay).reduce((sum, gross) => sum + gross, 0)))
+    expect(debit).toBe(payrollGross)
+    expect(credit).toBe(payrollGross)
   })
 
   it('approves and reimburses a claim, and keeps one seeded run', async () => {

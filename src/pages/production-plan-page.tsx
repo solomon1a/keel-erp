@@ -21,6 +21,12 @@ function sourceLabel(source: string | undefined, t: (key: MessageKey) => string)
   return key ? t(key) : source
 }
 
+function planStateLabel(state: string, t: (key: MessageKey) => string) {
+  if (state === 'draft') return t('mfg.draft')
+  if (state === 'raised') return t('mfg.raised')
+  return state
+}
+
 type PlanLine = {
   id: number
   productId: number
@@ -104,7 +110,7 @@ export function ProductionPlanPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-2xl">{current.name}</h2>
-              <Badge tone={current.state}>{current.state}</Badge>
+              <Badge tone={current.state}>{planStateLabel(current.state, t)}</Badge>
             </div>
             <div className="flex flex-wrap gap-2">
               {current.lines.some((line) => line.toBuy > 0 && !line.purchaseOrder) ? (

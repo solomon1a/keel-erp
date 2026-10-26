@@ -91,7 +91,7 @@ export async function anglicizeJiangbei(client: PrismaClient, companyId: number)
   if (plant) await client.department.update({ where: { id: plant.id }, data: { name: 'Production' } })
   await client.employee.updateMany({
     where: { companyId, email: 'zhou.ning@northline.example' },
-    data: { name: 'Zhou Ning', jobTitle: 'Sales' },
+    data: { name: 'Zhou Ning', jobTitle: 'Sales manager' },
   })
   await client.employee.updateMany({ where: { companyId, name: '何工' }, data: { name: 'He Gong', jobTitle: 'Shift lead' } })
   await client.leaveRequest.updateMany({ where: { employee: { companyId }, reason: '发烧' }, data: { reason: 'Fever' } })

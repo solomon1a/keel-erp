@@ -24,6 +24,7 @@ import { seedHelpdesk } from './seed-helpdesk.ts'
 import { seedPhase } from './seed-phase.ts'
 import { seedVolume } from './seed-volume.ts'
 import { seedMfgPlanning } from './seed-mfg.ts'
+import { refreshJiangbei } from './refresh-jiangbei.ts'
 
 const prisma = new PrismaClient({ transactionOptions })
 
@@ -81,6 +82,7 @@ export async function seedDatabase(client: PrismaClient = prisma) {
     const companies = await client.company.findMany({ select: { id: true, currency: true } })
     for (const company of companies) await ensureDemoRates(client, company.id, company.currency)
   }, failures)
+  await runStage('jiangbei-refresh', () => refreshJiangbei(client), failures)
   if (failures.length > 0) {
     throw new Error(`KEEL SEED FAILED: ${failures.join('; ')}`)
   }
@@ -831,7 +833,7 @@ async function seedJiangbei(client: PrismaClient) {
       name: 'Zhou Ning',
       email: 'zhou.ning@northline.example',
       phone: '13600004444',
-      jobTitle: 'Sales',
+      jobTitle: 'Sales manager',
       departmentId: salesDept.id,
       companyId: company.id,
       attendances: {
