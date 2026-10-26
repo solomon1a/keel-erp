@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { seedMfgPlanning } from '../prisma/seed-mfg.ts'
+import { jiangbeiBooks } from '../prisma/seed-books.ts'
 import { demoPasswords } from '../prisma/seed.ts'
 import { roundMoney } from '../src/domain/money.ts'
 import { prisma } from '../server/db.ts'
@@ -241,7 +242,7 @@ describe('manufacturing part 2', () => {
       production: unknown[]
       wip: { orders: unknown[]; value: number }
       variance: unknown[]
-      utilisation: Array<{ name: string; downtimeMinutes: number }>
+      utilisation: Array<{ name: string; downtimeMinutes: number; loggedMinutes: number; scheduledMinutes: number; utilisation: number }>
       scrap: { cost: number; expected: number; actual: number; variancePct: number; byReason: Array<{ reason: string }> }
     }
     expect(body.production.length).toBeGreaterThan(0)
@@ -249,6 +250,26 @@ describe('manufacturing part 2', () => {
     expect(body.wip.value).toBeGreaterThanOrEqual(0)
     expect(body.utilisation.find((row) => row.name === 'Packing table')?.downtimeMinutes).toBe(45)
     expect(body.utilisation.find((row) => row.name === 'Dye vat')?.downtimeMinutes).toBe(0)
+    expect(body.utilisation.find((row) => row.name === 'Stitch line')).toMatchObject({
+      loggedMinutes: 1665,
+      scheduledMinutes: 2880,
+      utilisation: 57.8,
+    })
+    expect(body.utilisation.find((row) => row.name === 'Packing table')).toMatchObject({
+      loggedMinutes: 1650,
+      scheduledMinutes: 2880,
+      utilisation: 57.3,
+    })
+    for (const row of body.utilisation) {
+      if (row.loggedMinutes <= 0) continue
+      expect(row.utilisation).toBeGreaterThanOrEqual(40)
+      expect(row.utilisation).toBeLessThanOrEqual(95)
+    }
+    expect(jiangbeiBooks.profit).toBe(762213.62)
+    const pnl = await call('/api/reports/pnl', maya)
+    expect(pnl.body).toMatchObject({ profit: jiangbeiBooks.profit })
+    const sheet = await call('/api/reports/balance', maya)
+    expect(sheet.body).toMatchObject({ balanced: true })
     expect(body.scrap.byReason.length).toBeGreaterThan(0)
     expect(body.scrap.variancePct).toBeGreaterThanOrEqual(0)
     expect(body.scrap.variancePct).toBeLessThanOrEqual(100)

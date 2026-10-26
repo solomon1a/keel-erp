@@ -150,7 +150,10 @@ export function MfgReportsPage() {
       </Fold>
 
       <section className="grid gap-3">
-        <h2 className="font-serif text-2xl">{t('mfg.utilisation')}</h2>
+        <div className="grid gap-1">
+          <h2 className="font-serif text-2xl">{t('mfg.utilisation')}</h2>
+          <p className="text-sm text-muted-foreground">{t('mfg.utilisationLead')}</p>
+        </div>
         {data.utilisation.length === 0 ? <p className="text-sm text-muted-foreground">{t('mfg.reportsEmpty')}</p> : (
           <div className="rounded-lg border border-border bg-card">
             <table className="keel-stack w-full text-left text-sm">

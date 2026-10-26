@@ -1,5 +1,6 @@
 import { roundMoney } from '../../src/domain/money.ts'
 import { scrapRatePct } from '../../src/domain/scrap-rate.ts'
+import { stationUtilisation } from '../../src/domain/utilisation.ts'
 import type { BomCompareInput, DowntimeInput, ForecastInput, LeadDaysInput, UnbuildInput } from '../../shared/schemas.ts'
 import { prisma, type Tx } from '../db.ts'
 import { AppError } from '../errors.ts'
@@ -390,7 +391,7 @@ export async function manufacturingReports(companyId: number) {
     prisma.workstation.findMany({
       where: { companyId },
       orderBy: { name: 'asc' },
-      include: { jobCards: { select: { logs: { select: { minutes: true } } } } },
+      include: { jobCards: { select: { logs: { select: { minutes: true, startedAt: true } } } } },
     }),
     prisma.downtimeEntry.groupBy({
       by: ['workstationId'],
@@ -452,16 +453,17 @@ export async function manufacturingReports(companyId: number) {
   }
   const lost = new Map(downtime.map((row) => [row.workstationId, row._sum.minutes ?? 0]))
   const utilisation = stations.map((station) => {
-    const logged = station.jobCards.reduce((sum, card) => sum + card.logs.reduce((inner, log) => inner + log.minutes, 0), 0)
-    const scheduled = station.capacityHours * 60
-    const down = roundQty(lost.get(station.id) ?? 0)
+    const measured = stationUtilisation(
+      station.capacityHours,
+      station.jobCards.flatMap((card) => card.logs),
+    )
     return {
       id: station.id,
       name: station.name,
-      scheduledMinutes: roundQty(scheduled),
-      loggedMinutes: roundQty(logged),
-      downtimeMinutes: down,
-      utilisation: scheduled > 0 ? Math.round((logged / scheduled) * 1000) / 10 : 0,
+      scheduledMinutes: measured.scheduledMinutes,
+      loggedMinutes: measured.loggedMinutes,
+      downtimeMinutes: roundQty(lost.get(station.id) ?? 0),
+      utilisation: measured.utilisation,
     }
   })
   const byReason = new Map<string, { reason: string; quantity: number; cost: number }>()
