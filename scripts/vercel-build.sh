@@ -2,6 +2,8 @@
 set -e
 prisma generate
 prisma migrate deploy
+echo "KEEL REFRESH: Jiangbei"
+npx tsx prisma/refresh-jiangbei.ts
 if [ "$KEEL_SEED_ON_BUILD" = "1" ]; then
   echo "KEEL SEED: starting prisma db seed"
   if prisma db seed; then
