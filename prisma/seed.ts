@@ -82,7 +82,9 @@ export async function seedDatabase(client: PrismaClient = prisma) {
     const companies = await client.company.findMany({ select: { id: true, currency: true } })
     for (const company of companies) await ensureDemoRates(client, company.id, company.currency)
   }, failures)
-  await runStage('jiangbei-refresh', () => refreshJiangbei(client), failures)
+  await runStage('jiangbei-refresh', async () => {
+    await refreshJiangbei(client)
+  }, failures)
   if (failures.length > 0) {
     throw new Error(`KEEL SEED FAILED: ${failures.join('; ')}`)
   }
