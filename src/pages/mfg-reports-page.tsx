@@ -68,8 +68,8 @@ export function MfgReportsPage() {
       <section className="grid gap-3">
         <h2 className="font-serif text-2xl">{t('mfg.production')}</h2>
         {data.production.length === 0 ? <p className="text-sm text-muted-foreground">{t('mfg.reportsEmpty')}</p> : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[480px] text-left text-sm">
+          <div className="rounded-lg border border-border bg-card">
+            <table className="keel-stack w-full text-left text-sm">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">{t('mfg.month')}</th>
@@ -80,9 +80,9 @@ export function MfgReportsPage() {
               <tbody>
                 {data.production.map((row) => (
                   <tr key={row.month} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3">{row.month}</td>
-                    <td className="px-4 py-3">{row.quantity}</td>
-                    <td className="px-4 py-3">{row.orders}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.month')}>{row.month}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.quantity')}>{row.quantity}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.orders')}>{row.orders}</td>
                   </tr>
                 ))}
               </tbody>
@@ -93,8 +93,8 @@ export function MfgReportsPage() {
 
       <Fold title={t('mfg.wip')} count={data.wip.orders.length} aside={<span>{t('mfg.value')} {money(data.wip.value)}</span>}>
         {data.wip.orders.length === 0 ? <p className="text-sm text-muted-foreground">{t('mfg.reportsEmpty')}</p> : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[640px] text-left text-sm">
+          <div className="rounded-lg border border-border bg-card">
+            <table className="keel-stack w-full text-left text-sm">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">{t('mfg.name')}</th>
@@ -106,10 +106,10 @@ export function MfgReportsPage() {
               <tbody>
                 {data.wip.orders.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3"><Link className="font-medium hover:underline" to={`/manufacturing/${row.id}`}>{row.name}</Link></td>
-                    <td className="px-4 py-3">{row.product}</td>
-                    <td className="px-4 py-3">{row.remaining}</td>
-                    <td className="px-4 py-3">{money(row.value)}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.name')}><Link className="font-medium hover:underline" to={`/manufacturing/${row.id}`}>{row.name}</Link></td>
+                    <td className="px-4 py-3" data-label={t('mfg.product')}>{row.product}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.remaining')}>{row.remaining}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.value')}>{money(row.value)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -120,8 +120,8 @@ export function MfgReportsPage() {
 
       <Fold title={t('mfg.costVariance')} count={data.variance.length}>
         {data.variance.length === 0 ? <p className="text-sm text-muted-foreground">{t('mfg.reportsEmpty')}</p> : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[760px] text-left text-sm">
+          <div className="rounded-lg border border-border bg-card">
+            <table className="keel-stack w-full text-left text-sm">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">{t('mfg.name')}</th>
@@ -135,12 +135,12 @@ export function MfgReportsPage() {
               <tbody>
                 {data.variance.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3">{row.name}</td>
-                    <td className="px-4 py-3">{row.product}</td>
-                    <td className="px-4 py-3">{row.quantityDone}</td>
-                    <td className="px-4 py-3">{money(row.standard)}</td>
-                    <td className="px-4 py-3">{money(row.actual)}</td>
-                    <td className="px-4 py-3">{money(row.variance)}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.name')}>{row.name}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.product')}>{row.product}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.quantity')}>{row.quantityDone}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.standard')}>{money(row.standard)}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.actualCost')}>{money(row.actual)}</td>
+                    <td className="px-4 py-3" data-label={t('floor.variance')}>{money(row.variance)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -152,8 +152,8 @@ export function MfgReportsPage() {
       <section className="grid gap-3">
         <h2 className="font-serif text-2xl">{t('mfg.utilisation')}</h2>
         {data.utilisation.length === 0 ? <p className="text-sm text-muted-foreground">{t('mfg.reportsEmpty')}</p> : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[720px] text-left text-sm">
+          <div className="rounded-lg border border-border bg-card">
+            <table className="keel-stack w-full text-left text-sm">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">{t('mfg.center')}</th>
@@ -166,11 +166,11 @@ export function MfgReportsPage() {
               <tbody>
                 {data.utilisation.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 font-medium">{row.name}</td>
-                    <td className="px-4 py-3">{row.scheduledMinutes}</td>
-                    <td className="px-4 py-3">{row.loggedMinutes}</td>
-                    <td className="px-4 py-3">{row.downtimeMinutes}</td>
-                    <td className="px-4 py-3">{row.utilisation}%</td>
+                    <td className="px-4 py-3 font-medium" data-label={t('mfg.center')}>{row.name}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.scheduled')}>{row.scheduledMinutes}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.logged')}>{row.loggedMinutes}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.downtimeMinutes')}>{row.downtimeMinutes}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.utilPct')}>{row.utilisation}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -185,8 +185,8 @@ export function MfgReportsPage() {
           <p className="text-muted-foreground">{money(data.scrap.cost)} · {data.scrap.variancePct}%</p>
         </div>
         {data.scrap.byReason.length === 0 ? <p className="text-sm text-muted-foreground">{t('mfg.reportsEmpty')}</p> : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[480px] text-left text-sm">
+          <div className="rounded-lg border border-border bg-card">
+            <table className="keel-stack w-full text-left text-sm">
               <thead className="border-b border-border text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">{t('mfg.reason')}</th>
@@ -197,9 +197,9 @@ export function MfgReportsPage() {
               <tbody>
                 {data.scrap.byReason.map((row) => (
                   <tr key={row.reason} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3">{row.reason}</td>
-                    <td className="px-4 py-3">{row.quantity}</td>
-                    <td className="px-4 py-3">{money(row.cost)}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.reason')}>{row.reason}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.quantity')}>{row.quantity}</td>
+                    <td className="px-4 py-3" data-label={t('mfg.value')}>{money(row.cost)}</td>
                   </tr>
                 ))}
               </tbody>

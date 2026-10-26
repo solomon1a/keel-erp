@@ -154,6 +154,38 @@ header.keel-glass {
   opacity: 1;
 }
 
+@media (max-width: 767px) {
+  table.keel-stack {
+    min-width: 0;
+  }
+
+  table.keel-stack thead {
+    display: none;
+  }
+
+  table.keel-stack tr {
+    display: grid;
+    gap: 4px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--kl-color-semantic-border);
+  }
+
+  table.keel-stack td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+    padding: 0 16px;
+  }
+
+  table.keel-stack td::before {
+    content: attr(data-label);
+    color: var(--kl-color-semantic-text-muted);
+    flex: 0 0 auto;
+  }
+}
+
 .keel-fold > summary {
   list-style: none;
   cursor: pointer;
